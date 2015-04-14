@@ -29,6 +29,10 @@ DEBUG = False
 #
 # NOTE:
 # If an input element has the "image_link" tag, and its text is "Image," it will not be output.
+#
+# NOTE:
+# The "solr_unique_id" field is created by this script by combining the "type" field, an underscore,
+#    and the "id" field. It's because Drupal "id" only has to be unique within a data type.
 
 from collections import defaultdict
 import sys
@@ -39,6 +43,7 @@ FIELD = 'field'
 NAME = 'name'
 IMAGE = 'Image'
 IMAGE_LINK = 'image_link'
+SOLR_UNIQUE_ID = 'solr_unique_id'
 
 
 def solr_node_from_drupal_node(node):
@@ -60,10 +65,18 @@ def solr_node_from_drupal_node(node):
             elem = ETree.Element(FIELD, {NAME: each.tag.lower()})
             elem.text = each.get('text')
             out.append(elem)
+            if 'id' == each.tag:
+                elem = ETree.Element(FIELD, {NAME: SOLR_UNIQUE_ID})
+                elem.text = '{}_{}'.format(node.tag, each.get('text'))
+                out.append(elem)
         elif each.text is not None:
             elem = ETree.Element(FIELD, {NAME: each.tag.lower()})
             elem.text = each.text
             out.append(elem)
+            if 'id' == each.tag:
+                elem = ETree.Element(FIELD, {NAME: SOLR_UNIQUE_ID})
+                elem.text = '{}_{}'.format(node.tag, each.text)
+                out.append(elem)
 
     return out
 
