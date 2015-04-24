@@ -25,31 +25,20 @@
 
 # NOTE: this is just a sketch for now!
 
-QUERY = 'http://localhost:8983/solr/collection1/select?q=%2Btype%3A{}+%2Bid%3A{}&wt=json&indent=true'
-
 from tornado import ioloop, web, httpclient, gen, escape
-#import pysolr
+import pysolrtornado
 
-#SOLR =  pysolr.Solr('http://localhost:8983/solr/', timeout=10)
+SOLR =  pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
 
 
 @gen.coroutine
-def ask_solr(q_type, q_id):
+def ask_solr_by_id(q_type, q_id):
     '''
     Query the Solr server for a record of "q_type" and an id of "q_id."
+
+    This function uses the "pysolrtornado" library.
     '''
-    resp = yield httpclient.AsyncHTTPClient().fetch(QUERY.format(q_type, q_id))
-    return escape.json_decode(resp.body)
-
-
-#@gen.coroutine
-#def ask_solr_by_id(q_type, q_id):
-    #'''
-    #Query the Solr server for a record of "q_type" and an id of "q_id."
-
-    #This function uses the "pysolr" library.
-    #'''
-    #return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id)))
+    return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id)))
 
 
 class ChantHandler(web.RequestHandler):
@@ -67,7 +56,7 @@ class ChantHandler(web.RequestHandler):
         Given a dict with a Solr response for a Chant record, convert the fields ending with "_id"
         into the appropriate "name" or "title" of the corresponding resource.
         '''
-        # NOTE: 'siglum' is only taxonomy term in Source
+        # NOTE: 'siglum' is a taxonomy term in Source but text field in Chant
         DIRECT_INCLUDE = ['incipit', 'folio', 'position', 'sequence', 'mode', 'id', 'cantus_id',
                           'full_text_simssa', 'full_text_manuscript', 'volpiano', 'notes',
                           'cao_concordances', 'melody_id', 'marginalia', 'differentia', 'finalis',
@@ -83,36 +72,31 @@ class ChantHandler(web.RequestHandler):
             if key in DIRECT_INCLUDE:
                 formatted[key] = chant[key]
             elif key in LOOKUP:
-                resp = yield ask_solr(LOOKUP[key][0], chant[key])
-                if resp['response']['numFound'] > 0:
-                    formatted[LOOKUP[key][1]] = resp['response']['docs'][0]['name']
+                resp = yield ask_solr_by_id(LOOKUP[key][0], chant[key])
+                if len(resp) > 0:
+                    formatted[LOOKUP[key][1]] = resp[0]['name']
             elif key == 'source_id':
-                resp = yield ask_solr('source', chant[key])
-                if resp['response']['numFound'] > 0:
-                    formatted['source'] = resp['response']['docs'][0]['title']
+                resp = yield ask_solr_by_id('source', chant[key])
+                if len(resp) > 0:
+                    formatted['source'] = resp[0]['title']
 
         # fetch extra information
         if 'feast_id' in chant:  # for "feast_desc"
             #results = yield ask_solr_by_id('feast', chant['feast_id'])
             #for feast in results:
                 #formatted['feast_desc'] = feast['description']
-            resp = yield ask_solr('feast', chant['feast_id'])
-            if resp['response']['numFound'] > 0:
-                formatted['fest_desc'] = resp['response']['docs'][0]['description']
+            resp = yield ask_solr_by_id('feast', chant['feast_id'])
+            if len(resp) > 0:
+                formatted['fest_desc'] = resp[0]['description']
 
         if 'cantus_id' in chant:  # for "full_text"
-            resp = yield ask_solr('cantusid', chant['cantus_id'])
-            if resp['response']['numFound'] > 0 and 'full_text' in resp['response']['docs'][0]:
-                formatted['full_text'] = resp['response']['docs'][0]['full_text']
+            resp = yield ask_solr_by_id('cantusid', chant['cantus_id'])
+            if len(resp) > 0 and 'full_text' in resp[0]:
+                formatted['full_text'] = resp[0]['full_text']
 
         # TODO: implement the proofreader parts; they seem always empty in Drupal...
 
         return formatted
-
-    def prepare_resources(chant):
-        '''
-        '''
-        pass
 
     @gen.coroutine
     def get(self, chant_id=None):
@@ -123,10 +107,10 @@ class ChantHandler(web.RequestHandler):
             chant_id = chant_id[:-1]
 
         # query Solr and format our response body
-        resp = yield ask_solr('chant', chant_id)
-        if resp['response']['numFound'] > 0:
+        resp = yield ask_solr_by_id('chant', chant_id)
+        if len(resp) > 0:
             post = ''
-            for chant in resp['response']['docs']:
+            for chant in resp:
                 post += str((yield self.format_chant(chant))) + '\n\n'
         else:
             post = '[]\n\n'
@@ -141,8 +125,14 @@ class FeastHandler(web.RequestHandler):
         if feast_id:
             if feast_id.endswith('/') and len(feast_id) > 1:
                 feast_id = feast_id[:-1]
-            post = yield ask_solr('feast', feast_id)
-            post = str(post.body) + '\n\n'
+            post = yield ask_solr_by_id('feast', feast_id)
+            if 0 == len(post):
+                post = 'feast {} not found\n'.format(feast_id)
+            else:
+                soup = ''
+                for each in post:
+                    soup += str(each) + '\n\n'
+                post = soup
         else:
             post = 'generic info about feasts\n'
         self.write(post)
