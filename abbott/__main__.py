@@ -29,6 +29,9 @@ from tornado import ioloop, web, httpclient, gen, escape
 import pysolrtornado
 
 SOLR =  pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
+DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
+ABBOTT_VERSION = '0.0.1-dev'
+CANTUS_API_VERSION = '0.1.0'
 
 
 @gen.coroutine
@@ -47,44 +50,76 @@ class TaxonomyHandler(web.RequestHandler):
     the other types, so we can have a common base class like this.
     '''
 
-    RETURNED_FIELDS = ['id', 'name', 'description']
+    returned_fields = ['id', 'name', 'description']
     '''
     Names of the fields that TaxonomyHandler will return; others are removed. Subclasses may modify
     these as required.
     '''
 
+    def initialize(self, type_name, type_name_plural, additional_fields=None):
+        '''
+        :param additional_fields: Optional list of fields to append to ``self.returned_fields``.
+        :type additional_fields: list of str
+        '''
+        self.type_name = type_name
+        self.type_name_plural = type_name_plural
+        if additional_fields:
+            self.return_fields.extend(additional_fields)
+
     def format_record(self, record):
+        '''
+        '''
         post = {}
 
         for key in iter(record):
-            if key in self.RETURNED_FIELDS:
+            if key in self.returned_fields:
                 post[key] = record[key]
 
         return post
 
+    def make_resource_url(self, resource_id):
+        '''
+        '''
+        post = self.reverse_url('browse_{}'.format(self.type_name_plural), resource_id + '/')
+        if post.endswith('?'):
+            post = post[:-1]
+
+        return post
+
     @gen.coroutine
-    def super_get(self, resource_id, type_name, type_name_plural):
+    def get(self, resource_id=None):
+        '''
+        '''
         if not resource_id:
             resource_id = '*'
         elif resource_id.endswith('/') and len(resource_id) > 1:
             resource_id = resource_id[:-1]
 
-        resp = yield ask_solr_by_id(type_name, resource_id)
+        resp = yield ask_solr_by_id(self.type_name, resource_id)
 
         if 0 == len(resp):
-            post = '{} {} not found\n'.format(type_name, resource_id)
+            post = '{} {} not found\n'.format(self.type_name, resource_id)
         else:
-            post = ''
+            post = []
             for each_record in resp:
-                post += str(self.format_record(each_record)) + '\n\n'
+                post.append(self.format_record(each_record))
 
-        return post
+        post = {res['id']: res for res in post}
+        post['resources'] = {i: self.make_resource_url(i) for i in iter(post)}
+
+        self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
+        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
+
+        self.write(post)
 
 
-class CenturyHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, century_id):
-        self.write((yield self.super_get(century_id, 'century', 'centuries')))
+#class CantusidHandler(TaxonomyHandler):
+    ## TODO: write a superclass for this that will also do Chant and Indexer
+    #RETURNED_FIELDS = ['id', 'incipit', 'full_text', 'member_id']
+
+    #@gen.coroutine
+    #def get(self, cantusid_id):
+        #self.write((yield self.super_get(cantusid_id, 'cantusid', 'cantusids')))
 
 
 class ChantHandler(web.RequestHandler):
@@ -165,60 +200,6 @@ class ChantHandler(web.RequestHandler):
         self.write(post)
 
 
-class FeastHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, feast_id):
-        self.write((yield self.super_get(feast_id, 'feast', 'feasts')))
-
-
-class GenreHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, genre_id):
-        self.write((yield self.super_get(genre_id, 'genre', 'genres')))
-
-
-class NotationHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, notation_id):
-        self.write((yield self.super_get(notation_id, 'notation', 'notations')))
-
-
-class OfficeHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, office_id):
-        self.write((yield self.super_get(office_id, 'office', 'offices')))
-
-
-class PortfolioHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, portfolio_id):
-        self.write((yield self.super_get(portfolio_id, 'portfolio', 'portfolia')))
-
-
-class ProvenanceHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, provenance_id):
-        self.write((yield self.super_get(provenance_id, 'provenance', 'provenances')))
-
-
-class SiglumHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, siglum_id):
-        self.write((yield self.super_get(siglum_id, 'siglum', 'sigla')))
-
-
-class SegmentHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, segment_id):
-        self.write((yield self.super_get(segment_id, 'segment', 'segments')))
-
-
-class SourceStatusHandler(TaxonomyHandler):
-    @gen.coroutine
-    def get(self, status_id):
-        self.write((yield self.super_get(status_id, 'source_status', 'statii')))
-
-
 class RootHandler(web.RequestHandler):
     def get(self):
         post = ('Abbott\n======\n' +
@@ -246,20 +227,31 @@ def make_app():
     '''
     return web.Application([
         web.url(r'/', RootHandler),
-        #web.url(r'/cantusids/(.*/)?', CantusidHandler, name='browse_cantusids'),
-        web.url(r'/centuries/(.*/)?', CenturyHandler, name='browse_centuries'),
-        web.url(r'/chants/(.*/)?', ChantHandler, name='browse_chants'),
-        web.url(r'/feasts/(.*/)?', FeastHandler, name='browse_feasts'),
-        web.url(r'/genres/(.*/)?', GenreHandler, name='browse_genres'),
-        #web.url(r'/indexers/(.*/)?', IndexerHandler, name='browse_indexers'),
-        web.url(r'/notations/(.*/)?', NotationHandler, name='browse_notations'),
-        web.url(r'/offices/(.*/)?', OfficeHandler, name='browse_offices'),
-        web.url(r'/portfolia/(.*/)?', PortfolioHandler, name='browse_portfolia'),
-        web.url(r'/provenances/(.*/)?', ProvenanceHandler, name='browse_provenances'),
-        web.url(r'/sigla/(.*/)?', SiglumHandler, name='browse_sigla'),
-        web.url(r'/segments/(.*/)?', SegmentHandler, name='browse_segments'),
-        #web.url(r'/sources/(.*/)?', SourceHandler, name='browse_sources'),
-        web.url(r'/statii/(.*/)?', SourceStatusHandler, name='browse_source_statii'),
+        # TODO: we need to get rid of these question marks because they mess up the "resources" URLs
+        #web.URLSpec(r'/cantusids/(.*/)?', CantusidHandler, name='browse_cantusids'),
+        web.URLSpec(r'/centuries/(.*/)?', handler=TaxonomyHandler, name='browse_centuries',
+                    kwargs={'type_name': 'century', 'type_name_plural': 'centuries'}),
+        web.URLSpec(r'/chants/(.*/)?', handler=ChantHandler, name='browse_chants'),
+        web.URLSpec(r'/feasts/(.*/)?', handler=TaxonomyHandler, name='browse_feasts',
+                    kwargs={'type_name': 'feast', 'type_name_plural': 'feasts'}),
+        web.URLSpec(r'/genres/(.*/)?', handler=TaxonomyHandler, name='browse_genres',
+                    kwargs={'type_name': 'genre', 'type_name_plural': 'genres'}),
+        #web.URLSpec(r'/indexers/(.*/)?', IndexerHandler, name='browse_indexers'),
+        web.URLSpec(r'/notations/(.*/)?', handler=TaxonomyHandler, name='browse_notations',
+                    kwargs={'type_name': 'notation', 'type_name_plural': 'notations'}),
+        web.URLSpec(r'/offices/(.*/)?', handler=TaxonomyHandler, name='browse_offices',
+                    kwargs={'type_name': 'office', 'type_name_plural': 'offices'}),
+        web.URLSpec(r'/portfolia/(.*/)?', handler=TaxonomyHandler, name='browse_portfolia',
+                    kwargs={'type_name': 'portfolio', 'type_name_plural': 'portfolia'}),
+        web.URLSpec(r'/provenances/(.*/)?', handler=TaxonomyHandler, name='browse_provenances',
+                    kwargs={'type_name': 'provenance', 'type_name_plural': 'provenances'}),
+        web.URLSpec(r'/sigla/(.*/)?', handler=TaxonomyHandler, name='browse_sigla',
+                    kwargs={'type_name': 'siglum', 'type_name_plural': 'sigla'}),
+        web.URLSpec(r'/segments/(.*/)?', handler=TaxonomyHandler, name='browse_segments',
+                    kwargs={'type_name': 'segment', 'type_name_plural': 'segments'}),
+        #web.URLSpec(r'/sources/(.*/)?', SourceHandler, name='browse_sources'),
+        web.URLSpec(r'/statii/(.*/)?', handler=TaxonomyHandler, name='browse_source_statii',
+                    kwargs={'type_name': 'source_status', 'type_name_plural': 'source_statii'}),
         ])
 
 
