@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
 # Program Name:           abbott
@@ -39,6 +39,52 @@ def ask_solr_by_id(q_type, q_id):
     This function uses the "pysolrtornado" library.
     '''
     return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id)))
+
+
+class TaxonomyHandler(web.RequestHandler):
+    '''
+    For the resource types that were a "taxonomy" type in Drupal. They have many fewer fields than
+    the other types, so we can have a common base class like this.
+    '''
+
+    RETURNED_FIELDS = ['id', 'name', 'description']
+    '''
+    Names of the fields that TaxonomyHandler will return; others are removed. Subclasses may modify
+    these as required.
+    '''
+
+    def format_record(self, record):
+        post = {}
+
+        for key in iter(record):
+            if key in self.RETURNED_FIELDS:
+                post[key] = record[key]
+
+        return post
+
+    @gen.coroutine
+    def super_get(self, resource_id, type_name, type_name_plural):
+        if not resource_id:
+            resource_id = '*'
+        elif resource_id.endswith('/') and len(resource_id) > 1:
+            resource_id = resource_id[:-1]
+
+        resp = yield ask_solr_by_id(type_name, resource_id)
+
+        if 0 == len(resp):
+            post = '{} {} not found\n'.format(type_name, resource_id)
+        else:
+            post = ''
+            for each_record in resp:
+                post += str(self.format_record(each_record)) + '\n\n'
+
+        return post
+
+
+class CenturyHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, century_id):
+        self.write((yield self.super_get(century_id, 'century', 'centuries')))
 
 
 class ChantHandler(web.RequestHandler):
@@ -119,31 +165,78 @@ class ChantHandler(web.RequestHandler):
         self.write(post)
 
 
-class FeastHandler(web.RequestHandler):
+class FeastHandler(TaxonomyHandler):
     @gen.coroutine
-    def get(self, feast_id=None):
-        if feast_id:
-            if feast_id.endswith('/') and len(feast_id) > 1:
-                feast_id = feast_id[:-1]
-            post = yield ask_solr_by_id('feast', feast_id)
-            if 0 == len(post):
-                post = 'feast {} not found\n'.format(feast_id)
-            else:
-                soup = ''
-                for each in post:
-                    soup += str(each) + '\n\n'
-                post = soup
-        else:
-            post = 'generic info about feasts\n'
-        self.write(post)
+    def get(self, feast_id):
+        self.write((yield self.super_get(feast_id, 'feast', 'feasts')))
+
+
+class GenreHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, genre_id):
+        self.write((yield self.super_get(genre_id, 'genre', 'genres')))
+
+
+class NotationHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, notation_id):
+        self.write((yield self.super_get(notation_id, 'notation', 'notations')))
+
+
+class OfficeHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, office_id):
+        self.write((yield self.super_get(office_id, 'office', 'offices')))
+
+
+class PortfolioHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, portfolio_id):
+        self.write((yield self.super_get(portfolio_id, 'portfolio', 'portfolia')))
+
+
+class ProvenanceHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, provenance_id):
+        self.write((yield self.super_get(provenance_id, 'provenance', 'provenances')))
+
+
+class SiglumHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, siglum_id):
+        self.write((yield self.super_get(siglum_id, 'siglum', 'sigla')))
+
+
+class SegmentHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, segment_id):
+        self.write((yield self.super_get(segment_id, 'segment', 'segments')))
+
+
+class SourceStatusHandler(TaxonomyHandler):
+    @gen.coroutine
+    def get(self, status_id):
+        self.write((yield self.super_get(status_id, 'source_status', 'statii')))
 
 
 class RootHandler(web.RequestHandler):
     def get(self):
-        post = 'Abbott\n======\n'
-        post += '-> browse_chants: {}\n'.format(self.reverse_url('browse_chants', 'id'))
-        post += '-> browse_feasts: {}\n'.format(self.reverse_url('browse_feasts', 'id'))
-        post += '\n'
+        post = ('Abbott\n======\n' +
+                #'-> browse_cantusids: {}\n'.format(self.reverse_url('browse_s', 'id')) +
+                '-> browse_centuries: {}\n'.format(self.reverse_url('browse_centuries', 'id')) +
+                '-> browse_chants: {}\n'.format(self.reverse_url('browse_chants', 'id')) +
+                '-> browse_feasts: {}\n'.format(self.reverse_url('browse_feasts', 'id')) +
+                '-> browse_genres: {}\n'.format(self.reverse_url('browse_genres', 'id')) +
+                #'-> browse_indexers: {}\n'.format(self.reverse_url('browse_s', 'id')) +
+                '-> browse_notations: {}\n'.format(self.reverse_url('browse_notations', 'id')) +
+                '-> browse_offices: {}\n'.format(self.reverse_url('browse_offices', 'id')) +
+                '-> browse_portfolia: {}\n'.format(self.reverse_url('browse_portfolia', 'id')) +
+                '-> browse_provenances: {}\n'.format(self.reverse_url('browse_provenances', 'id')) +
+                '-> browse_sigla: {}\n'.format(self.reverse_url('browse_sigla', 'id')) +
+                '-> browse_segments: {}\n'.format(self.reverse_url('browse_segments', 'id')) +
+                #'-> browse_sources: {}\n'.format(self.reverse_url('browse_s', 'id')) +
+                '-> browse_source_statii: {}\n'.format(self.reverse_url('browse_source_statii', 'id')) +
+                '\n')
         self.write(post)
 
 
@@ -153,8 +246,20 @@ def make_app():
     '''
     return web.Application([
         web.url(r'/', RootHandler),
+        #web.url(r'/cantusids/(.*/)?', CantusidHandler, name='browse_cantusids'),
+        web.url(r'/centuries/(.*/)?', CenturyHandler, name='browse_centuries'),
         web.url(r'/chants/(.*/)?', ChantHandler, name='browse_chants'),
         web.url(r'/feasts/(.*/)?', FeastHandler, name='browse_feasts'),
+        web.url(r'/genres/(.*/)?', GenreHandler, name='browse_genres'),
+        #web.url(r'/indexers/(.*/)?', IndexerHandler, name='browse_indexers'),
+        web.url(r'/notations/(.*/)?', NotationHandler, name='browse_notations'),
+        web.url(r'/offices/(.*/)?', OfficeHandler, name='browse_offices'),
+        web.url(r'/portfolia/(.*/)?', PortfolioHandler, name='browse_portfolia'),
+        web.url(r'/provenances/(.*/)?', ProvenanceHandler, name='browse_provenances'),
+        web.url(r'/sigla/(.*/)?', SiglumHandler, name='browse_sigla'),
+        web.url(r'/segments/(.*/)?', SegmentHandler, name='browse_segments'),
+        #web.url(r'/sources/(.*/)?', SourceHandler, name='browse_sources'),
+        web.url(r'/statii/(.*/)?', SourceStatusHandler, name='browse_source_statii'),
         ])
 
 
