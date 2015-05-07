@@ -35,6 +35,34 @@ DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
 ABBOTT_VERSION = '0.0.1-dev'
 CANTUS_API_VERSION = '0.1.0'
 
+ZOOL = {'cantusid': 'cantusids',
+        'century': 'centuries',
+        'chant': 'chants',
+        'feast': 'feasts',
+        'genre': 'genres',
+        'indexer': 'indexers',
+        'notation': 'notations',
+        'office': 'offices',
+        'portfolio': 'portfolia',
+        'provenance': 'provenances',
+        'siglum': 'sigla',
+        'segment': 'segments',
+        'source': 'sources',
+        'source_status': 'source_statii',
+        # for Source
+        'indexers': 'indexers',
+        'proofreaders': 'indexers',
+    }
+
+
+def resource_type_to_plural(singular):
+    '''
+    '''
+    if singular in ZOOL:
+        return ZOOL[singular]
+    else:
+        return None
+
 
 @gen.coroutine
 def ask_solr_by_id(q_type, q_id):
@@ -79,10 +107,14 @@ class TaxonomyHandler(web.RequestHandler):
 
         return post
 
-    def make_resource_url(self, resource_id):
+    def make_resource_url(self, resource_id, resource_type=None):
         '''
+        Default ``resource_type`` is same as ``self.type_name_plural``.
         '''
-        post = self.reverse_url('browse_{}'.format(self.type_name_plural), resource_id + '/')
+        if resource_type is None:
+            resource_type = self.type_name_plural
+
+        post = self.reverse_url('browse_{}'.format(resource_type), resource_id + '/')
         if post.endswith('?'):
             post = post[:-1]
 
@@ -107,7 +139,7 @@ class TaxonomyHandler(web.RequestHandler):
                 post.append(self.format_record(each_record))
 
         post = {res['id']: res for res in post}
-        post['resources'] = {i: self.make_resource_url(i) for i in iter(post)}
+        post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
 
         self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
@@ -159,13 +191,15 @@ class ComplexHandler(TaxonomyHandler):
         '''
         '''
         results = yield self.basic_get(resource_id)
-        post = {}
+        post = {'resources': results['resources']}
 
         for record in iter(results):
             if 'resources' == record:
-                post[record] = results[record]
                 continue
 
+            this_resources = {}
+
+            # BASIC FIELDS =========================================================================
             post[record] = {}
             for field in iter(results[record]):
                 if field in ComplexHandler.LOOKUP:
@@ -190,13 +224,28 @@ class ComplexHandler(TaxonomyHandler):
                         resp = yield ask_solr_by_id(ComplexHandler.LOOKUP[field][0], results[record][field])
                         if len(resp) > 0:
                             post[record][ComplexHandler.LOOKUP[field][2]] = resp[0][ComplexHandler.LOOKUP[field][1]]
+
+                    # we can fill in some of the "reources" things
+                    # TODO: make this way less clumsy
+                    resource_url = None
+                    plural = resource_type_to_plural(ComplexHandler.LOOKUP[field][2])
+                    if isinstance(results[record][field], (list, tuple)):
+                        resource_url = [self.make_resource_url(x, plural) for x in results[record][field]]
+                    else:
+                        resource_url = self.make_resource_url(results[record][field], plural)
+                    this_resources[ComplexHandler.LOOKUP[field][2]] = resource_url
                 elif field in self.returned_fields:
                     # NB: this generic branch must come after the LOOKUP branch. If it's before,
                     #     LOOKUP fields will be matched in self.returned_fields and they won't be
                     #     looked up.  TODO: rewrite this explanation more clearly
                     post[record][field] = results[record][field]
 
-            # if it's a Chant and doesn't have a "full_text" entry, we can get it from the cantusid
+            # add resources URLs to "resources" member
+            for key in iter(this_resources):
+                post['resources'][record][key] = this_resources[key]
+
+            # FILL IN MISSING FIELDS ===============================================================
+            # (for Chant) if missing "full_text" or "genre_id" entry, get them from cantusid
             if 'full_text' in self.returned_fields and 'full_text' not in post[record] and 'cantus_id' in post[record]:
                 resp = yield ask_solr_by_id('cantusid', post[record]['cantus_id'])
                 if len(resp) > 0 and 'full_text' in resp[0]:
