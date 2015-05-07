@@ -179,10 +179,13 @@ class ComplexHandler(TaxonomyHandler):
                                     post[record][ComplexHandler.LOOKUP[field][2]].append(resp[0][ComplexHandler.LOOKUP[field][1]])
                                 except KeyError:
                                     # usually if the desired "field" isn't in the record we found
+                                    print('ERROR: there was a KeyError in that weird place')
                                     post[record][ComplexHandler.LOOKUP[field][2]].append(str(resp[0]))
+
+                        # if none of the things in the list ended up being found, we'll clear this out
                         if 0 == len(post[record][ComplexHandler.LOOKUP[field][2]]):
-                            # if none of the things in the list ended up being found, we'll clear this out
                             del post[record][ComplexHandler.LOOKUP[field][2]]
+
                     else:
                         resp = yield ask_solr_by_id(ComplexHandler.LOOKUP[field][0], results[record][field])
                         if len(resp) > 0:
@@ -190,7 +193,7 @@ class ComplexHandler(TaxonomyHandler):
                 elif field in self.returned_fields:
                     # NB: this generic branch must come after the LOOKUP branch. If it's before,
                     #     LOOKUP fields will be matched in self.returned_fields and they won't be
-                    #     looked up.
+                    #     looked up.  TODO: rewrite this explanation more clearly
                     post[record][field] = results[record][field]
 
             # if it's a Chant and doesn't have a "full_text" entry, we can get it from the cantusid
@@ -198,10 +201,24 @@ class ComplexHandler(TaxonomyHandler):
                 resp = yield ask_solr_by_id('cantusid', post[record]['cantus_id'])
                 if len(resp) > 0 and 'full_text' in resp[0]:
                     post[record]['full_text'] = resp[0]['full_text']
+            if 'genre_id' in self.returned_fields and 'genre' not in post[record] and 'cantus_id' in post[record]:
+                resp = yield ask_solr_by_id('cantusid', post[record]['cantus_id'])
+                if len(resp) > 0 and 'genre_id' in resp[0]:
+                    resp = yield ask_solr_by_id('genre', resp[0]['genre_id'])
+                    if len(resp) > 0 and 'name' in resp[0]:
+                        post[record]['genre'] = resp[0]['name']
 
-        # TODO: in chant, how to get feast and feast_desc from the feast_id?
-        # TODO: in source, how to get provenance and provenance_detail?
-        # TODO: in source, how to get source_status and source_status_desc?
+            # CREATE EXTRA FIELDS ==================================================================
+            # (for Chant) fill in fest_desc if we have a feast_id
+            if 'feast_id' in self.returned_fields and 'feast_id' in results[record]:
+                resp = yield ask_solr_by_id('feast', results[record]['feast_id'])
+                if len(resp) > 0 and 'description' in resp[0]:
+                    post[record]['feast_desc'] = resp[0]['description']
+            # (for Source) fill in source_status_desc if we have a source_status_id (probably never used)
+            if 'source_status_id' in self.returned_fields and 'source_status_id' in results[record]:
+                resp = yield ask_solr_by_id('source_status', results[record]['source_status_id'])
+                if len(resp) > 0 and 'description' in resp[0]:
+                    post[record]['source_status_desc'] = resp[0]['description']
 
         self.write(post)
 
