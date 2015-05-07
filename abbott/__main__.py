@@ -351,7 +351,7 @@ def make_app():
                                                   'segment_id', 'source_status_id', 'summary',
                                                   'liturgical_occasions', 'description',
                                                   'indexing_notes', 'indexing_date', 'indexers',
-                                                  'editors', 'proofreaders']}),
+                                                  'editors', 'proofreaders', 'provenance_detail']}),
         web.URLSpec(r'/statii/(.*/)?', handler=TaxonomyHandler, name='browse_source_statii',
                     kwargs={'type_name': 'source_status', 'type_name_plural': 'source_statii'}),
         ])
