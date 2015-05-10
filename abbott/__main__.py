@@ -103,7 +103,7 @@ def ask_solr_by_id(q_type, q_id):
     return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id)))
 
 
-class TaxonomyHandler(web.RequestHandler):
+class SimpleHandler(web.RequestHandler):
     '''
     For the resource types that were represented in Drupal with its "taxonomy" feature. This class
     is for simple resources that do not contain references to other resources. Complex resources
@@ -113,13 +113,13 @@ class TaxonomyHandler(web.RequestHandler):
 
     returned_fields = ['id', 'name', 'description']
     '''
-    Names of the fields that :class:`TaxonomyHandler` will return; others are removed. Subclasses
+    Names of the fields that :class:`SimpleHandler` will return; others are removed. Subclasses
     may modify these as required.
     '''
 
     def initialize(self, type_name, additional_fields=None):  # pylint: disable=arguments-differ
         '''
-        :param str type_name: The resource type handled by this instance of :class:`TaxonomyHandler`
+        :param str type_name: The resource type handled by this instance of :class:`SimpleHandler`
             in singular form.
         :param additional_fields: Optional list of fields to append to ``self.returned_fields``.
         :type additional_fields: list of str
@@ -148,7 +148,7 @@ class TaxonomyHandler(web.RequestHandler):
         '''
         Make a URL for the "resources" section of the response, with the indicated resource type
         and id. The default resource type corresponds to the resource type this
-        :class:`TaxonomyHandler` was created for.
+        :class:`SimpleHandler` was created for.
 
         :param str resource_id: The "id" of the resource in its URL.
         :param str resource_type: An optional resource type for the URL, in either singular or
@@ -233,10 +233,10 @@ class TaxonomyHandler(web.RequestHandler):
         self.write((yield self.basic_get(resource_id)))
 
 
-class ComplexHandler(TaxonomyHandler):
+class ComplexHandler(SimpleHandler):
     '''
     A handler for complex resource types that contain references to other resources. Simple resource
-    types that do not refer to other resources should use the :class:`TaxonomyHandler`. Specify the
+    types that do not refer to other resources should use the :class:`SimpleHandler`. Specify the
     resource type to the initializer at runtime.
     '''
 
@@ -466,7 +466,7 @@ HANDLERS = [
     web.URLSpec(r'/cantusids/(.*/)?', handler=ComplexHandler, name='browse_cantusids',
                 kwargs={'type_name': 'cantusid',
                         'additional_fields': ['incipit', 'full_text', 'genre_id']}),
-    web.URLSpec(r'/centuries/(.*/)?', handler=TaxonomyHandler, name='browse_centuries',
+    web.URLSpec(r'/centuries/(.*/)?', handler=SimpleHandler, name='browse_centuries',
                 kwargs={'type_name': 'century'}),
     web.URLSpec(r'/chants/(.*/)?', handler=ComplexHandler, name='browse_chants',
                 kwargs={'type_name': 'chant',
@@ -476,25 +476,25 @@ HANDLERS = [
                                               'cao_concordances', 'melody_id', 'marginalia',
                                               'differentia', 'finalis', 'siglum', 'feast_id',
                                               'genre_id', 'office_id', 'source_id'}}),
-    web.URLSpec(r'/feasts/(.*/)?', handler=TaxonomyHandler, name='browse_feasts',
+    web.URLSpec(r'/feasts/(.*/)?', handler=SimpleHandler, name='browse_feasts',
                 kwargs={'type_name': 'feast', 'additional_fields': ['date', 'feast_code']}),
-    web.URLSpec(r'/genres/(.*/)?', handler=TaxonomyHandler, name='browse_genres',
+    web.URLSpec(r'/genres/(.*/)?', handler=SimpleHandler, name='browse_genres',
                 kwargs={'type_name': 'genre', 'additional_fields': ['mass_or_office']}),
     web.URLSpec(r'/indexers/(.*/)?', handler=ComplexHandler, name='browse_indexers',
                 kwargs={'type_name': 'indexer',
                         'additional_fields': ['display_name', 'given_name', 'family_name',
                                               'institution', 'city', 'country']}),
-    web.URLSpec(r'/notations/(.*/)?', handler=TaxonomyHandler, name='browse_notations',
+    web.URLSpec(r'/notations/(.*/)?', handler=SimpleHandler, name='browse_notations',
                 kwargs={'type_name': 'notation'}),
-    web.URLSpec(r'/offices/(.*/)?', handler=TaxonomyHandler, name='browse_offices',
+    web.URLSpec(r'/offices/(.*/)?', handler=SimpleHandler, name='browse_offices',
                 kwargs={'type_name': 'office'}),
-    web.URLSpec(r'/portfolia/(.*/)?', handler=TaxonomyHandler, name='browse_portfolia',
+    web.URLSpec(r'/portfolia/(.*/)?', handler=SimpleHandler, name='browse_portfolia',
                 kwargs={'type_name': 'portfolio'}),
-    web.URLSpec(r'/provenances/(.*/)?', handler=TaxonomyHandler, name='browse_provenances',
+    web.URLSpec(r'/provenances/(.*/)?', handler=SimpleHandler, name='browse_provenances',
                 kwargs={'type_name': 'provenance'}),
-    web.URLSpec(r'/sigla/(.*/)?', handler=TaxonomyHandler, name='browse_sigla',
+    web.URLSpec(r'/sigla/(.*/)?', handler=SimpleHandler, name='browse_sigla',
                 kwargs={'type_name': 'siglum'}),
-    web.URLSpec(r'/segments/(.*/)?', handler=TaxonomyHandler, name='browse_segments',
+    web.URLSpec(r'/segments/(.*/)?', handler=SimpleHandler, name='browse_segments',
                 kwargs={'type_name': 'segment'}),
     web.URLSpec(r'/sources/(.*/)?', handler=ComplexHandler, name='browse_sources',
                 kwargs={'type_name': 'source',
@@ -504,7 +504,7 @@ HANDLERS = [
                                               'liturgical_occasions', 'description',
                                               'indexing_notes', 'indexing_date', 'indexers',
                                               'editors', 'proofreaders', 'provenance_detail']}),
-    web.URLSpec(r'/statii/(.*/)?', handler=TaxonomyHandler, name='browse_source_statii',
+    web.URLSpec(r'/statii/(.*/)?', handler=SimpleHandler, name='browse_source_statii',
                 kwargs={'type_name': 'source_status'}),
     ]
 

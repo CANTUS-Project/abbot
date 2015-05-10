@@ -27,8 +27,9 @@ Tests for ``__main__.py`` of the Abbott server.
 '''
 
 
+import unittest
 from unittest import mock
-from tornado import testing, concurrent
+from tornado import concurrent
 import pysolrtornado
 from abbott import __main__ as main
 
@@ -42,7 +43,7 @@ def make_future(with_this):
     return val
 
 
-class TestAbbott(testing.AsyncTestCase):
+class TestAbbott(unittest.TestCase):
     '''
     Tests for module-level things.
     '''
@@ -64,7 +65,6 @@ class TestAbbott(testing.AsyncTestCase):
         "When the singular form doesn't have a corresponding plural."
         self.assertIsNone(main.singular_resource_to_plural('automobiles'))
 
-    @testing.gen_test
     def test_ask_solr_by_id_1(self):
         "Basic test."
         expected = 'search results'
