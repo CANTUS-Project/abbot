@@ -240,36 +240,166 @@ class ComplexHandler(TaxonomyHandler):
     resource type to the initializer at runtime.
     '''
 
-    # For those fields that must be cross-referenced with the "name" field of a taxonomy resource.
-    #
-    # - item 0: the "type" to lookup
-    # - item 1: the field to replace with
-    # - item 2: field name to use in output
-    #
-    # Example: ``'genre_id': ('genre', 'description', 'genre')``.
-    #
-    # Replaces the "genre_id" field with the "description" field of a "genre" record, stored in the
-    # "genre" member on output.
-    #
-    # TODO: item 1 will have to be configurable at runtime, because I'm sure some people would
-    #       rather read "A" rather than "Antiphon," for example
-    _LOOKUP = {'feast_id': ('feast', 'name', 'feast'),
-               'genre_id': ('genre', 'description', 'genre'),
-               'office_id': ('office', 'name', 'office'),
-               'source_id': ('source', 'title', 'source'),
-               'provenance_id': ('provenance', 'name', 'provenance'),
-               'century_id': ('century', 'name', 'century'),
-               'notation_style_id': ('notation', 'name', 'notation_style'),
-               'segment_id': ('segment', 'name', 'segment'),
-               'source_status_id': ('source_status', 'name', 'source_status'),
-               'indexers': ('indexer', 'display_name', 'indexers'),
-               'editors': ('indexer', 'display_name', 'editors'),
-               'proofreaders': ('indexer', 'display_name', 'proofreaders'),
-              }
+    LOOKUP = {'feast_id': ('feast', 'name', 'feast'),
+              'genre_id': ('genre', 'description', 'genre'),
+              'office_id': ('office', 'name', 'office'),
+              'source_id': ('source', 'title', 'source'),
+              'provenance_id': ('provenance', 'name', 'provenance'),
+              'century_id': ('century', 'name', 'century'),
+              'notation_style_id': ('notation', 'name', 'notation_style'),
+              'segment_id': ('segment', 'name', 'segment'),
+              'source_status_id': ('source_status', 'name', 'source_status'),
+              'indexers': ('indexer', 'display_name', 'indexers'),
+              'editors': ('indexer', 'display_name', 'editors'),
+              'proofreaders': ('indexer', 'display_name', 'proofreaders'),
+             }
+    '''
+    For those fields that must be cross-referenced with the "name" field of a taxonomy resource.
+
+    - item 0: the "type" for the search
+    - item 1: the field in the result to replace with
+    - item 2: the field name to use in the response body
+
+    Example: ``'genre_id': ('genre', 'description', 'genre')``.
+
+    Replaces the "genre_id" field with the "description" field of a "genre" record, stored in the
+    "genre" member on output.
+
+    TODO: item 1 will have to be configurable at runtime, because I'm sure some people would
+          rather read "A" rather than "Antiphon," for example
+    '''
+
+    @gen.coroutine
+    def look_up_xrefs(self, record):
+        '''
+        Given a record, fetch fields that reside in other resources. This uses the substitutions
+        indicated by :const:`ComplexHandler.LOOKUP`.
+
+        Two dictionaries are returned:
+
+        - In the first, all the keys in ``self.returned_fields`` are copied without modification.
+          All the keys in :const:`ComplexHandler.LOOKUP` are replaced with keys and values as
+          indicated in that constant's documentation.
+        - In the second are a series of URLs intended to be added to the relevant "resources" member.
+
+        :param dict record: A resource that may have some keys matching a key in
+            :const:`ComplexHandler.LOOKUP`.
+        :returns: Two new dictionaries. Refer to the note above.
+        :rtype: 2-tuple of dict
+
+        **Examples**
+
+        For a "chant" resource:
+
+        >>> in_val = {'genre_id': '162', 'incipit': 'Deux ex machina'}
+        >>> result = look_up_xrefs(in_val)
+        >>> result[0]
+        {'genre': 'Versicle', 'incipit', 'Deus ex machina'}
+        >>> result[1]
+        {'genre': '/genres/162/'}
+        '''
+        post = {}
+        resources = {}
+
+        for field in iter(record):
+            if field in ComplexHandler.LOOKUP:
+                # TODO: refactor this to reduce duplication
+                if isinstance(record[field], (list, tuple)):
+                    for value in record[field]:
+                        post[ComplexHandler.LOOKUP[field][2]] = []
+                        resp = yield ask_solr_by_id(ComplexHandler.LOOKUP[field][0], value)
+                        if len(resp) > 0:
+                            try:
+                                post[ComplexHandler.LOOKUP[field][2]].append(resp[0][ComplexHandler.LOOKUP[field][1]])
+                            except KeyError:
+                                # usually if the desired "field" isn't in the record we found
+                                print('ERROR: there was a KeyError in that weird place')
+                                post[ComplexHandler.LOOKUP[field][2]].append(str(resp[0]))
+
+                    # if none of the things in the list ended up being found, we'll clear this out
+                    if 0 == len(post[ComplexHandler.LOOKUP[field][2]]):
+                        del post[ComplexHandler.LOOKUP[field][2]]
+
+                else:
+                    resp = yield ask_solr_by_id(ComplexHandler.LOOKUP[field][0], record[field])
+                    if len(resp) > 0:
+                        post[ComplexHandler.LOOKUP[field][2]] = resp[0][ComplexHandler.LOOKUP[field][1]]
+
+                # we can fill in some of the "reources" things
+                # TODO: make this way less clumsy
+                resource_url = None
+                plural = singular_resource_to_plural(ComplexHandler.LOOKUP[field][2])
+                if isinstance(record[field], (list, tuple)):
+                    resource_url = [self.make_resource_url(x, plural) for x in record[field]]
+                else:
+                    resource_url = self.make_resource_url(record[field], plural)
+                resources[ComplexHandler.LOOKUP[field][2]] = resource_url
+            elif field in self.returned_fields:
+                # NB: this generic branch must come after the LOOKUP branch. If it's before,
+                #     LOOKUP fields will be matched in self.returned_fields and they won't be
+                #     looked up.  TODO: rewrite this explanation more clearly
+                post[field] = record[field]
+
+        return post, resources
+
+    @gen.coroutine
+    def fill_from_cantusid(self, record):
+        '''
+        For records (chants) with a "cantusid" entry, check if they're missing a field that can be
+        filled in with data from the cantusid record. Currently the following fields are filled:
+        ``'full_text'`` and ``'genre_id'``.
+
+        .. note:: The ``record`` *must* have a "cantusid" key or a :exc:`KeyError` will be raised.
+
+        :param dict record: A record with a "cantusid" key.
+        :returns: The record amended with additional fields as possible.
+        :rtype: dict
+        '''
+        if 'full_text' in self.returned_fields and 'full_text' not in record:
+            resp = yield ask_solr_by_id('cantusid', record['cantus_id'])
+            if len(resp) > 0 and 'full_text' in resp[0]:
+                record['full_text'] = resp[0]['full_text']
+
+        if 'genre_id' in self.returned_fields and 'genre' not in record:
+            resp = yield ask_solr_by_id('cantusid', record['cantus_id'])
+            if len(resp) > 0 and 'genre_id' in resp[0]:
+                resp = yield ask_solr_by_id('genre', resp[0]['genre_id'])
+                if len(resp) > 0 and 'name' in resp[0]:
+                    record['genre'] = resp[0]['name']
+
+        return record
+
+    @gen.coroutine
+    def make_extra_fields(self, record, orig_record):
+        '''
+        For cross-reference records that require more than one field from the cross-referenced
+        record, use this method!
+
+        :param dict record: The record as being prepared for output.
+        :param dict orig_record: The record as returned directly from the database (i.e., before
+            processing any cross-references).
+        :returns: The ``record`` argument with additional fields as possible.
+        :rtype: dict
+        '''
+        # (for Chant) fill in fest_desc if we have a feast_id
+        if 'feast_id' in self.returned_fields and 'feast_id' in orig_record:
+            resp = yield ask_solr_by_id('feast', orig_record['feast_id'])
+            if len(resp) > 0 and 'description' in resp[0]:
+                record['feast_desc'] = resp[0]['description']
+
+        # (for Source) fill in source_status_desc if we have a source_status_id (probably never used)
+        if 'source_status_id' in self.returned_fields and 'source_status_id' in orig_record:
+            resp = yield ask_solr_by_id('source_status', orig_record['source_status_id'])
+            if len(resp) > 0 and 'description' in resp[0]:
+                record['source_status_desc'] = resp[0]['description']
+
+        return record
 
     @gen.coroutine
     def get(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
+        Process GET requests for complex record types.
+
         .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
         results = yield self.basic_get(resource_id)
@@ -279,77 +409,20 @@ class ComplexHandler(TaxonomyHandler):
             if 'resources' == record:
                 continue
 
-            this_resources = {}
+            # look up basic fields with ComplexHandler.LOOKUP
+            xreffed = yield self.look_up_xrefs(results[record])
+            post[record] = xreffed[0]
 
-            # BASIC FIELDS =========================================================================
-            post[record] = {}
-            for field in iter(results[record]):
-                if field in ComplexHandler._LOOKUP:
-                    # TODO: refactor this to reduce duplication
-                    if isinstance(results[record][field], (list, tuple)):
-                        for value in results[record][field]:
-                            post[record][ComplexHandler._LOOKUP[field][2]] = []
-                            resp = yield ask_solr_by_id(ComplexHandler._LOOKUP[field][0], value)
-                            if len(resp) > 0:
-                                try:
-                                    post[record][ComplexHandler._LOOKUP[field][2]].append(resp[0][ComplexHandler._LOOKUP[field][1]])
-                                except KeyError:
-                                    # usually if the desired "field" isn't in the record we found
-                                    print('ERROR: there was a KeyError in that weird place')
-                                    post[record][ComplexHandler._LOOKUP[field][2]].append(str(resp[0]))
+            # add resources' URLs to "resources" member
+            for key, value in xreffed[1].items():
+                post['resources'][record][key] = value
 
-                        # if none of the things in the list ended up being found, we'll clear this out
-                        if 0 == len(post[record][ComplexHandler._LOOKUP[field][2]]):
-                            del post[record][ComplexHandler._LOOKUP[field][2]]
-
-                    else:
-                        resp = yield ask_solr_by_id(ComplexHandler._LOOKUP[field][0], results[record][field])
-                        if len(resp) > 0:
-                            post[record][ComplexHandler._LOOKUP[field][2]] = resp[0][ComplexHandler._LOOKUP[field][1]]
-
-                    # we can fill in some of the "reources" things
-                    # TODO: make this way less clumsy
-                    resource_url = None
-                    plural = singular_resource_to_plural(ComplexHandler._LOOKUP[field][2])
-                    if isinstance(results[record][field], (list, tuple)):
-                        resource_url = [self.make_resource_url(x, plural) for x in results[record][field]]
-                    else:
-                        resource_url = self.make_resource_url(results[record][field], plural)
-                    this_resources[ComplexHandler._LOOKUP[field][2]] = resource_url
-                elif field in self.returned_fields:
-                    # NB: this generic branch must come after the LOOKUP branch. If it's before,
-                    #     LOOKUP fields will be matched in self.returned_fields and they won't be
-                    #     looked up.  TODO: rewrite this explanation more clearly
-                    post[record][field] = results[record][field]
-
-            # add resources URLs to "resources" member
-            for key in iter(this_resources):
-                post['resources'][record][key] = this_resources[key]
-
-            # FILL IN MISSING FIELDS ===============================================================
             # (for Chant) if missing "full_text" or "genre_id" entry, get them from cantusid
-            if 'full_text' in self.returned_fields and 'full_text' not in post[record] and 'cantus_id' in post[record]:
-                resp = yield ask_solr_by_id('cantusid', post[record]['cantus_id'])
-                if len(resp) > 0 and 'full_text' in resp[0]:
-                    post[record]['full_text'] = resp[0]['full_text']
-            if 'genre_id' in self.returned_fields and 'genre' not in post[record] and 'cantus_id' in post[record]:
-                resp = yield ask_solr_by_id('cantusid', post[record]['cantus_id'])
-                if len(resp) > 0 and 'genre_id' in resp[0]:
-                    resp = yield ask_solr_by_id('genre', resp[0]['genre_id'])
-                    if len(resp) > 0 and 'name' in resp[0]:
-                        post[record]['genre'] = resp[0]['name']
+            if 'cantus_id' in post[record]:
+                post[record] = yield self.fill_from_cantusid(post[record])
 
-            # CREATE EXTRA FIELDS ==================================================================
-            # (for Chant) fill in fest_desc if we have a feast_id
-            if 'feast_id' in self.returned_fields and 'feast_id' in results[record]:
-                resp = yield ask_solr_by_id('feast', results[record]['feast_id'])
-                if len(resp) > 0 and 'description' in resp[0]:
-                    post[record]['feast_desc'] = resp[0]['description']
-            # (for Source) fill in source_status_desc if we have a source_status_id (probably never used)
-            if 'source_status_id' in self.returned_fields and 'source_status_id' in results[record]:
-                resp = yield ask_solr_by_id('source_status', results[record]['source_status_id'])
-                if len(resp) > 0 and 'description' in resp[0]:
-                    post[record]['source_status_desc'] = resp[0]['description']
+            # fill in extra fields, like descriptions, when relevant
+            post[record] = yield self.make_extra_fields(post[record], results[record])
 
         self.write(post)
 
