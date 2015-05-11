@@ -245,3 +245,122 @@ class TestSimpleHandler(TestHandler):
                                                         'Abbott/{}'.format(main.ABBOTT_VERSION))
         self.handler.add_header.assert_called_once_with('X-Cantus-Version',
                                                         'Cantus/{}'.format(main.CANTUS_API_VERSION))
+
+
+class TestComplexHandler(TestHandler):
+    '''
+    Tests for the ComplexHandler.
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestComplexHandler, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = main.ComplexHandler(self.get_app(), request, type_name='source',
+                                           additional_fields=['title', 'rism', 'siglum',
+                                                              'provenance_id', 'date', 'century_id',
+                                                              'notation_style_id', 'segment_id',
+                                                              'source_status_id', 'summary',
+                                                              'liturgical_occasions', 'description',
+                                                              'indexing_notes', 'indexing_date',
+                                                              'indexers', 'editors', 'proofreaders',
+                                                              'provenance_detail'])
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_look_up_xrefs_unit_1(self, mock_ask_solr):
+        "when the xreffed field is a string with an id"
+        record = {'id': '123656', 'provenance_id': '3624'}
+        mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
+        expected = ({'id': '123656', 'provenance': 'Klosterneuburg'},
+                    {'provenance': '/provenances/3624/'})
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        mock_ask_solr.assert_called_once_with('provenance', '3624')
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_look_up_xrefs_unit_2(self, mock_ask_solr):
+        "when the xreffed field is a list of strings"
+        record = {'id': '123656', 'proofreaders': ['124104']}
+        mock_solr_response = [{'id': '124104', 'display_name': 'Debra Lacoste'}]
+        expected = ({'id': '123656', 'proofreaders': ['Debra Lacoste']},
+                    {'proofreaders': ['/indexers/124104/']})
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        mock_ask_solr.assert_called_once_with('indexer', '124104')
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_look_up_xrefs_unit_3(self, mock_ask_solr):
+        "when the xreffed field is a string, but it's not found in Solr"
+        record = {'id': '123656', 'provenance_id': '3624'}
+        mock_solr_response = []
+        expected = ({'id': '123656'},
+                    {})
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        mock_ask_solr.assert_called_once_with('provenance', '3624')
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_look_up_xrefs_unit_4(self, mock_ask_solr):
+        "when the xreffed field is a list of strings, but nothing is ever found in Solr"
+        record = {'id': '123656', 'proofreaders': ['124104']}
+        mock_solr_response = [{}]
+        expected = ({'id': '123656'},
+                    {})
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        mock_ask_solr.assert_called_once_with('indexer', '124104')
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_look_up_xrefs_unit_5(self, mock_ask_solr):
+        "with many xreffed fields"
+        record = {'id': '123656', 'provenance_id': '3624', 'segment_id': '4063',
+                  'proofreaders': ['124104'], 'source_status_id': '4212', 'century_id': '3841'}
+        expected = ({'id': '123656', 'provenance': 'Klosterneuburg', 'segment': 'CANTUS Database',
+                     'proofreaders': ['Debra Lacoste'], 'source_status': 'Published / Complete',
+                     'century': '14th century'},
+                    {'provenance': '/provenances/3624/', 'segment': '/segments/4063/',
+                     'proofreaders': ['/indexers/124104/'], 'source_status': '/statii/4212/',
+                     'century': '/centuries/3841/'})
+
+        def fake_solr(q_type, q_id):
+            records = {'3624': [{'id': '3624', 'name': 'Klosterneuburg'}],
+                       '4063': [{'id': '4063', 'name': 'CANTUS Database'}],
+                       '124104': [{'id': '124104', 'display_name': 'Debra Lacoste'}],
+                       '4212': [{'id': '4212', 'name': 'Published / Complete'}],
+                       '3841': [{'id': '3841', 'name': '14th century'}],
+                      }
+            return make_future(records[q_id])
+        mock_ask_solr.side_effect = fake_solr
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        mock_ask_solr.assert_any_call('provenance', '3624')
+        mock_ask_solr.assert_any_call('segment', '4063')
+        mock_ask_solr.assert_any_call('indexer', '124104')
+        mock_ask_solr.assert_any_call('source_status', '4212')
+        mock_ask_solr.assert_any_call('century', '3841')
+        # etc.
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])

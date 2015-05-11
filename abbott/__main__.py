@@ -28,6 +28,7 @@ Main file for the Abbott server reference implementation of the Cantus API.
 
 
 import copy
+from collections import namedtuple
 from tornado import ioloop, web, gen
 import pysolrtornado
 
@@ -236,6 +237,17 @@ class SimpleHandler(web.RequestHandler):
         self.write((yield self.basic_get(resource_id)))
 
 
+XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])
+'''
+Provide instructions for processing fields that are obtained with by cross-reference to another
+resource. The "type" is the value of the "type" field to lookup in Solr; "replace_with" is the name
+of the field in a "type"-type record that holds the desired value; "replace_to" is the name of the
+field to which that value should be assigned in the response body.
+'''
+# TODO: item 1 will have to be configurable at runtime, because I'm sure some people would rather
+#       read "A" rather than "Antiphon," for example
+
+
 class ComplexHandler(SimpleHandler):
     '''
     A handler for complex resource types that contain references to other resources. Simple resource
@@ -243,33 +255,27 @@ class ComplexHandler(SimpleHandler):
     resource type to the initializer at runtime.
     '''
 
-    LOOKUP = {'feast_id': ('feast', 'name', 'feast'),
-              'genre_id': ('genre', 'description', 'genre'),
-              'office_id': ('office', 'name', 'office'),
-              'source_id': ('source', 'title', 'source'),
-              'provenance_id': ('provenance', 'name', 'provenance'),
-              'century_id': ('century', 'name', 'century'),
-              'notation_style_id': ('notation', 'name', 'notation_style'),
-              'segment_id': ('segment', 'name', 'segment'),
-              'source_status_id': ('source_status', 'name', 'source_status'),
-              'indexers': ('indexer', 'display_name', 'indexers'),
-              'editors': ('indexer', 'display_name', 'editors'),
-              'proofreaders': ('indexer', 'display_name', 'proofreaders'),
+    LOOKUP = {'feast_id': XrefLookup('feast', 'name', 'feast'),
+              'genre_id': XrefLookup('genre', 'description', 'genre'),
+              'office_id': XrefLookup('office', 'name', 'office'),
+              'source_id': XrefLookup('source', 'title', 'source'),
+              'provenance_id': XrefLookup('provenance', 'name', 'provenance'),
+              'century_id': XrefLookup('century', 'name', 'century'),
+              'notation_style_id': XrefLookup('notation', 'name', 'notation_style'),
+              'segment_id': XrefLookup('segment', 'name', 'segment'),
+              'source_status_id': XrefLookup('source_status', 'name', 'source_status'),
+              'indexers': XrefLookup('indexer', 'display_name', 'indexers'),
+              'editors': XrefLookup('indexer', 'display_name', 'editors'),
+              'proofreaders': XrefLookup('indexer', 'display_name', 'proofreaders'),
              }
     '''
-    For those fields that must be cross-referenced with the "name" field of a taxonomy resource.
+    Instructions for fields cross-referenced with another resource. Refer to the description for
+    :const:`XrefLookup`. In this dict, keys are the field that should be replaced.
 
-    - item 0: the "type" for the search
-    - item 1: the field in the result to replace with
-    - item 2: the field name to use in the response body
-
-    Example: ``'genre_id': ('genre', 'description', 'genre')``.
+    Example: ``'genre_id': XrefLookup('genre', 'description', 'genre')``.
 
     Replaces the "genre_id" field with the "description" field of a "genre" record, stored in the
     "genre" member on output.
-
-    TODO: item 1 will have to be configurable at runtime, because I'm sure some people would
-          rather read "A" rather than "Antiphon," for example
     '''
 
     @gen.coroutine
@@ -301,46 +307,47 @@ class ComplexHandler(SimpleHandler):
         >>> result[1]
         {'genre': '/genres/162/'}
         '''
+        LOOKUP = ComplexHandler.LOOKUP  # pylint: disable=invalid-name
+
         post = {}
         resources = {}
 
         for field in iter(record):
-            if field in ComplexHandler.LOOKUP:
-                # TODO: refactor this to reduce duplication
-                if isinstance(record[field], (list, tuple)):
-                    for value in record[field]:
-                        post[ComplexHandler.LOOKUP[field][2]] = []
-                        resp = yield ask_solr_by_id(ComplexHandler.LOOKUP[field][0], value)
-                        if len(resp) > 0:
-                            try:
-                                post[ComplexHandler.LOOKUP[field][2]].append(resp[0][ComplexHandler.LOOKUP[field][1]])
-                            except KeyError:
-                                # usually if the desired "field" isn't in the record we found
-                                print('ERROR: there was a KeyError in that weird place')
-                                post[ComplexHandler.LOOKUP[field][2]].append(str(resp[0]))
+            if field in LOOKUP:
+                replace_to = LOOKUP[field].replace_to  # for readability
 
-                    # if none of the things in the list ended up being found, we'll clear this out
-                    if 0 == len(post[ComplexHandler.LOOKUP[field][2]]):
-                        del post[ComplexHandler.LOOKUP[field][2]]
+                if isinstance(record[field], (list, tuple)):
+                    post[replace_to] = []
+
+                    for value in record[field]:
+                        resp = yield ask_solr_by_id(LOOKUP[field].type, value)
+                        if len(resp) > 0 and LOOKUP[field].replace_with in resp[0]:
+                            post[replace_to].append(resp[0][LOOKUP[field].replace_with])
+
+                    # if nothing the list was found, remove the empty list
+                    if 0 == len(post[replace_to]):
+                        del post[replace_to]
+                        continue  # avoid writing the "resources" block for a missing xref resource
 
                 else:
-                    resp = yield ask_solr_by_id(ComplexHandler.LOOKUP[field][0], record[field])
+                    resp = yield ask_solr_by_id(LOOKUP[field].type, record[field])
                     if len(resp) > 0:
-                        post[ComplexHandler.LOOKUP[field][2]] = resp[0][ComplexHandler.LOOKUP[field][1]]
+                        post[replace_to] = resp[0][LOOKUP[field].replace_with]
+                    else:
+                        continue  # avoid writing the "resources" block for a missing xref resource
 
-                # we can fill in some of the "reources" things
-                # TODO: make this way less clumsy
-                resource_url = None
-                plural = singular_resource_to_plural(ComplexHandler.LOOKUP[field][2])
+                # fill in "reources" URLs
+                plural = singular_resource_to_plural(LOOKUP[field].replace_to)
                 if isinstance(record[field], (list, tuple)):
                     resource_url = [self.make_resource_url(x, plural) for x in record[field]]
                 else:
                     resource_url = self.make_resource_url(record[field], plural)
-                resources[ComplexHandler.LOOKUP[field][2]] = resource_url
+                resources[replace_to] = resource_url
+
             elif field in self.returned_fields:
-                # NB: this generic branch must come after the LOOKUP branch. If it's before,
-                #     LOOKUP fields will be matched in self.returned_fields and they won't be
-                #     looked up.  TODO: rewrite this explanation more clearly
+                # This is for non-cross-referenced fields. Because cross-referenced fields must
+                # also appear in self.returned_fields, this branch must appear after the cross-
+                # referencing branch, or else cross-references would never work correctly.
                 post[field] = record[field]
 
         return post, resources
