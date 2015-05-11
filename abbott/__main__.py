@@ -465,7 +465,7 @@ class RootHandler(web.RequestHandler):
         Handle GET requests to the root URL. Returns a "resources" member with URLs to all available
         search and browse URLs.
         '''
-        return self.prepare_get()
+        self.write(self.prepare_get())
 
 
 # NOTE: these URLs require a terminating /
