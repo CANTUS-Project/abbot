@@ -37,6 +37,7 @@ from abbott import __main__ as main
 
 
 APPLICATION = web.Application(main.HANDLERS)
+PORT = testing.bind_unused_port()[1]
 
 
 def make_future(with_this):
@@ -54,7 +55,7 @@ class TestHandler(testing.AsyncHTTPTestCase):
         return APPLICATION
 
     def get_http_port(self):
-        return options.port
+        return PORT
 
 
 class TestAbbott(unittest.TestCase):
