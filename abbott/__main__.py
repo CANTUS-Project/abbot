@@ -27,6 +27,7 @@ Main file for the Abbott server reference implementation of the Cantus API.
 '''
 
 
+import copy
 from tornado import ioloop, web, gen
 import pysolrtornado
 
@@ -109,13 +110,14 @@ class SimpleHandler(web.RequestHandler):
     is for simple resources that do not contain references to other resources. Complex resources
     that do contain references to other resources should use the :class:`ComplexHandler`. Specify
     the resource type to the initializer at runtime.
+
+    By default, :class:`SimpleHandler` only includes the ``'id'``, ``'name'``, and ``'description'``
+    fields. You may specify additional fields to the :meth:`initialize` method.
     '''
 
-    returned_fields = ['id', 'name', 'description']
-    '''
-    Names of the fields that :class:`SimpleHandler` will return; others are removed. Subclasses
-    may modify these as required.
-    '''
+    _DEFAULT_RETURNED_FIELDS = ['id', 'name', 'description']
+    # I realized there was no reason for the default list to be world-accessible, since it has to be
+    # deepcopied anyway, so we'll just do this!
 
     def initialize(self, type_name, additional_fields=None):  # pylint: disable=arguments-differ
         '''
@@ -126,6 +128,7 @@ class SimpleHandler(web.RequestHandler):
         '''
         self.type_name = type_name
         self.type_name_plural = singular_resource_to_plural(type_name)
+        self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
         if additional_fields:
             self.returned_fields.extend(additional_fields)
 
