@@ -25,11 +25,13 @@
 '''
 Tests for ``__main__.py`` of the Abbott server.
 '''
-
+# NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
+#       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
+#       asynchronous TestCase classes.
 
 import unittest
 from unittest import mock
-from tornado import concurrent
+from tornado import concurrent, httpclient, testing, web
 import pysolrtornado
 from abbott import __main__ as main
 
@@ -48,14 +50,14 @@ class TestAbbott(unittest.TestCase):
     Tests for module-level things.
     '''
 
-    def setUp(self):
+    def get_solr_mock(self):
         '''
-        Set up the mock Solr object.
+        Return a mock Solr object.
         '''
-        super(TestAbbott, self).setUp()
-        main.SOLR = mock.Mock(spec_set=pysolrtornado.Solr)
+        post = mock.Mock(spec_set=pysolrtornado.Solr)
         # so the async search() method returns 'search results' when yielded
-        main.SOLR.search.return_value = make_future('search results')
+        post.search.return_value = make_future('search results')
+        return post
 
     def test_singular_resource_to_plural_1(self):
         "When the singular form has a corresponding pural."
@@ -65,8 +67,10 @@ class TestAbbott(unittest.TestCase):
         "When the singular form doesn't have a corresponding plural."
         self.assertIsNone(main.singular_resource_to_plural('automobiles'))
 
-    def test_ask_solr_by_id_1(self):
+    @mock.patch('abbott.__main__.SOLR')
+    def test_ask_solr_by_id_1(self, mock_solr):
         "Basic test."
+        mock_solr = self.get_solr_mock()
         expected = 'search results'
         actual = yield main.ask_solr_by_id('genre', '162')
         self.assertEqual(expected, actual)
