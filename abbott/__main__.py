@@ -432,10 +432,9 @@ class RootHandler(web.RequestHandler):
     For requests to the root URL (i.e., ``/``).
     '''
 
-    def get(self):  # pylint: disable=arguments-differ
+    def prepare_get(self):
         '''
-        Handle GET requests to the root URL. Returns a "resources" member with URLs to all available
-        search and browse URLs.
+        Does the actual work for a GET request at '/'. It's a different method for easier testing.
         '''
 
         all_plural_resources = [
@@ -456,7 +455,14 @@ class RootHandler(web.RequestHandler):
             ]
         post = {'browse_{}'.format(term): self.reverse_url('browse_{}'.format(term), 'id')
                 for term in all_plural_resources}
-        self.write({'resources': post})
+        return {'resources': post}
+
+    def get(self):  # pylint: disable=arguments-differ
+        '''
+        Handle GET requests to the root URL. Returns a "resources" member with URLs to all available
+        search and browse URLs.
+        '''
+        return self.prepare_get()
 
 
 # NOTE: these URLs require a terminating /

@@ -90,6 +90,45 @@ class TestAbbott(unittest.TestCase):
         main.SOLR.search.assert_called_once_with('+type:genre +id:162')
 
 
+class TestRootHandler(TestHandler):
+    '''
+    Tests for the RootHandler.
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestRootHandler, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = main.RootHandler(self.get_app(), request)
+
+    def test_root_1(self):
+        "basic test"
+        all_plural_resources = [
+            'cantusids',
+            'centuries',
+            'chants',
+            'feasts',
+            'genres',
+            'indexers',
+            'notations',
+            'offices',
+            'portfolia',
+            'provenances',
+            'sigla',
+            'segments',
+            'sources',
+            'source_statii'
+            ]
+        expected = {'browse_{}'.format(term): '/{}/id?'.format(term) for term in all_plural_resources}
+        expected['browse_source_statii'] = '/statii/id?'
+        expected = {'resources': expected}
+
+        actual = self.handler.prepare_get()
+
+        self.assertEqual(expected, actual)
+
+
 class TestSimpleHandler(TestHandler):
     '''
     Tests for the SimpleHandler.
