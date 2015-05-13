@@ -133,6 +133,14 @@ class SimpleHandler(web.RequestHandler):
         if additional_fields:
             self.returned_fields.extend(additional_fields)
 
+    def set_default_headers(self):
+        '''
+        Set the default headers for all requests: Server, X-Cantus-Version.
+        '''
+        # NOTE: keep this the same as RootHandler.set_default_headers() where relevant
+        self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
+        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
+
     def format_record(self, record):
         '''
         Given a record from a ``pysolr-tornado`` response, prepare a record that only has the fields
@@ -223,9 +231,6 @@ class SimpleHandler(web.RequestHandler):
 
         post = {res['id']: res for res in post}
         post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
-
-        self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
-        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
 
         return post
 
@@ -445,6 +450,14 @@ class RootHandler(web.RequestHandler):
     '''
     For requests to the root URL (i.e., ``/``).
     '''
+
+    def set_default_headers(self):
+        '''
+        Set the default headers for all requests: Server, X-Cantus-Version.
+        '''
+        # NOTE: keep this the same as SimpleHandler.set_default_headers() where relevant
+        self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
+        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
 
     def prepare_get(self):
         '''

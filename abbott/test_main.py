@@ -195,17 +195,11 @@ class TestSimpleHandler(TestHandler):
                                   '2': {'self': '/centuries/2/'},
                                   '3': {'self': '/centuries/3/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
-        self.handler.set_header = mock.Mock()
-        self.handler.add_header = mock.Mock()
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*')
         self.assertEqual(expected, actual)
-        self.handler.set_header.assert_called_once_with('Server',
-                                                        'Abbott/{}'.format(main.ABBOTT_VERSION))
-        self.handler.add_header.assert_called_once_with('X-Cantus-Version',
-                                                        'Cantus/{}'.format(main.CANTUS_API_VERSION))
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
@@ -215,17 +209,11 @@ class TestSimpleHandler(TestHandler):
         mock_solr_response = []
         expected = {'resources': {}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
-        self.handler.set_header = mock.Mock()
-        self.handler.add_header = mock.Mock()
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
         self.assertEqual(expected, actual)
-        self.handler.set_header.assert_called_once_with('Server',
-                                                        'Abbott/{}'.format(main.ABBOTT_VERSION))
-        self.handler.add_header.assert_called_once_with('X-Cantus-Version',
-                                                        'Cantus/{}'.format(main.CANTUS_API_VERSION))
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
@@ -235,17 +223,11 @@ class TestSimpleHandler(TestHandler):
         mock_solr_response = [{'id': '888'}]
         expected = {'888': {'id': '888', 'type': 'century'}, 'resources': {'888': {'self': '/centuries/888/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
-        self.handler.set_header = mock.Mock()
-        self.handler.add_header = mock.Mock()
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
         self.assertEqual(expected, actual)
-        self.handler.set_header.assert_called_once_with('Server',
-                                                        'Abbott/{}'.format(main.ABBOTT_VERSION))
-        self.handler.add_header.assert_called_once_with('X-Cantus-Version',
-                                                        'Cantus/{}'.format(main.CANTUS_API_VERSION))
 
 
 class TestComplexHandler(TestHandler):
