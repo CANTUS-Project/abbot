@@ -357,7 +357,7 @@ class ComplexHandler(SimpleHandler):
         '''
         For records (chants) with a "cantusid" entry, check if they're missing a field that can be
         filled in with data from the cantusid record. Currently the following fields are filled:
-        ``'full_text'`` and ``'genre_id'``.
+        ``'genre_id'``.
 
         .. note:: The ``record`` *must* have a "cantusid" key or a :exc:`KeyError` will be raised.
 
@@ -365,10 +365,12 @@ class ComplexHandler(SimpleHandler):
         :returns: The record amended with additional fields as possible.
         :rtype: dict
         '''
-        if 'full_text' in self.returned_fields and 'full_text' not in record:
-            resp = yield ask_solr_by_id('cantusid', record['cantus_id'])
-            if len(resp) > 0 and 'full_text' in resp[0]:
-                record['full_text'] = resp[0]['full_text']
+        # TODO: decide if genre is truly the only thing we can fill
+        # TODO: test this method
+        #if 'full_text' in self.returned_fields and 'full_text' not in record:
+            #resp = yield ask_solr_by_id('cantusid', record['cantus_id'])
+            #if len(resp) > 0 and 'full_text' in resp[0]:
+                #record['full_text'] = resp[0]['full_text']
 
         if 'genre_id' in self.returned_fields and 'genre' not in record:
             resp = yield ask_solr_by_id('cantusid', record['cantus_id'])
