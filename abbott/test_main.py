@@ -364,3 +364,65 @@ class TestComplexHandler(TestHandler):
         # etc.
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_make_extra_fields_unit_1(self, mock_ask_solr):
+        "with both a feast_id and source_status_id to look up"
+        record = {}
+        orig_record = {'feast_id': '123', 'source_status_id': '456'}
+        expected = {'feast_desc': 'boiled goose and collard greens', 'source_status_desc': 'Ready'}
+        self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
+
+        def fake_solr(q_type, q_id):
+            records = {'123': [{'id': '123', 'description': 'boiled goose and collard greens'}],
+                       '456': [{'id': '456', 'description': 'Ready'}],
+                      }
+            return make_future(records[q_id])
+        mock_ask_solr.side_effect = fake_solr
+
+        actual = yield self.handler.make_extra_fields(record, orig_record)
+
+        mock_ask_solr.assert_any_call('feast', '123')
+        mock_ask_solr.assert_any_call('source_status', '456')
+        # etc.
+        self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_make_extra_fields_unit_2(self, mock_ask_solr):
+        "with both a feast_id and source_status_id to look up, but they both return nothing"
+        record = {}
+        orig_record = {'feast_id': '123', 'source_status_id': '456'}
+        expected = {}
+        self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
+
+        def fake_solr(q_type, q_id):
+            return make_future({})
+        mock_ask_solr.side_effect = fake_solr
+
+        actual = yield self.handler.make_extra_fields(record, orig_record)
+
+        mock_ask_solr.assert_any_call('feast', '123')
+        mock_ask_solr.assert_any_call('source_status', '456')
+        # etc.
+        self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_make_extra_fields_unit_3(self, mock_ask_solr):
+        "with neither a feast_id nor a source_status_id to look up"
+        record = {}
+        orig_record = {'feast_id': '123', 'source_status_id': '456'}
+        expected = {}
+        self.handler.returned_fields = ['id']  # remove everything, so we get nothing back
+
+        def fake_solr(q_type, q_id):
+            return make_future({})
+        mock_ask_solr.side_effect = fake_solr
+
+        actual = yield self.handler.make_extra_fields(record, orig_record)
+
+        self.assertEqual(0, mock_ask_solr.call_count)
+        # etc.
+        self.assertEqual(expected, actual)
