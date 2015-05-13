@@ -145,7 +145,7 @@ class TestSimpleHandler(TestHandler):
         "initialize() works with no extra fields"
         self.assertEqual('century', self.handler.type_name)
         self.assertEqual('centuries', self.handler.type_name_plural)
-        self.assertEqual(3, len(self.handler.returned_fields))
+        self.assertEqual(4, len(self.handler.returned_fields))
 
     def test_initialize_2(self):
         "initialize() works with extra fields"
@@ -154,7 +154,7 @@ class TestSimpleHandler(TestHandler):
         actual = main.SimpleHandler(self.get_app(), request, type_name='genre', additional_fields=['mass_or_office'])
         self.assertEqual('genre', actual.type_name)
         self.assertEqual('genres', actual.type_name_plural)
-        self.assertEqual(4, len(actual.returned_fields))
+        self.assertEqual(5, len(actual.returned_fields))
         self.assertTrue('mass_or_office' in actual.returned_fields)
 
     def test_format_record_1(self):
@@ -189,7 +189,8 @@ class TestSimpleHandler(TestHandler):
         "with no resource_id and Solr response has three things"
         resource_id = None
         mock_solr_response = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
-        expected = {'1': {'id': '1'}, '2': {'id': '2'}, '3': {'id': '3'},
+        expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
+                    '3': {'id': '3', 'type': 'century'},
                     'resources': {'1': {'self': '/centuries/1/'},
                                   '2': {'self': '/centuries/2/'},
                                   '3': {'self': '/centuries/3/'}}}
@@ -232,7 +233,7 @@ class TestSimpleHandler(TestHandler):
         "with resource_id not ending with '/' and Solr response has one thing"
         resource_id = '888'  # such good luck
         mock_solr_response = [{'id': '888'}]
-        expected = {'888': {'id': '888'}, 'resources': {'888': {'self': '/centuries/888/'}}}
+        expected = {'888': {'id': '888', 'type': 'century'}, 'resources': {'888': {'self': '/centuries/888/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
         self.handler.set_header = mock.Mock()
         self.handler.add_header = mock.Mock()

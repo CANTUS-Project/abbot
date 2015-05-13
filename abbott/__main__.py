@@ -34,8 +34,8 @@ import pysolrtornado
 
 SOLR = pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.0.1-dev'
-CANTUS_API_VERSION = '0.1.0'
+ABBOTT_VERSION = '0.0.2-dev'
+CANTUS_API_VERSION = '0.1.1'
 PORT = 8888
 
 
@@ -116,7 +116,7 @@ class SimpleHandler(web.RequestHandler):
     fields. You may specify additional fields to the :meth:`initialize` method.
     '''
 
-    _DEFAULT_RETURNED_FIELDS = ['id', 'name', 'description']
+    _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
     # deepcopied anyway, so we'll just do this!
 
@@ -217,7 +217,9 @@ class SimpleHandler(web.RequestHandler):
         else:
             post = []
             for each_record in resp:
-                post.append(self.format_record(each_record))
+                this_record = self.format_record(each_record)
+                this_record['type'] = self.type_name
+                post.append(this_record)
 
         post = {res['id']: res for res in post}
         post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
