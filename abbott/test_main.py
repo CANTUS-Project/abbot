@@ -150,6 +150,15 @@ class TestRootHandler(TestHandler):
         self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
         self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
 
+    @testing.gen_test
+    def test_options_integration_1(self):
+        "ensure the OPTIONS method works as expected"
+        actual = yield self.http_client.fetch(self.get_url('/'), method='OPTIONS')
+        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
+        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.assertEqual(main.RootHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual(0, len(actual.body))
+
 
 class TestSimpleHandler(TestHandler):
     '''
@@ -250,6 +259,15 @@ class TestSimpleHandler(TestHandler):
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
         self.assertEqual(expected, actual)
+
+    @testing.gen_test
+    def test_options_integration_1(self):
+        "ensure the OPTIONS method works as expected"
+        actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
+        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
+        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.assertEqual(main.SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual(0, len(actual.body))
 
 
 class TestComplexHandler(TestHandler):
@@ -431,3 +449,12 @@ class TestComplexHandler(TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         # etc.
         self.assertEqual(expected, actual)
+
+    @testing.gen_test
+    def test_options_integration_1(self):
+        "ensure the OPTIONS method works as expected"
+        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
+        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
+        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.assertEqual(main.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual(0, len(actual.body))

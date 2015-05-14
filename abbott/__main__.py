@@ -116,6 +116,9 @@ class SimpleHandler(web.RequestHandler):
     fields. You may specify additional fields to the :meth:`initialize` method.
     '''
 
+    _ALLOWED_METHODS = 'GET, OPTIONS'
+    # value of the "Allow" header in response to an OPTIONS request
+
     _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
     # deepcopied anyway, so we'll just do this!
@@ -242,6 +245,12 @@ class SimpleHandler(web.RequestHandler):
         .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
         self.write((yield self.basic_get(resource_id)))
+
+    def options(self, resource_id=None):
+        '''
+        Response to OPTIONS requests. Sets the "Allow" header and returns.
+        '''
+        self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
 
 
 XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])
@@ -451,6 +460,9 @@ class RootHandler(web.RequestHandler):
     For requests to the root URL (i.e., ``/``).
     '''
 
+    _ALLOWED_METHODS = 'GET, OPTIONS'
+    # value of the "Allow" header in response to an OPTIONS request
+
     def set_default_headers(self):
         '''
         Set the default headers for all requests: Server, X-Cantus-Version.
@@ -490,6 +502,12 @@ class RootHandler(web.RequestHandler):
         search and browse URLs.
         '''
         self.write(self.prepare_get())
+
+    def options(self, resource_id=None):
+        '''
+        Response to OPTIONS requests. Sets the "Allow" header and returns.
+        '''
+        self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
 
 
 # NOTE: these URLs require a terminating /
