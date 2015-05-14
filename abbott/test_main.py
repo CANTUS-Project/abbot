@@ -31,13 +31,9 @@ Tests for ``__main__.py`` of the Abbott server.
 
 import unittest
 from unittest import mock
-from tornado import concurrent, httpclient, testing, web
+from tornado import concurrent, escape, httpclient, testing, web
 import pysolrtornado
 from abbott import __main__ as main
-
-
-APPLICATION = web.Application(main.HANDLERS)
-PORT = testing.bind_unused_port()[1]
 
 
 def make_future(with_this):
@@ -52,10 +48,7 @@ def make_future(with_this):
 class TestHandler(testing.AsyncHTTPTestCase):
     "Base class for classes that test a ___Handler."
     def get_app(self):
-        return APPLICATION
-
-    def get_http_port(self):
-        return PORT
+        return web.Application(main.HANDLERS)
 
 
 class TestAbbott(unittest.TestCase):
@@ -127,6 +120,35 @@ class TestRootHandler(TestHandler):
         actual = self.handler.prepare_get()
 
         self.assertEqual(expected, actual)
+
+    @testing.gen_test
+    def test_root_2(self):
+        "integration test for test_root_1()"
+        all_plural_resources = [
+            'cantusids',
+            'centuries',
+            'chants',
+            'feasts',
+            'genres',
+            'indexers',
+            'notations',
+            'offices',
+            'portfolia',
+            'provenances',
+            'sigla',
+            'segments',
+            'sources',
+            'source_statii'
+            ]
+        expected = {'browse_{}'.format(term): '/{}/id?'.format(term) for term in all_plural_resources}
+        expected['browse_source_statii'] = '/statii/id?'
+        expected = {'resources': expected}
+
+        actual = yield self.http_client.fetch(self.get_url('/'), method='GET')
+
+        self.assertEqual(expected, escape.json_decode(actual.body))
+        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
+        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
 
 
 class TestSimpleHandler(TestHandler):
