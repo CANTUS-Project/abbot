@@ -202,8 +202,14 @@ class TestSimpleHandler(TestHandler):
         input_record = {key: str(i) for i, key in enumerate(self.handler.returned_fields)}
         input_record['false advertising'] = 'not allowed'  # this key obviously should never appear "for real"
         expected = {key: str(i) for i, key in enumerate(self.handler.returned_fields)}
+
         actual = self.handler.format_record(input_record)
+
         self.assertEqual(expected, actual)
+        # ensure fields were counted properly
+        self.assertEqual(len(self.handler.returned_fields), len(self.handler.field_counts))
+        for field in self.handler.returned_fields:
+            self.assertEqual(1, self.handler.field_counts[field])
 
     def test_make_resource_url_1(self):
         "with no resource_type specified"
@@ -497,7 +503,6 @@ class TestComplexHandler(TestHandler):
                       }
             return make_future(records[q_id])
         mock_ask_solr.side_effect = fake_solr
-        #exp_cantus_fields = sorted(['id', 'genre', 'cantus', 'mode', 'feast'])  # header: X-Cantus-Fields
 
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
 
@@ -507,7 +512,44 @@ class TestComplexHandler(TestHandler):
         mock_ask_solr.assert_any_call('feast', '2378')
         # right now, the "cantusid" won't be looked up unless "feast_id" is missing
         self.assertEqual(expected, escape.json_decode(actual.body))
-        #self.assertEqual(exp_cantus_fields, sorted(actual.headers['X-Cantus-Fields'].split(',')))
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_2(self, mock_ask_solr):
+        "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
+        recordA = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
+                   'mode': '2S'}
+        recordB = {'id': '111222', 'genre_id': '161', 'feast_id': '2378', 'mode': '2S',
+                   'sequence': 4}
+        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
+                               'cantus_id': '600482a', 'feast': 'Jacobi',
+                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
+                    '111222': {'id': '111222', 'type': 'chant', 'genre': 'Responsory Verse',
+                               'sequence': 4, 'feast': 'Jacobi',
+                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
+                    'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
+                                             'feast': '/feasts/2378/'},
+                                  '111222': {'self': '/chants/111222/', 'genre': '/genres/161/',
+                                             'feast': '/feasts/2378/'}}}
+
+        def fake_solr(q_type, q_id):
+            records = {'*': [recordA, recordB],
+                       '161': [{'name': 'V', 'description': 'Responsory Verse'}],
+                       '600482a': [],  # empty until we decide on fill_from_cantusid()
+                       '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
+                      }
+            return make_future(records[q_id])
+        mock_ask_solr.side_effect = fake_solr
+        # expected header: X-Cantus-Fields
+        exp_cantus_fields = sorted(['id', 'genre', 'mode', 'feast', 'type'])
+        # expected header: X-Cantus-Extra-Fields
+        exp_extra_fields = sorted(['cantus_id', 'sequence'])
+
+        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='GET')
+
+        self.assertEqual(exp_cantus_fields, sorted(actual.headers['X-Cantus-Fields'].split(',')))
+        self.assertEqual(exp_extra_fields, sorted(actual.headers['X-Cantus-Extra-Fields'].split(',')))
+        self.assertEqual(expected, escape.json_decode(actual.body))
 
     @testing.gen_test
     def test_options_integration_1(self):

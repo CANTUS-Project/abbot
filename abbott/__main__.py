@@ -28,14 +28,14 @@ Main file for the Abbott server reference implementation of the Cantus API.
 
 
 import copy
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from tornado import ioloop, web, gen
 import pysolrtornado
 
 SOLR = pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.0.2-dev'
-CANTUS_API_VERSION = '0.1.1'
+ABBOTT_VERSION = '0.0.3-devel'
+CANTUS_API_VERSION = '0.1.2'
 PORT = 8888
 
 
@@ -130,6 +130,7 @@ class SimpleHandler(web.RequestHandler):
         :param additional_fields: Optional list of fields to append to ``self.returned_fields``.
         :type additional_fields: list of str
         '''
+        self.field_counts = defaultdict(lambda: 0)
         self.type_name = type_name
         self.type_name_plural = singular_resource_to_plural(type_name)
         self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
@@ -156,6 +157,7 @@ class SimpleHandler(web.RequestHandler):
         for key in iter(record):
             if key in self.returned_fields:
                 post[key] = record[key]
+                self.field_counts[key] += 1
 
         return post
 
@@ -238,13 +240,48 @@ class SimpleHandler(web.RequestHandler):
         return post
 
     @gen.coroutine
+    def get_handler(self, resource_id=None):
+        '''
+        Abstraction layer between :meth:`get` and :meth:`basic_get`. In :class:`SimpleHandler` this
+        simply returns the result of :meth:`basic_get`, but :class:`ComplexHandler` does many other
+        things here. This abstraction layer allows both handlers to share common header functionality
+        in :meth:`basic_get` and response body formatting functionality in :meth:`get`.
+        '''
+        return (yield self.basic_get(resource_id))
+
+    @gen.coroutine
     def get(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
         Response to GET requests. Returns the result of :meth:`basic_get` without modification.
 
         .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
-        self.write((yield self.basic_get(resource_id)))
+        response = yield self.get_handler(resource_id)
+
+        # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
+        num_records = len(response) - 1  # the "- 1" accounts for the "resources" member
+        fields = ['type']  # "type" is added by Abbott, so it wouldn't have been counted
+        extra_fields = []
+
+        def lookup_name(name):
+            "If relevant, uses ComplexHandler.LOOKUP to adjust the field name."
+            if hasattr(self, 'LOOKUP') and name in ComplexHandler.LOOKUP:
+                return ComplexHandler.LOOKUP[name].replace_to
+            else:
+                return name
+
+        for field in self.field_counts:
+            if self.field_counts[field] < num_records:
+                extra_fields.append(lookup_name(field))
+            else:
+                fields.append(lookup_name(field))
+
+        if len(fields) > 0:
+            self.add_header('X-Cantus-Fields', ','.join(fields))
+        if len(extra_fields) > 0:
+            self.add_header('X-Cantus-Extra-Fields', ','.join(extra_fields))
+
+        self.write(response)
 
     def options(self, resource_id=None):
         '''
@@ -424,7 +461,7 @@ class ComplexHandler(SimpleHandler):
         return record
 
     @gen.coroutine
-    def get(self, resource_id=None):  # pylint: disable=arguments-differ
+    def get_handler(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
         Process GET requests for complex record types.
 
@@ -452,7 +489,7 @@ class ComplexHandler(SimpleHandler):
             # fill in extra fields, like descriptions, when relevant
             post[record] = yield self.make_extra_fields(post[record], results[record])
 
-        self.write(post)
+        return post
 
 
 class RootHandler(web.RequestHandler):
