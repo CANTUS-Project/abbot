@@ -50,6 +50,17 @@ class TestHandler(testing.AsyncHTTPTestCase):
     def get_app(self):
         return web.Application(main.HANDLERS)
 
+    def check_standard_header(self, on_this):
+        '''
+        Verify the proper values for the headers that should be part of every response, Server and
+        X-Cantus-Version.
+
+        :param on_this: The :class:`Response` object to verify.
+        :type on_this: :class:`tornado.httpclient.HTTPResponse`
+        '''
+        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), on_this.headers['Server'])
+        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), on_this.headers['X-Cantus-Version'])
+
 
 class TestAbbott(unittest.TestCase):
     '''
@@ -147,15 +158,13 @@ class TestRootHandler(TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/'), method='GET')
 
         self.assertEqual(expected, escape.json_decode(actual.body))
-        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
-        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.check_standard_header(actual)
 
     @testing.gen_test
     def test_options_integration_1(self):
         "ensure the OPTIONS method works as expected"
         actual = yield self.http_client.fetch(self.get_url('/'), method='OPTIONS')
-        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
-        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.check_standard_header(actual)
         self.assertEqual(main.RootHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
 
@@ -264,8 +273,7 @@ class TestSimpleHandler(TestHandler):
     def test_options_integration_1(self):
         "ensure the OPTIONS method works as expected"
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
-        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
-        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.check_standard_header(actual)
         self.assertEqual(main.SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
 
@@ -454,7 +462,6 @@ class TestComplexHandler(TestHandler):
     def test_options_integration_1(self):
         "ensure the OPTIONS method works as expected"
         actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
-        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), actual.headers['Server'])
-        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), actual.headers['X-Cantus-Version'])
+        self.check_standard_header(actual)
         self.assertEqual(main.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
