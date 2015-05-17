@@ -269,6 +269,25 @@ class TestSimpleHandler(TestHandler):
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
         self.assertEqual(expected, actual)
 
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_1(self, mock_ask_solr):
+        "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
+        mock_solr_response = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
+        expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
+                    '3': {'id': '3', 'type': 'century'},
+                    'resources': {'1': {'self': '/centuries/1/'},
+                                  '2': {'self': '/centuries/2/'},
+                                  '3': {'self': '/centuries/3/'}}}
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*')
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        self.assertEqual(expected, actual)
+
     @testing.gen_test
     def test_options_integration_1(self):
         "ensure the OPTIONS method works as expected"
@@ -457,6 +476,38 @@ class TestComplexHandler(TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         # etc.
         self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_1(self, mock_ask_solr):
+        "with many xreffed fields, and with feast_description to make up too"
+        record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
+                  'mode': '2S'}
+        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
+                               'cantus_id': '600482a', 'feast': 'Jacobi',
+                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
+                    'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
+                                             'feast': '/feasts/2378/'}}}
+
+        def fake_solr(q_type, q_id):
+            records = {'357679': [record],
+                       '161': [{'name': 'V', 'description': 'Responsory Verse'}],
+                       '600482a': [],  # empty until we decide on fill_from_cantusid()
+                       '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
+                      }
+            return make_future(records[q_id])
+        mock_ask_solr.side_effect = fake_solr
+        #exp_cantus_fields = sorted(['id', 'genre', 'cantus', 'mode', 'feast'])  # header: X-Cantus-Fields
+
+        actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
+
+        self.check_standard_header(actual)
+        mock_ask_solr.assert_any_call('chant', '357679')
+        mock_ask_solr.assert_any_call('genre', '161')
+        mock_ask_solr.assert_any_call('feast', '2378')
+        # right now, the "cantusid" won't be looked up unless "feast_id" is missing
+        self.assertEqual(expected, escape.json_decode(actual.body))
+        #self.assertEqual(exp_cantus_fields, sorted(actual.headers['X-Cantus-Fields'].split(',')))
 
     @testing.gen_test
     def test_options_integration_1(self):
