@@ -81,7 +81,7 @@ def singular_resource_to_plural(singular):
 
 
 @gen.coroutine
-def ask_solr_by_id(q_type, q_id):
+def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     '''
     Query the Solr server for a record of "q_type" with an id of "q_id." The values are put directly
     into the Solr "q" parameter, so you may use any syntax allowed by the standard query parser.
@@ -91,6 +91,12 @@ def ask_solr_by_id(q_type, q_id):
     :param str q_type: The "type" field to require of the resource. If you only know the record
         ``id`` you may use ``'*'`` for the ``q_type`` to match a record of any type.
     :param str q_id: The "id" field to require of the resource.
+    :param int start: The "start" field to use when calling Solr (i.e., in a list of results, start
+        at the ``start``-th result). Default is Solr default (effectively 0).
+    :param int rows: The "rows" field to use when calling Solr (i.e., the maximum number of results
+        to include for a single search). Default is Solr default (effectively 10).
+    :param str sort: The "sort" field to use when calling Solr, like ``'incipit asc'`` or
+        ``'cantus_id desc'``. Default is Solr default.
 
     **Example**
 
@@ -102,7 +108,14 @@ def ask_solr_by_id(q_type, q_id):
     >>> yield func()
     <pysolrtornado results thing>
     '''
-    return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id)))
+    extra_params = {}
+    if start is not None:
+        extra_params['start'] = start
+    if rows is not None:
+        extra_params['rows'] = rows
+    if sort is not None:
+        extra_params['sort'] = sort
+    return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id), **extra_params))
 
 
 class SimpleHandler(web.RequestHandler):

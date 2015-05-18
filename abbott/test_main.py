@@ -85,6 +85,26 @@ class TestAbbott(TestHandler):
         self.assertEqual(expected, actual)
         main.SOLR.search.assert_called_once_with('+type:genre +id:162')
 
+    @mock.patch('abbott.__main__.SOLR', spec_set=pysolrtornado.Solr)
+    @testing.gen_test
+    def test_ask_solr_by_id_2(self, mock_solr):
+        "with 'start' and 'rows' kwargs"
+        mock_solr.search.return_value = make_future('search results')
+        expected = 'search results'
+        actual = yield main.ask_solr_by_id('genre', '162', start=5, rows=50)
+        self.assertEqual(expected, actual)
+        main.SOLR.search.assert_called_once_with('+type:genre +id:162', start=5, rows=50)
+
+    @mock.patch('abbott.__main__.SOLR', spec_set=pysolrtornado.Solr)
+    @testing.gen_test
+    def test_ask_solr_by_id_3(self, mock_solr):
+        "with 'rows' and 'sort' kwargs"
+        mock_solr.search.return_value = make_future('search results')
+        expected = 'search results'
+        actual = yield main.ask_solr_by_id('genre', '162', rows=42, sort='incipit asc')
+        self.assertEqual(expected, actual)
+        main.SOLR.search.assert_called_once_with('+type:genre +id:162', rows=42, sort='incipit asc')
+
 
 class TestRootHandler(TestHandler):
     '''
