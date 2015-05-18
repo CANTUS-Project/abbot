@@ -172,6 +172,9 @@ class TestRootHandler(TestHandler):
 class TestSimpleHandler(TestHandler):
     '''
     Tests for the SimpleHandler.
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
     '''
 
     def setUp(self):
@@ -558,3 +561,42 @@ class TestComplexHandler(TestHandler):
         self.check_standard_header(actual)
         self.assertEqual(main.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
+
+    @testing.gen_test
+    def test_get_unit_1(self):
+        '''
+        For the basic functionality specifically in get():
+        - two records
+        - four fields
+        - X-Cantus-Include-Resources is "true"
+        - two fields in only one record
+        - two fields must be LOOKUP-ed
+        '''
+        response = {'1': {'a': 'A', 'b': 'B', 'feast': 'C', 'genre': 'D'},
+                    '2': {'a': 'A', 'feast': 'C'},
+                    'resources': {'all': 'right'}}
+        self.handler.get_handler = mock.Mock(return_value=make_future(response))
+        self.handler.write = mock.Mock()
+        self.handler.add_header = mock.Mock()
+        self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
+        exp_fields = 'type,a,feast'
+        exp_fields_rev = 'type,feast,a'
+        exp_extra_fields = 'b,genre'
+        exp_extra_fields_rev = 'genre,b'
+        resource_id = '1234'
+
+        actual = yield self.handler.get(resource_id)
+
+        self.handler.get_handler.assert_called_once_with(resource_id)
+        self.handler.write.assert_called_once_with(response)
+        self.assertEqual(3, self.handler.add_header.call_count)
+        # for these next two checks, there are two acceptable orderings for the values; I'm sure
+        # there's a better way to do this, but it works for now
+        try:
+            self.handler.add_header.assert_any_call('X-Cantus-Fields', exp_fields)
+        except AssertionError:
+            self.handler.add_header.assert_any_call('X-Cantus-Fields', exp_fields_rev)
+        try:
+            self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields)
+        except AssertionError:
+            self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields_rev)
