@@ -134,6 +134,11 @@ class SimpleHandler(web.RequestHandler):
         self.type_name = type_name
         self.type_name_plural = singular_resource_to_plural(type_name)
         self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
+        if ('X-Cantus-Include-Resources' in self.request.headers and
+            'false' == self.request.headers['X-Cantus-Include-Resources'].lower()):
+            self.include_resources = False
+        else:
+            self.include_resources = True
         if additional_fields:
             self.returned_fields.extend(additional_fields)
 
@@ -235,7 +240,8 @@ class SimpleHandler(web.RequestHandler):
                 post.append(this_record)
 
         post = {res['id']: res for res in post}
-        post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
+        if self.include_resources:
+            post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
 
         return post
 
@@ -259,11 +265,11 @@ class SimpleHandler(web.RequestHandler):
         response = yield self.get_handler(resource_id)
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
-        num_records = len(response) - 1  # the "- 1" accounts for the "resources" member
+        num_records = (len(response) - 1) if self.include_resources else len(response)
         fields = ['type']  # "type" is added by Abbott, so it wouldn't have been counted
         extra_fields = []
 
-        def lookup_name(name):
+        def _lookup_name(name):
             "If relevant, uses ComplexHandler.LOOKUP to adjust the field name."
             if hasattr(self, 'LOOKUP') and name in ComplexHandler.LOOKUP:
                 return ComplexHandler.LOOKUP[name].replace_to
@@ -272,14 +278,20 @@ class SimpleHandler(web.RequestHandler):
 
         for field in self.field_counts:
             if self.field_counts[field] < num_records:
-                extra_fields.append(lookup_name(field))
+                extra_fields.append(_lookup_name(field))
             else:
-                fields.append(lookup_name(field))
+                fields.append(_lookup_name(field))
 
         if len(fields) > 0:
             self.add_header('X-Cantus-Fields', ','.join(fields))
         if len(extra_fields) > 0:
             self.add_header('X-Cantus-Extra-Fields', ','.join(extra_fields))
+
+        # figure out the X-Cantus-Include-Resources header
+        if self.include_resources:
+            self.add_header('X-Cantus-Include-Resources', 'true')
+        else:
+            self.add_header('X-Cantus-Include-Resources', 'false')
 
         self.write(response)
 
@@ -390,12 +402,13 @@ class ComplexHandler(SimpleHandler):
                         continue  # avoid writing the "resources" block for a missing xref resource
 
                 # fill in "reources" URLs
-                plural = singular_resource_to_plural(LOOKUP[field].replace_to)
-                if isinstance(record[field], (list, tuple)):
-                    resource_url = [self.make_resource_url(x, plural) for x in record[field]]
-                else:
-                    resource_url = self.make_resource_url(record[field], plural)
-                resources[replace_to] = resource_url
+                if self.include_resources:
+                    plural = singular_resource_to_plural(LOOKUP[field].replace_to)
+                    if isinstance(record[field], (list, tuple)):
+                        resource_url = [self.make_resource_url(x, plural) for x in record[field]]
+                    else:
+                        resource_url = self.make_resource_url(record[field], plural)
+                    resources[replace_to] = resource_url
 
             elif field in self.returned_fields:
                 # This is for non-cross-referenced fields. Because cross-referenced fields must
@@ -468,7 +481,10 @@ class ComplexHandler(SimpleHandler):
         .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
         results = yield self.basic_get(resource_id)
-        post = {'resources': results['resources']}
+        if self.include_resources:
+            post = {'resources': results['resources']}
+        else:
+            post = {}
 
         for record in iter(results):
             if 'resources' == record:
@@ -479,8 +495,9 @@ class ComplexHandler(SimpleHandler):
             post[record] = xreffed[0]
 
             # add resources' URLs to "resources" member
-            for key, value in xreffed[1].items():
-                post['resources'][record][key] = value
+            if self.include_resources:
+                for key, value in xreffed[1].items():
+                    post['resources'][record][key] = value
 
             # (for Chant) if missing "full_text" or "genre_id" entry, get them from cantusid
             if 'cantus_id' in post[record]:
@@ -538,6 +555,7 @@ class RootHandler(web.RequestHandler):
         Handle GET requests to the root URL. Returns a "resources" member with URLs to all available
         search and browse URLs.
         '''
+        self.add_header('X-Cantus-Include-Resources', 'true')
         self.write(self.prepare_get())
 
     def options(self, resource_id=None):

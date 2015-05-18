@@ -159,6 +159,7 @@ class TestRootHandler(TestHandler):
 
         self.assertEqual(expected, escape.json_decode(actual.body))
         self.check_standard_header(actual)
+        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
 
     @testing.gen_test
     def test_options_integration_1(self):
@@ -192,13 +193,21 @@ class TestSimpleHandler(TestHandler):
 
     def test_initialize_2(self):
         "initialize() works with extra fields"
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request = httpclient.HTTPRequest(url='/zool/', method='GET', headers={'X-Cantus-Include-Resources': 'TRue'})
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = main.SimpleHandler(self.get_app(), request, type_name='genre', additional_fields=['mass_or_office'])
         self.assertEqual('genre', actual.type_name)
         self.assertEqual('genres', actual.type_name_plural)
         self.assertEqual(5, len(actual.returned_fields))
         self.assertTrue('mass_or_office' in actual.returned_fields)
+        self.assertTrue(actual.include_resources)
+
+    def test_initialize_2(self):
+        "initialize() works with extra fields (different values)"
+        request = httpclient.HTTPRequest(url='/zool/', method='GET', headers={'X-Cantus-Include-Resources': 'fALSe'})
+        request.connection = mock.Mock()  # required for Tornado magic things
+        actual = main.SimpleHandler(self.get_app(), request, type_name='twist')
+        self.assertFalse(actual.include_resources)
 
     def test_format_record_1(self):
         "basic test"
@@ -276,6 +285,22 @@ class TestSimpleHandler(TestHandler):
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
+        self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_basic_get_unit_4(self, mock_ask_solr):
+        "test_basic_get_unit_1() with self.include_resources set to False"
+        resource_id = None
+        mock_solr_response = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
+        expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
+                    '3': {'id': '3', 'type': 'century'}}
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        self.handler.include_resources = False
+        actual = yield self.handler.basic_get(resource_id)
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*')
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -489,7 +514,9 @@ class TestComplexHandler(TestHandler):
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
-        "with many xreffed fields, and with feast_description to make up too"
+        '''
+        With many xreffed fields; feast_description to make up; and include "resources"
+        '''
         record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
                   'mode': '2S'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
@@ -515,6 +542,7 @@ class TestComplexHandler(TestHandler):
         mock_ask_solr.assert_any_call('feast', '2378')
         # right now, the "cantusid" won't be looked up unless "feast_id" is missing
         self.assertEqual(expected, escape.json_decode(actual.body))
+        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
@@ -529,11 +557,7 @@ class TestComplexHandler(TestHandler):
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
                     '111222': {'id': '111222', 'type': 'chant', 'genre': 'Responsory Verse',
                                'sequence': 4, 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
-                    'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
-                                             'feast': '/feasts/2378/'},
-                                  '111222': {'self': '/chants/111222/', 'genre': '/genres/161/',
-                                             'feast': '/feasts/2378/'}}}
+                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'}}
 
         def fake_solr(q_type, q_id):
             records = {'*': [recordA, recordB],
@@ -548,10 +572,13 @@ class TestComplexHandler(TestHandler):
         # expected header: X-Cantus-Extra-Fields
         exp_extra_fields = sorted(['cantus_id', 'sequence'])
 
-        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='GET')
+        actual = yield self.http_client.fetch(self.get_url('/chants/'),
+                                              method='GET',
+                                              headers={'X-Cantus-Include-Resources': 'FalSE'})
 
         self.assertEqual(exp_cantus_fields, sorted(actual.headers['X-Cantus-Fields'].split(',')))
         self.assertEqual(exp_extra_fields, sorted(actual.headers['X-Cantus-Extra-Fields'].split(',')))
+        self.assertEqual('false', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual(expected, escape.json_decode(actual.body))
 
     @testing.gen_test
@@ -579,6 +606,7 @@ class TestComplexHandler(TestHandler):
         self.handler.write = mock.Mock()
         self.handler.add_header = mock.Mock()
         self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
+        exp_include_resources = 'true'
         exp_fields = 'type,a,feast'
         exp_fields_rev = 'type,feast,a'
         exp_extra_fields = 'b,genre'
@@ -590,6 +618,48 @@ class TestComplexHandler(TestHandler):
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
         self.assertEqual(3, self.handler.add_header.call_count)
+        self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
+        # for these next two checks, there are two acceptable orderings for the values; I'm sure
+        # there's a better way to do this, but it works for now
+        try:
+            self.handler.add_header.assert_any_call('X-Cantus-Fields', exp_fields)
+        except AssertionError:
+            self.handler.add_header.assert_any_call('X-Cantus-Fields', exp_fields_rev)
+        try:
+            self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields)
+        except AssertionError:
+            self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields_rev)
+
+    @testing.gen_test
+    def test_get_unit_2(self):
+        '''
+        For the basic functionality specifically in get():
+        - same as test_get_unit_1() except...
+        - X-Cantus-Include-Resources is "false"
+
+        (Yes, all the checks are still necessary, because self.include_resources may affect
+         other things if it's messed up a bit).
+        '''
+        response = {'1': {'a': 'A', 'b': 'B', 'feast': 'C', 'genre': 'D'},
+                    '2': {'a': 'A', 'feast': 'C'}}
+        self.handler.get_handler = mock.Mock(return_value=make_future(response))
+        self.handler.write = mock.Mock()
+        self.handler.add_header = mock.Mock()
+        self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
+        self.handler.include_resources = False
+        exp_include_resources = 'false'
+        exp_fields = 'type,a,feast'
+        exp_fields_rev = 'type,feast,a'
+        exp_extra_fields = 'b,genre'
+        exp_extra_fields_rev = 'genre,b'
+        resource_id = '1234'
+
+        actual = yield self.handler.get(resource_id)
+
+        self.handler.get_handler.assert_called_once_with(resource_id)
+        self.handler.write.assert_called_once_with(response)
+        self.assertEqual(3, self.handler.add_header.call_count)
+        self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now
         try:
