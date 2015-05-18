@@ -62,19 +62,10 @@ class TestHandler(testing.AsyncHTTPTestCase):
         self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), on_this.headers['X-Cantus-Version'])
 
 
-class TestAbbott(unittest.TestCase):
+class TestAbbott(TestHandler):
     '''
     Tests for module-level things.
     '''
-
-    def get_solr_mock(self):
-        '''
-        Return a mock Solr object.
-        '''
-        post = mock.Mock(spec_set=pysolrtornado.Solr)
-        # so the async search() method returns 'search results' when yielded
-        post.search.return_value = make_future('search results')
-        return post
 
     def test_singular_resource_to_plural_1(self):
         "When the singular form has a corresponding pural."
@@ -84,10 +75,11 @@ class TestAbbott(unittest.TestCase):
         "When the singular form doesn't have a corresponding plural."
         self.assertIsNone(main.singular_resource_to_plural('automobiles'))
 
-    @mock.patch('abbott.__main__.SOLR')
+    @mock.patch('abbott.__main__.SOLR', spec_set=pysolrtornado.Solr)
+    @testing.gen_test
     def test_ask_solr_by_id_1(self, mock_solr):
         "Basic test."
-        mock_solr = self.get_solr_mock()
+        mock_solr.search.return_value = make_future('search results')
         expected = 'search results'
         actual = yield main.ask_solr_by_id('genre', '162')
         self.assertEqual(expected, actual)
