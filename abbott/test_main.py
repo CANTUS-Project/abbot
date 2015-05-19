@@ -44,6 +44,16 @@ def make_future(with_this):
     val.set_result(with_this)
     return val
 
+def make_results(docs):
+    '''
+    Create a new :class:`pysolrtornado.Results` with the ``docs`` argument as the :attr:`docs`
+    attribute.
+
+    :param docs: The actual results returned from Solr.
+    :type docs: list of dict
+    '''
+    return pysolrtornado.Results(docs, len(docs))
+
 
 class TestHandler(testing.AsyncHTTPTestCase):
     "Base class for classes that test a ___Handler."
@@ -258,7 +268,7 @@ class TestSimpleHandler(TestHandler):
     def test_basic_get_unit_1(self, mock_ask_solr):
         "with no resource_id and Solr response has three things"
         resource_id = None
-        mock_solr_response = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
+        mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
                     'resources': {'1': {'self': '/centuries/1/'},
@@ -276,7 +286,7 @@ class TestSimpleHandler(TestHandler):
     def test_basic_get_unit_2(self, mock_ask_solr):
         "with resource_id ending in '/' Solr response is empty"
         resource_id = '123/'
-        mock_solr_response = []
+        mock_solr_response = make_results([])
         expected = {'resources': {}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
 
@@ -290,7 +300,7 @@ class TestSimpleHandler(TestHandler):
     def test_basic_get_unit_3(self, mock_ask_solr):
         "with resource_id not ending with '/' and Solr response has one thing"
         resource_id = '888'  # such good luck
-        mock_solr_response = [{'id': '888'}]
+        mock_solr_response = make_results([{'id': '888'}])
         expected = {'888': {'id': '888', 'type': 'century'}, 'resources': {'888': {'self': '/centuries/888/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
 
@@ -304,7 +314,7 @@ class TestSimpleHandler(TestHandler):
     def test_basic_get_unit_4(self, mock_ask_solr):
         "test_basic_get_unit_1() with self.include_resources set to False"
         resource_id = None
-        mock_solr_response = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
+        mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
@@ -319,7 +329,7 @@ class TestSimpleHandler(TestHandler):
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
         "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
-        mock_solr_response = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
+        mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
                     'resources': {'1': {'self': '/centuries/1/'},
@@ -331,6 +341,8 @@ class TestSimpleHandler(TestHandler):
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*')
         self.check_standard_header(actual)
+        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
+        self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
@@ -526,9 +538,7 @@ class TestComplexHandler(TestHandler):
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
-        '''
-        With many xreffed fields; feast_description to make up; and include "resources"
-        '''
+        "With many xreffed fields; feast_description to make up; and include 'resources'"
         record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
                   'mode': '2S'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
@@ -543,7 +553,7 @@ class TestComplexHandler(TestHandler):
                        '600482a': [],  # empty until we decide on fill_from_cantusid()
                        '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
                       }
-            return make_future(records[q_id])
+            return make_future(make_results(records[q_id]))
         mock_ask_solr.side_effect = fake_solr
 
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
@@ -577,7 +587,7 @@ class TestComplexHandler(TestHandler):
                        '600482a': [],  # empty until we decide on fill_from_cantusid()
                        '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
                       }
-            return make_future(records[q_id])
+            return make_future(make_results(records[q_id]))
         mock_ask_solr.side_effect = fake_solr
         # expected header: X-Cantus-Fields
         exp_cantus_fields = sorted(['id', 'genre', 'mode', 'feast', 'type'])
@@ -618,6 +628,7 @@ class TestComplexHandler(TestHandler):
         self.handler.write = mock.Mock()
         self.handler.add_header = mock.Mock()
         self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
+        self.handler.total_results = 2
         exp_include_resources = 'true'
         exp_fields = 'type,a,feast'
         exp_fields_rev = 'type,feast,a'
@@ -629,8 +640,9 @@ class TestComplexHandler(TestHandler):
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
-        self.assertEqual(3, self.handler.add_header.call_count)
+        self.assertEqual(4, self.handler.add_header.call_count)
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
+        self.handler.add_header.assert_any_call('X-Cantus-Total-Results', 2)
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now
         try:
@@ -649,7 +661,7 @@ class TestComplexHandler(TestHandler):
         - same as test_get_unit_1() except...
         - X-Cantus-Include-Resources is "false"
 
-        (Yes, all the checks are still necessary, because self.include_resources may affect
+        (Yes, most of the checks are still necessary, because self.include_resources may affect
          other things if it's messed up a bit).
         '''
         response = {'1': {'a': 'A', 'b': 'B', 'feast': 'C', 'genre': 'D'},
@@ -659,6 +671,7 @@ class TestComplexHandler(TestHandler):
         self.handler.add_header = mock.Mock()
         self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
         self.handler.include_resources = False
+        self.handler.total_results = 2
         exp_include_resources = 'false'
         exp_fields = 'type,a,feast'
         exp_fields_rev = 'type,feast,a'
@@ -670,7 +683,9 @@ class TestComplexHandler(TestHandler):
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
-        self.assertEqual(3, self.handler.add_header.call_count)
+        self.assertEqual(4, self.handler.add_header.call_count)
+        # on initial implementation, I realized X-Cantus-Include-Resources may be affected by
+        # the field counts &c.
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now

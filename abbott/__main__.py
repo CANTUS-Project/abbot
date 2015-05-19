@@ -34,7 +34,7 @@ import pysolrtornado
 
 SOLR = pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.0.3-devel'
+ABBOTT_VERSION = '0.0.4-devel'
 CANTUS_API_VERSION = '0.1.2'
 PORT = 8888
 
@@ -243,6 +243,9 @@ class SimpleHandler(web.RequestHandler):
 
         resp = yield ask_solr_by_id(self.type_name, resource_id)
 
+        # for the X-Cantus-Total-Results header
+        self.total_results = resp.hits
+
         if 0 == len(resp):
             post = []
         else:
@@ -305,6 +308,9 @@ class SimpleHandler(web.RequestHandler):
             self.add_header('X-Cantus-Include-Resources', 'true')
         else:
             self.add_header('X-Cantus-Include-Resources', 'false')
+
+        # figure out X-Cantus-Total-Results
+        self.add_header('X-Cantus-Total-Results', self.total_results)
 
         self.write(response)
 
