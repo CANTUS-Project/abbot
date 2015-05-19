@@ -129,12 +129,24 @@ class SimpleHandler(web.RequestHandler):
     fields. You may specify additional fields to the :meth:`initialize` method.
     '''
 
+    _INVALID_PER_PAGE = 'Invalid "X-Cantus-Per-Page" header'
+    # when the X-Cantus-Per-Page value doesn't work in a call to int()
+
+    _TOO_BIG_PER_PAGE = '"X-Cantus-Per-Page" is too high'
+    # when X-Cantus-Per-Page is greater than _MAX_PER_PAGE
+
+    _TOO_SMALL_PER_PAGE = '"X-Cantus-Per-Page" must be greater than 0'
+    # when X-Cantus-Per-Page is less than 0
+
     _ALLOWED_METHODS = 'GET, OPTIONS'
     # value of the "Allow" header in response to an OPTIONS request
 
     _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
     # deepcopied anyway, so we'll just do this!
+
+    _MAX_PER_PAGE = 100
+    # the highest value allowed for X-Cantus-Per-Page; higher values will get a 507
 
     def initialize(self, type_name, additional_fields=None):  # pylint: disable=arguments-differ
         '''
@@ -147,13 +159,21 @@ class SimpleHandler(web.RequestHandler):
         self.type_name = type_name
         self.type_name_plural = singular_resource_to_plural(type_name)
         self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
+
+        if additional_fields:
+            self.returned_fields.extend(additional_fields)
+
+        # set headers
+        if 'X-Cantus-Per-Page' in self.request.headers:
+            self.per_page = self.request.headers['X-Cantus-Per-Page']
+        else:
+            self.per_page = None
+
         if ('X-Cantus-Include-Resources' in self.request.headers and
             'false' == self.request.headers['X-Cantus-Include-Resources'].lower()):
             self.include_resources = False
         else:
             self.include_resources = True
-        if additional_fields:
-            self.returned_fields.extend(additional_fields)
 
     def set_default_headers(self):
         '''
@@ -241,7 +261,7 @@ class SimpleHandler(web.RequestHandler):
         elif resource_id.endswith('/') and len(resource_id) > 1:
             resource_id = resource_id[:-1]
 
-        resp = yield ask_solr_by_id(self.type_name, resource_id)
+        resp = yield ask_solr_by_id(self.type_name, resource_id, rows=self.per_page)
 
         # for the X-Cantus-Total-Results header
         self.total_results = resp.hits
@@ -278,6 +298,25 @@ class SimpleHandler(web.RequestHandler):
 
         .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
+
+        # first check the header-set values for sanity
+        if self.per_page:  # X-Cantus-Per-Page
+            try:
+                self.per_page = int(self.per_page)
+            except ValueError:
+                self.send_error(400, reason=SimpleHandler._INVALID_PER_PAGE)
+                return
+            if self.per_page < 0:
+                self.send_error(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
+                return
+            elif self.per_page > SimpleHandler._MAX_PER_PAGE:
+                self.send_error(507,
+                                reason=SimpleHandler._TOO_BIG_PER_PAGE,
+                                per_page=SimpleHandler._MAX_PER_PAGE)
+                return
+            elif 0 == self.per_page:
+                self.per_page = SimpleHandler._MAX_PER_PAGE
+
         response = yield self.get_handler(resource_id)
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
@@ -312,6 +351,12 @@ class SimpleHandler(web.RequestHandler):
         # figure out X-Cantus-Total-Results
         self.add_header('X-Cantus-Total-Results', self.total_results)
 
+        # figure out X-Cantus-Per-Page
+        if self.per_page:
+            self.add_header('X-Cantus-Per-Page', self.per_page)
+        else:
+            self.add_header('X-Cantus-Per-Page', 10)
+
         self.write(response)
 
     def options(self, resource_id=None):
@@ -320,6 +365,25 @@ class SimpleHandler(web.RequestHandler):
         '''
         self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
 
+    def send_error(self, code, **kwargs):
+        '''
+        Send an error response to the client.
+
+        :param int code: The response code to use.
+        :param str reason: The "reason" for the response code.
+        :param int per_page: Optional value to send as the ``X-Cantus-Per-Page`` header.
+        '''
+        # TODO: test this, after fully rewriting it, as per issue #15
+        self.clear()
+        if 'per_page' in kwargs:
+            self.add_header('X-Cantus-Per-Page', kwargs['per_page'])
+        if 'reason' in kwargs:
+            self.set_status(code, kwargs['reason'])
+            response = '{}: {}'.format(code, kwargs['reason'])
+        else:
+            self.set_status(code)
+            response = code
+        self.write(response)
 
 XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])
 '''
