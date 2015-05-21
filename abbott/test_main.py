@@ -213,6 +213,7 @@ class TestSimpleHandler(TestHandler):
         self.assertEqual('centuries', self.handler.type_name_plural)
         self.assertEqual(4, len(self.handler.returned_fields))
         self.assertIsNone(self.handler.per_page)
+        self.assertIsNone(self.handler.page)
 
     def test_initialize_2(self):
         "initialize() works with extra fields"
@@ -229,11 +230,13 @@ class TestSimpleHandler(TestHandler):
         "initialize() works with extra fields (different values)"
         request = httpclient.HTTPRequest(url='/zool/', method='GET',
                                          headers={'X-Cantus-Include-Resources': 'fALSe',
-                                                  'X-Cantus-Per-Page': '9001'})
+                                                  'X-Cantus-Per-Page': '9001',
+                                                  'X-Cantus-Page': '3'})
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = main.SimpleHandler(self.get_app(), request, type_name='twist')
         self.assertFalse(actual.include_resources)
         self.assertEqual('9001', actual.per_page)
+        self.assertEqual('3', actual.page)
 
     def test_format_record_1(self):
         "basic test"
@@ -270,7 +273,10 @@ class TestSimpleHandler(TestHandler):
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_1(self, mock_ask_solr):
-        "with no resource_id and Solr response has three things"
+        '''
+        - with no resource_id and Solr response has three things
+        - self.page is None
+        '''
         resource_id = None
         mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
@@ -282,52 +288,84 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_2(self, mock_ask_solr):
-        "with resource_id ending in '/' Solr response is empty"
+        '''
+        - when the id ends with '/' and the Solr response is empty (returns 404)
+        '''
         resource_id = '123/'
         mock_solr_response = make_results([])
-        expected = {'resources': {}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
+        self.handler.send_error = mock.Mock()
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', rows=None)
-        self.assertEqual(expected, actual)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=None, rows=None)
+        self.assertIsNone(actual)
+        self.handler.send_error.assert_called_once_with(404, reason=main.SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1]))
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_3(self, mock_ask_solr):
-        "with resource_id not ending with '/' and Solr response has one thing"
+        '''
+        - with resource_id not ending with '/' and Solr response has one thing
+        - self.page is defined but self.per_page isn't
+        '''
         resource_id = '888'  # such good luck
         mock_solr_response = make_results([{'id': '888'}])
         expected = {'888': {'id': '888', 'type': 'century'}, 'resources': {'888': {'self': '/centuries/888/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
+        self.handler.page = 4
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', start=40, rows=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_4(self, mock_ask_solr):
-        "test_basic_get_unit_1() with self.include_resources set to False"
+        '''
+        - test_basic_get_unit_1() with self.include_resources set to False
+        - self.page and self.per_page are both set
+        '''
         resource_id = None
         mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
+        self.handler.page = 4
+        self.handler.per_page = 12
 
         self.handler.include_resources = False
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', rows=None)
+        # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
+        # "start" of 0, so "page" 2 should have a "start" equal to "per_page" (12 in this test)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36, rows=12)
         self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_basic_get_unit_5(self, mock_ask_solr):
+        '''
+        - when the Solr response is empty and self.page is too high (returns 400)
+        '''
+        resource_id = '123'
+        mock_solr_response = make_results([])
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+        self.handler.send_error = mock.Mock()
+        self.handler.page = 6000
+
+        actual = yield self.handler.basic_get(resource_id)
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=60000, rows=None)
+        self.assertIsNone(actual)
+        self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._TOO_LARGE_PAGE)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
@@ -343,17 +381,18 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
+        self.assertEqual('1', actual.headers['X-Cantus-Page'])
         self.assertEqual('10', actual.headers['X-Cantus-Per-Page'])
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_3(self, mock_ask_solr):
+    def test_get_integration_2(self, mock_ask_solr):
         "returns 400 when X-Cantus-Per-Page is set improperly"
         actual = yield self.http_client.fetch(self.get_url('/centuries/'),
                                               method='GET',
@@ -364,6 +403,23 @@ class TestSimpleHandler(TestHandler):
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(main.SimpleHandler._INVALID_PER_PAGE, actual.reason)
+
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_3(self, mock_ask_solr):
+        "returns 400 when X-Cantus-Page is set too high"
+        mock_solr_response = make_results([])
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+                                              method='GET',
+                                              raise_error=False,
+                                              headers={'X-Cantus-Page': '10'})
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100, rows=None)
+        self.check_standard_header(actual)
+        self.assertEqual(400, actual.code)
+        self.assertEqual(main.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
 
     @testing.gen_test
     def test_options_integration_1(self):
@@ -578,7 +634,7 @@ class TestComplexHandler(TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
 
         self.check_standard_header(actual)
-        mock_ask_solr.assert_any_call('chant', '357679', rows=None)
+        mock_ask_solr.assert_any_call('chant', '357679', start=None, rows=None)
         mock_ask_solr.assert_any_call('genre', '161')
         mock_ask_solr.assert_any_call('feast', '2378')
         # right now, the "cantusid" won't be looked up unless "feast_id" is missing
@@ -640,6 +696,7 @@ class TestComplexHandler(TestHandler):
         - two fields in only one record
         - two fields must be LOOKUP-ed
         - X-Cantus-Per-Page returned (default value given)
+        - X-Cantus-Page not given in request
         '''
         response = {'1': {'a': 'A', 'b': 'B', 'feast': 'C', 'genre': 'D'},
                     '2': {'a': 'A', 'feast': 'C'},
@@ -660,10 +717,11 @@ class TestComplexHandler(TestHandler):
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
-        self.assertEqual(5, self.handler.add_header.call_count)
+        self.assertEqual(6, self.handler.add_header.call_count)
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
         self.handler.add_header.assert_any_call('X-Cantus-Total-Results', 2)
         self.handler.add_header.assert_any_call('X-Cantus-Per-Page', 10)
+        self.handler.add_header.assert_any_call('X-Cantus-Page', 1)
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now
         try:
@@ -681,6 +739,7 @@ class TestComplexHandler(TestHandler):
         For the basic functionality specifically in get():
         - same as test_get_unit_1() except...
         - X-Cantus-Include-Resources is "false"
+        - X-Cantus-Page is given in request
 
         (Yes, most of the checks are still necessary, because self.include_resources may affect
          other things if it's messed up a bit).
@@ -693,6 +752,7 @@ class TestComplexHandler(TestHandler):
         self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
         self.handler.include_resources = False
         self.handler.total_results = 2
+        self.handler.page = '2'
         exp_include_resources = 'false'
         exp_fields = 'type,a,feast'
         exp_fields_rev = 'type,feast,a'
@@ -704,7 +764,8 @@ class TestComplexHandler(TestHandler):
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
-        self.assertEqual(5, self.handler.add_header.call_count)
+        self.assertEqual(6, self.handler.add_header.call_count)
+        self.handler.add_header.assert_any_call('X-Cantus-Page', 2)
         # on initial implementation, I realized X-Cantus-Include-Resources may be affected by
         # the field counts &c.
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
@@ -756,4 +817,34 @@ class TestComplexHandler(TestHandler):
         self.handler.send_error.assert_called_once_with(507,
                                                         reason=main.SimpleHandler._TOO_BIG_PER_PAGE,
                                                         per_page=main.SimpleHandler._MAX_PER_PAGE)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_4a(self):
+        "returns 400 when X-Cantus-Page isn't an int"
+        self.handler.send_error = mock.Mock()
+        self.handler.page = 'will not work'
+        self.handler.get_handler = mock.Mock()
+
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._INVALID_PAGE)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_4b(self):
+        "returns 400 when X-Cantus-Page is negative or zero"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock()
+
+        self.handler.page = '-10'
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._TOO_SMALL_PAGE)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+        #-------------------------------------------------------------------------------------------
+        self.handler.page = '0'
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._TOO_SMALL_PAGE)
         self.assertEqual(0, self.handler.get_handler.call_count)

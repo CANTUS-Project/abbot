@@ -34,8 +34,8 @@ import pysolrtornado
 
 SOLR = pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.0.4-devel'
-CANTUS_API_VERSION = '0.1.2'
+ABBOTT_VERSION = '0.0.5-devel'
+CANTUS_API_VERSION = '0.1.3'
 PORT = 8888
 
 
@@ -135,7 +135,7 @@ class SimpleHandler(web.RequestHandler):
     _TOO_BIG_PER_PAGE = '"X-Cantus-Per-Page" is too high'
     # when X-Cantus-Per-Page is greater than _MAX_PER_PAGE
 
-    _TOO_SMALL_PER_PAGE = '"X-Cantus-Per-Page" must be greater than 0'
+    _TOO_SMALL_PER_PAGE = '"X-Cantus-Per-Page" must be 0 or greater'
     # when X-Cantus-Per-Page is less than 0
 
     _INVALID_PAGE = 'Invalid "X-Cantus-Page" header'
@@ -181,11 +181,17 @@ class SimpleHandler(web.RequestHandler):
         else:
             self.per_page = None
 
+        if 'X-Cantus-Page' in self.request.headers:
+            self.page = self.request.headers['X-Cantus-Page']
+        else:
+            self.page = None
+
         if ('X-Cantus-Include-Resources' in self.request.headers and
             'false' == self.request.headers['X-Cantus-Include-Resources'].lower()):
             self.include_resources = False
         else:
             self.include_resources = True
+
 
     def set_default_headers(self):
         '''
@@ -247,13 +253,13 @@ class SimpleHandler(web.RequestHandler):
     def basic_get(self, resource_id=None):
         '''
         Prepare a basic response for the relevant records. This method queries for the specified
-        resources, filters out unwanted fields (those not specified in ``returned_fields``), put a
-        URL to this resource in the "resources" member, and set the following headers:
+        resources and filters out unwanted fields (those not specified in ``returned_fields``).
 
-        - Server
-        - X-Cantus-Version
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
-        .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        .. note:: This method returns ``None`` in some situations when an error has been returned
+            to the client. In those situations, callers of this method must not call :meth:`write()`
+            or similar.
 
         For simple resource types---those that do not contain references to other types of
         resources---this method does all required processing. You may call ``self.write()`` directly
@@ -264,21 +270,31 @@ class SimpleHandler(web.RequestHandler):
             fetch the appropriate amount of resources with arbitrary "id".
         :returns: A dictionary that may be used as the response body. There will always be at least
             one member, ``"resources"``, although when there are no other records it will simply be
-            an empty dict.
-        :rtype: dict
+            an empty dict. Returns ``None`` when there are no results, and sends the required
+            status code.
+        :rtype: dict or NoneType
         '''
         if not resource_id:
             resource_id = '*'
         elif resource_id.endswith('/') and len(resource_id) > 1:
             resource_id = resource_id[:-1]
 
-        resp = yield ask_solr_by_id(self.type_name, resource_id, rows=self.per_page)
+        # calculate the "start" argument for Solr
+        start = None
+        if self.page:
+            if self.per_page:
+                start = (self.page - 1) * self.per_page
+            else:
+                start = self.page * 10
 
-        # for the X-Cantus-Total-Results header
-        self.total_results = resp.hits
+        resp = yield ask_solr_by_id(self.type_name, resource_id, start=start, rows=self.per_page)
 
         if 0 == len(resp):
-            self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))
+            if start and resp.hits <= start:
+                # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
+                self.send_error(400, reason=SimpleHandler._TOO_LARGE_PAGE)
+            else:
+                self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))
             return
         else:
             post = []
@@ -286,6 +302,9 @@ class SimpleHandler(web.RequestHandler):
                 this_record = self.format_record(each_record)
                 this_record['type'] = self.type_name
                 post.append(this_record)
+
+        # for the X-Cantus-Total-Results header
+        self.total_results = resp.hits
 
         post = {res['id']: res for res in post}
         if self.include_resources:
@@ -300,6 +319,12 @@ class SimpleHandler(web.RequestHandler):
         simply returns the result of :meth:`basic_get`, but :class:`ComplexHandler` does many other
         things here. This abstraction layer allows both handlers to share common header functionality
         in :meth:`basic_get` and response body formatting functionality in :meth:`get`.
+
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+        .. note:: This method returns ``None`` in some situations when an error has been returned
+            to the client. In those situations, callers of this method must not call :meth:`write()`
+            or similar.
         '''
         return (yield self.basic_get(resource_id))
 
@@ -308,7 +333,7 @@ class SimpleHandler(web.RequestHandler):
         '''
         Response to GET requests. Returns the result of :meth:`basic_get` without modification.
 
-        .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
 
         # first check the header-set values for sanity
@@ -329,7 +354,20 @@ class SimpleHandler(web.RequestHandler):
             elif 0 == self.per_page:
                 self.per_page = SimpleHandler._MAX_PER_PAGE
 
+        if self.page:  # X-Cantus-Page
+            try:
+                self.page = int(self.page)
+            except ValueError:
+                self.send_error(400, reason=SimpleHandler._INVALID_PAGE)
+                return
+            if self.page < 1:
+                self.send_error(400, reason=SimpleHandler._TOO_SMALL_PAGE)
+                return
+
+        # run the more specific GET request handler
         response = yield self.get_handler(resource_id)
+        if response is None:
+            return
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
         num_records = (len(response) - 1) if self.include_resources else len(response)
@@ -369,6 +407,12 @@ class SimpleHandler(web.RequestHandler):
         else:
             self.add_header('X-Cantus-Per-Page', 10)
 
+        # figure out X-Cantus-Page
+        if self.page:
+            self.add_header('X-Cantus-Page', self.page)
+        else:
+            self.add_header('X-Cantus-Page', 1)
+
         self.write(response)
 
     def options(self, resource_id=None):
@@ -394,7 +438,7 @@ class SimpleHandler(web.RequestHandler):
             response = '{}: {}'.format(code, kwargs['reason'])
         else:
             self.set_status(code)
-            response = code
+            response = str(code)
         self.write(response)
 
 XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])
@@ -573,9 +617,16 @@ class ComplexHandler(SimpleHandler):
         '''
         Process GET requests for complex record types.
 
-        .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+        .. note:: This method returns ``None`` in some situations when an error has been returned
+            to the client. In those situations, callers of this method must not call :meth:`write()`
+            or similar.
         '''
         results = yield self.basic_get(resource_id)
+        if results is None:
+            return
+
         if self.include_resources:
             post = {'resources': results['resources']}
         else:
