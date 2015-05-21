@@ -138,6 +138,18 @@ class SimpleHandler(web.RequestHandler):
     _TOO_SMALL_PER_PAGE = '"X-Cantus-Per-Page" must be greater than 0'
     # when X-Cantus-Per-Page is less than 0
 
+    _INVALID_PAGE = 'Invalid "X-Cantus-Page" header'
+    # when the X-Cantus-Page value doesn't work in a call to int()
+
+    _TOO_SMALL_PAGE = '"X-Cantus-Page" must be greater than 0'
+    # when X-Cantus-Page is less than 1
+
+    _TOO_LARGE_PAGE = '"X-Cantus-Page" is too high (there are not that many pages)'
+    # when we've gone off the last page
+
+    _ID_NOT_FOUND = 'No {} has id "{}"'
+    # when the "id" is...
+
     _ALLOWED_METHODS = 'GET, OPTIONS'
     # value of the "Allow" header in response to an OPTIONS request
 
@@ -255,7 +267,6 @@ class SimpleHandler(web.RequestHandler):
             an empty dict.
         :rtype: dict
         '''
-        # TODO: how to return a 404 when the resource isn't found?!
         if not resource_id:
             resource_id = '*'
         elif resource_id.endswith('/') and len(resource_id) > 1:
@@ -267,7 +278,8 @@ class SimpleHandler(web.RequestHandler):
         self.total_results = resp.hits
 
         if 0 == len(resp):
-            post = []
+            self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))
+            return
         else:
             post = []
             for each_record in resp:
