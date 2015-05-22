@@ -237,6 +237,33 @@ class TestRootHandler(TestHandler):
         sort = 'password,asc'
         self.assertRaises(KeyError, main.prepare_formatted_sort, sort)
 
+    def test_postpare_sort_1(self):
+        '''
+        - with a single field
+        '''
+        sort = 'incipit asc'
+        expected = 'incipit,asc'
+        actual = main.postpare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
+    def test_postpare_sort_2(self):
+        '''
+        - with several fields
+        '''
+        sort = 'incipit asc,id desc,family_name asc'
+        expected = 'incipit,asc;id,desc;family_name,asc'
+        actual = main.postpare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
+    def test_postpare_sort_3(self):
+        '''
+        - with several fields and lots of unnecessary spaces
+        '''
+        sort = '   incipit     asc  ,       id    desc   ,    family_name    asc     '
+        expected = 'incipit,asc;id,desc;family_name,asc'
+        actual = main.postpare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
 
 class TestSimpleHandler(TestHandler):
     '''

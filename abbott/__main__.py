@@ -183,6 +183,34 @@ def prepare_formatted_sort(sort):
     return sort
 
 
+def postpare_formatted_sort(sort):
+    '''
+    Prepare the "sort" field given to Solr for use in the X-Cantus-Solr response header. This is
+    called "postpare" because it's the final of three steps related to using the X-Cantus-Solr
+    header:
+
+    #. prepare: call :func:`prepare_formatted_sort`
+    #. pare: use the value to call Solr
+    #. postpare: call :func:`postpare_formatted_sort`
+
+    Unlike the "prepare" function, this function assumes its input is correct---i.e., that the
+    ``sort`` argument only contains valid characters.
+
+    :param str sort: The Solr "search" parameter to transform into an X-Cantus-Sort header.
+    :returns: The X-Cantus-Search header, formatted as per the Cantus API.
+    '''
+    sorts = sort.split(',')
+    sort = []
+
+    for each_sort in sorts:
+        field, direction = each_sort.split()
+        sort.append('{},{}'.format(field, direction))
+
+    sort = ';'.join(sort)
+
+    return sort
+
+
 @gen.coroutine
 def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     '''
