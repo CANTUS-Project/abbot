@@ -29,6 +29,7 @@ Tests for ``__main__.py`` of the Abbott server.
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
 #       asynchronous TestCase classes.
 
+import copy
 import unittest
 from unittest import mock
 from tornado import concurrent, escape, httpclient, testing, web
@@ -349,6 +350,7 @@ class TestSimpleHandler(TestHandler):
         '''
         - with no resource_id and Solr response has three things
         - self.page is None
+        - self.sort is None
         '''
         resource_id = None
         mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
@@ -361,7 +363,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None, sort=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -377,7 +379,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=None, rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=None, rows=None, sort=None)
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=main.SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1]))
 
@@ -387,16 +389,18 @@ class TestSimpleHandler(TestHandler):
         '''
         - with resource_id not ending with '/' and Solr response has one thing
         - self.page is defined but self.per_page isn't
+        - self.sort is defined
         '''
         resource_id = '888'  # such good luck
         mock_solr_response = make_results([{'id': '888'}])
         expected = {'888': {'id': '888', 'type': 'century'}, 'resources': {'888': {'self': '/centuries/888/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
         self.handler.page = 4
+        self.handler.sort = 'incipit asc'
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', start=40, rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', start=40, rows=None, sort='incipit asc')
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -419,7 +423,7 @@ class TestSimpleHandler(TestHandler):
 
         # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
         # "start" of 0, so "page" 2 should have a "start" equal to "per_page" (12 in this test)
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36, rows=12)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36, rows=12, sort=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -436,7 +440,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=60000, rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=60000, rows=None, sort=None)
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._TOO_LARGE_PAGE)
 
@@ -454,7 +458,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None, sort=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -489,7 +493,7 @@ class TestSimpleHandler(TestHandler):
                                               raise_error=False,
                                               headers={'X-Cantus-Page': '10'})
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100, rows=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100, rows=None, sort=None)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(main.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
@@ -707,7 +711,7 @@ class TestComplexHandler(TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
 
         self.check_standard_header(actual)
-        mock_ask_solr.assert_any_call('chant', '357679', start=None, rows=None)
+        mock_ask_solr.assert_any_call('chant', '357679', start=None, rows=None, sort=None)
         mock_ask_solr.assert_any_call('genre', '161')
         mock_ask_solr.assert_any_call('feast', '2378')
         # right now, the "cantusid" won't be looked up unless "feast_id" is missing
@@ -770,6 +774,7 @@ class TestComplexHandler(TestHandler):
         - two fields must be LOOKUP-ed
         - X-Cantus-Per-Page returned (default value given)
         - X-Cantus-Page not given in request
+        - X-Cantus-Sort not given in request
         '''
         response = {'1': {'a': 'A', 'b': 'B', 'feast': 'C', 'genre': 'D'},
                     '2': {'a': 'A', 'feast': 'C'},
@@ -813,6 +818,7 @@ class TestComplexHandler(TestHandler):
         - same as test_get_unit_1() except...
         - X-Cantus-Include-Resources is "false"
         - X-Cantus-Page is given in request
+        - X-Cantus-Sort is given in request
 
         (Yes, most of the checks are still necessary, because self.include_resources may affect
          other things if it's messed up a bit).
@@ -826,6 +832,9 @@ class TestComplexHandler(TestHandler):
         self.handler.include_resources = False
         self.handler.total_results = 2
         self.handler.page = '2'
+        self.handler.sort = 'incipit,asc;id,desc'
+        exp_sort = 'incipit asc,id desc'
+        exp_sort_header = copy.deepcopy(self.handler.sort)
         exp_include_resources = 'false'
         exp_fields = 'type,a,feast'
         exp_fields_rev = 'type,feast,a'
@@ -837,11 +846,12 @@ class TestComplexHandler(TestHandler):
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
-        self.assertEqual(6, self.handler.add_header.call_count)
+        self.assertEqual(exp_sort, self.handler.sort)
         self.handler.add_header.assert_any_call('X-Cantus-Page', 2)
         # on initial implementation, I realized X-Cantus-Include-Resources may be affected by
         # the field counts &c.
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
+        self.handler.add_header.assert_any_call('X-Cantus-Sort', exp_sort_header)
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now
         try:
@@ -920,4 +930,40 @@ class TestComplexHandler(TestHandler):
         actual = yield self.handler.get()
 
         self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._TOO_SMALL_PAGE)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_5a(self):
+        "returns 400 when X-Cantus-Sort has a disallowed character"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock()
+        self.handler.sort = 'inc!pit, asc'
+
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_5b(self):
+        "returns 400 when X-Cantus-Sort is missing 'asc' or 'desc'"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock()
+        self.handler.sort = 'incipit'
+
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._MISSING_DIRECTION_SPEC)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_5c(self):
+        "returns 400 when X-Cantus-Sort is missing 'asc' or 'desc'"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock()
+        self.handler.sort = 'inchippit,desc'
+
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._UNKNOWN_FIELD)
         self.assertEqual(0, self.handler.get_handler.call_count)

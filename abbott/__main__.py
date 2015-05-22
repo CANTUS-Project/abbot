@@ -34,8 +34,8 @@ import pysolrtornado
 
 SOLR = pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.0.5-devel'
-CANTUS_API_VERSION = '0.1.3'
+ABBOTT_VERSION = '0.0.6-devel'
+CANTUS_API_VERSION = '0.1.4'
 PORT = 8888
 
 # error messages for prepare_formatted_sort()
@@ -284,6 +284,15 @@ class SimpleHandler(web.RequestHandler):
     _ALLOWED_METHODS = 'GET, OPTIONS'
     # value of the "Allow" header in response to an OPTIONS request
 
+    _DISALLOWED_CHARACTER_IN_SORT = 'Found a disallowed character in the X-Cantus-Sort header'
+    # X-Cantus-Sort contains an invalid character
+
+    _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
+    # X-Cantus-Sort has a field that's missing a direction
+
+    _UNKNOWN_FIELD = 'Unknown field name in X-Cantus-Sort'
+    # X-Cantus-Sort wants to sort on a field that doesn't exist
+
     _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
     # deepcopied anyway, so we'll just do this!
@@ -318,10 +327,15 @@ class SimpleHandler(web.RequestHandler):
             self.page = None
 
         if ('X-Cantus-Include-Resources' in self.request.headers and
-            'false' == self.request.headers['X-Cantus-Include-Resources'].lower()):
+            'false' in self.request.headers['X-Cantus-Include-Resources'].lower()):
             self.include_resources = False
         else:
             self.include_resources = True
+
+        if 'X-Cantus-Sort' in self.request.headers:
+            self.sort = self.request.headers['X-Cantus-Sort']
+        else:
+            self.sort = None
 
 
     def set_default_headers(self):
@@ -418,7 +432,7 @@ class SimpleHandler(web.RequestHandler):
             else:
                 start = self.page * 10
 
-        resp = yield ask_solr_by_id(self.type_name, resource_id, start=start, rows=self.per_page)
+        resp = yield ask_solr_by_id(self.type_name, resource_id, start=start, rows=self.per_page, sort=self.sort)
 
         if 0 == len(resp):
             if start and resp.hits <= start:
@@ -495,6 +509,19 @@ class SimpleHandler(web.RequestHandler):
                 self.send_error(400, reason=SimpleHandler._TOO_SMALL_PAGE)
                 return
 
+        if self.sort:  # X-Cantus-Sort
+            try:
+                self.sort = prepare_formatted_sort(self.sort)
+            except ValueError as val_e:
+                if val_e.args[0] == _MISSING_DIRECTION_SPEC:
+                    self.send_error(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
+                else:
+                    self.send_error(400, reason=SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+                return
+            except KeyError:
+                self.send_error(400, reason=SimpleHandler._UNKNOWN_FIELD)
+                return
+
         # run the more specific GET request handler
         response = yield self.get_handler(resource_id)
         if response is None:
@@ -543,6 +570,10 @@ class SimpleHandler(web.RequestHandler):
             self.add_header('X-Cantus-Page', self.page)
         else:
             self.add_header('X-Cantus-Page', 1)
+
+        # figure out X-Cantus-Sort
+        if self.sort:
+            self.add_header('X-Cantus-Sort', postpare_formatted_sort(self.sort))
 
         self.write(response)
 
