@@ -311,6 +311,7 @@ class SimpleHandler(web.RequestHandler):
         self.type_name = type_name
         self.type_name_plural = singular_resource_to_plural(type_name)
         self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
+        self.head_request = False  # if the method being processed is HEAD
 
         if additional_fields:
             self.returned_fields.extend(additional_fields)
@@ -575,13 +576,22 @@ class SimpleHandler(web.RequestHandler):
         if self.sort:
             self.add_header('X-Cantus-Sort', postpare_formatted_sort(self.sort))
 
-        self.write(response)
+        if not self.head_request:
+            self.write(response)
 
     def options(self, resource_id=None):
         '''
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
         self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
+
+    @gen.coroutine
+    def head(self, resource_id=None):
+        '''
+        Response to HEAD requests. Uses :meth:`get` but without the response body.
+        '''
+        self.head_request = True
+        yield self.get(resource_id)
 
     def send_error(self, code, **kwargs):
         '''

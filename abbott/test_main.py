@@ -506,6 +506,23 @@ class TestSimpleHandler(TestHandler):
         self.assertEqual(main.SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
 
+    @mock.patch('abbott.__main__.ask_solr_by_id')
+    @testing.gen_test
+    def test_head_integration_1a(self, mock_ask_solr):
+        "test_get_integration_1() but with the HEAD method"
+        mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+
+        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='HEAD')
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None, sort=None)
+        self.check_standard_header(actual)
+        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
+        self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
+        self.assertEqual('1', actual.headers['X-Cantus-Page'])
+        self.assertEqual('10', actual.headers['X-Cantus-Per-Page'])
+        self.assertEqual(0, len(actual.body))
+
 
 class TestComplexHandler(TestHandler):
     '''
@@ -764,7 +781,7 @@ class TestComplexHandler(TestHandler):
         self.assertEqual(0, len(actual.body))
 
     @testing.gen_test
-    def test_get_unit_1(self):
+    def test_get_unit_1a(self, head_request=False):
         '''
         For the basic functionality specifically in get():
         - two records
@@ -784,6 +801,8 @@ class TestComplexHandler(TestHandler):
         self.handler.add_header = mock.Mock()
         self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
         self.handler.total_results = 2
+        if head_request:
+            self.handler.head_request = True
         exp_include_resources = 'true'
         exp_fields = 'type,a,feast'
         exp_fields_rev = 'type,feast,a'
@@ -794,7 +813,10 @@ class TestComplexHandler(TestHandler):
         actual = yield self.handler.get(resource_id)
 
         self.handler.get_handler.assert_called_once_with(resource_id)
-        self.handler.write.assert_called_once_with(response)
+        if head_request:
+            self.assertEqual(0, self.handler.write.call_count)
+        else:
+            self.handler.write.assert_called_once_with(response)
         self.assertEqual(6, self.handler.add_header.call_count)
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
         self.handler.add_header.assert_any_call('X-Cantus-Total-Results', 2)
@@ -810,6 +832,12 @@ class TestComplexHandler(TestHandler):
             self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields)
         except AssertionError:
             self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields_rev)
+
+    def test_get_unit_1b(self):
+        '''
+        test_get_unit_1a() but with a HEAD request (self.head_request is True)
+        '''
+        self.test_get_unit_1a(head_request=True)
 
     @testing.gen_test
     def test_get_unit_2(self):
