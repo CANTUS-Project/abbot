@@ -995,3 +995,13 @@ class TestComplexHandler(TestHandler):
 
         self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._UNKNOWN_FIELD)
         self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_6(self):
+        "returns 502 when the call to get_handler() raises a SolrError"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock(side_effect=pysolrtornado.SolrError)
+
+        actual = yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(502, reason=main.SimpleHandler._SOLR_502_ERROR)

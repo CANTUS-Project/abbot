@@ -297,6 +297,9 @@ class SimpleHandler(web.RequestHandler):
     _UNKNOWN_FIELD = 'Unknown field name in X-Cantus-Sort'
     # X-Cantus-Sort wants to sort on a field that doesn't exist
 
+    _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
+    # when the Solr server has an error
+
     _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
     # deepcopied anyway, so we'll just do this!
@@ -528,8 +531,13 @@ class SimpleHandler(web.RequestHandler):
                 return
 
         # run the more specific GET request handler
-        response = yield self.get_handler(resource_id)
-        if response is None:
+        try:
+            response = yield self.get_handler(resource_id)
+            if response is None:
+                return
+        except pysolrtornado.SolrError:
+            # TODO: send back details from the SolrError, once we fully write self.send_error()
+            self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
             return
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
