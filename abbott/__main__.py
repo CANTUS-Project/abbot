@@ -81,14 +81,12 @@ FIELDS = {'id': 'id',
           'title': 'title',
           'rism': 'rism',
           'provenance': 'provenance_id',
-          'date': 'date',
           'century': 'century_id',
           'notation_style': 'notation_style_id',
           'editors': 'editors',
           'indexers': 'indexers',
           'summary': 'summary',
           'liturgical_occasion': 'liturgical_occasion',
-          'description': 'description',
           'indexing_notes': 'indexing_notes',
           'indexing_date': 'indexing_date',
           # indexer': '',
@@ -314,6 +312,8 @@ class SimpleHandler(web.RequestHandler):
         Just for the sake of being Pythonic, all the attributes are set to default values here.
         Where relevant, they're initialized with their actual starting values in :meth:`initialize`.
         '''
+        # TODO: there are a lot of instance attrs (incl. the Tornado ones) so maybe I should put
+        #       some of them into a dict?
         self.field_counts = defaultdict(lambda: 0)
         self.type_name = None
         self.type_name_plural = None
@@ -348,7 +348,7 @@ class SimpleHandler(web.RequestHandler):
             self.page = self.request.headers['X-Cantus-Page']
 
         if ('X-Cantus-Include-Resources' in self.request.headers and
-            'false' in self.request.headers['X-Cantus-Include-Resources'].lower()):
+            'false' in self.request.headers['X-Cantus-Include-Resources'].lower()):  # pylint: disable=bad-continuation
             self.include_resources = False
 
         if 'X-Cantus-Sort' in self.request.headers:
@@ -500,6 +500,7 @@ class SimpleHandler(web.RequestHandler):
         '''
 
         # first check the header-set values for sanity
+        # TODO: move these header-checks to a private method
         if self.per_page:  # X-Cantus-Per-Page
             try:
                 self.per_page = int(self.per_page)
@@ -549,6 +550,8 @@ class SimpleHandler(web.RequestHandler):
             # TODO: send back details from the SolrError, once we fully write self.send_error()
             self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
             return
+
+        # TODO: move these header preparations to a private method
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
         num_records = (len(response) - 1) if self.include_resources else len(response)
@@ -601,14 +604,14 @@ class SimpleHandler(web.RequestHandler):
         if not self.head_request:
             self.write(response)
 
-    def options(self, resource_id=None):
+    def options(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
         self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
 
     @gen.coroutine
-    def head(self, resource_id=None):
+    def head(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
         Response to HEAD requests. Uses :meth:`get` but without the response body.
         '''
@@ -898,15 +901,14 @@ class RootHandler(web.RequestHandler):
         self.add_header('X-Cantus-Include-Resources', 'true')
         self.write(self.prepare_get())
 
-    def options(self, resource_id=None):
+    def options(self):  # pylint: disable=arguments-differ
         '''
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
-        self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
+        self.add_header('Allow', RootHandler._ALLOWED_METHODS)
 
 
 # NOTE: these URLs require a terminating /
-# TODO: make them not
 HANDLERS = [
     web.url(r'/', RootHandler),
     web.URLSpec(r'/cantusids/(.*/)?', handler=ComplexHandler, name='browse_cantusids',
