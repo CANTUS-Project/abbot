@@ -307,6 +307,24 @@ class SimpleHandler(web.RequestHandler):
     _MAX_PER_PAGE = 100
     # the highest value allowed for X-Cantus-Per-Page; higher values will get a 507
 
+    def __init__(self, *args, **kwargs):
+        '''
+        Just for the sake of being Pythonic, all the attributes are set to default values here.
+        Where relevant, they're initialized with their actual starting values in :meth:`initialize`.
+        '''
+        self.field_counts = defaultdict(lambda: 0)
+        self.type_name = None
+        self.type_name_plural = None
+        self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
+        self.head_request = False  # whether the method being processed is HEAD
+        self.per_page = None
+        self.page = None
+        self.include_resources = True
+        self.sort = None
+        self.total_results = 0
+
+        super(SimpleHandler, self).__init__(*args, **kwargs)
+
     def initialize(self, type_name, additional_fields=None):  # pylint: disable=arguments-differ
         '''
         :param str type_name: The resource type handled by this instance of :class:`SimpleHandler`
@@ -314,11 +332,8 @@ class SimpleHandler(web.RequestHandler):
         :param additional_fields: Optional list of fields to append to ``self.returned_fields``.
         :type additional_fields: list of str
         '''
-        self.field_counts = defaultdict(lambda: 0)
         self.type_name = type_name
         self.type_name_plural = singular_resource_to_plural(type_name)
-        self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
-        self.head_request = False  # if the method being processed is HEAD
 
         if additional_fields:
             self.returned_fields.extend(additional_fields)
@@ -326,24 +341,16 @@ class SimpleHandler(web.RequestHandler):
         # set headers
         if 'X-Cantus-Per-Page' in self.request.headers:
             self.per_page = self.request.headers['X-Cantus-Per-Page']
-        else:
-            self.per_page = None
 
         if 'X-Cantus-Page' in self.request.headers:
             self.page = self.request.headers['X-Cantus-Page']
-        else:
-            self.page = None
 
         if ('X-Cantus-Include-Resources' in self.request.headers and
             'false' in self.request.headers['X-Cantus-Include-Resources'].lower()):
             self.include_resources = False
-        else:
-            self.include_resources = True
 
         if 'X-Cantus-Sort' in self.request.headers:
             self.sort = self.request.headers['X-Cantus-Sort']
-        else:
-            self.sort = None
 
 
     def set_default_headers(self):
