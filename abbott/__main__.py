@@ -228,15 +228,19 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
         to include for a single search). Default is Solr default (effectively 10).
     :param str sort: The "sort" field to use when calling Solr, like ``'incipit asc'`` or
         ``'cantus_id desc'``. Default is Solr default.
+    :returns: Results from the Solr server, in an object that acts like a list of dicts.
+    :rtype: :class:`pysolrtornado.Results`
+    :raises: :exc:`pysolrtornado.SolrError` when there's an error while connecting to Solr.
 
     **Example**
 
+    >>> from abbott import ask_solr_by_id
     >>> from tornado import gen
     >>> @gen.coroutine
     ... def func():
     ...     return (yield ask_solr_by_id('genre', '162'))
     ...
-    >>> yield func()
+    >>> func()
     <pysolrtornado results thing>
     '''
     extra_params = {}
