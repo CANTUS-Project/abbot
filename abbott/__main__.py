@@ -43,6 +43,62 @@ _DISALLOWED_CHARACTER_IN_SORT = '"{}" is not allowed in the "sort" parameter'
 _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
 _UNKNOWN_FIELD = 'Unknown field for Abbott: "{}"'
 
+# Used by prepare_formatted_sort(). Put here, they might be used by other methods to check whether
+# they have proper values for these things.
+ALLOWED_CHARS = ',;_'
+DIRECTIONS = ('asc', 'desc')
+# TODO: something tells me this list isn't very maintainable, and probably also isn't correct
+FIELDS = {'id': 'id',
+          'name': 'name',
+          'description': 'description',
+          'mass_or_office': 'mass_or_office',
+          'date': 'date',
+          'feast_code': 'feast_code',
+          # chant
+          'incipit': 'incipit',
+          'source': 'source_id',
+          'marginalia': 'marginalia',
+          'folio': 'folio',
+          'sequence': 'sequence',
+          'office': 'office_id',
+          'genre': 'genre_id',
+          'position': 'position',
+          'cantus_id': 'cantus_id',
+          'feast': 'feast_id',
+          'mode': 'mode',
+          'differentia': 'differentia',
+          'finalis': 'finalis',
+          'full_text': 'full_text',
+          'full_text_manuscript': 'full_text_manuscript',
+          'full_text_simssa': 'full_text_simssa',
+          'volpiano': 'volpiano',
+          'notes': 'notes',
+          'cao_concordances': 'cao_concordances',
+          'siglum': 'siglum',
+          'proofreader': 'proofreader',
+          'melody_id': 'melody_id',
+          # source
+          'title': 'title',
+          'rism': 'rism',
+          'provenance': 'provenance_id',
+          'date': 'date',
+          'century': 'century_id',
+          'notation_style': 'notation_style_id',
+          'editors': 'editors',
+          'indexers': 'indexers',
+          'summary': 'summary',
+          'liturgical_occasion': 'liturgical_occasion',
+          'description': 'description',
+          'indexing_notes': 'indexing_notes',
+          'indexing_date': 'indexing_date',
+          # indexer': '',
+          'display_name': 'display_name',
+          'given_name': 'given_name',
+          'family_name': 'family_name',
+          'institution': 'institution',
+          'city': 'city',
+          'country': 'country'}
+
 
 def singular_resource_to_plural(singular):
     '''
@@ -100,60 +156,6 @@ def prepare_formatted_sort(sort):
     :raises: :exc:`ValueError` when a disallowed character is found in ``sort``.
     :raises: :exc:`ValueError` when a direction is not specified for a field.
     '''
-    ALLOWED_CHARS = ',;_'
-    DIRECTIONS = ('asc', 'desc')
-    # TODO: something tells me this list isn't very maintainable, and probably also isn't correct
-    FIELDS = {'id': 'id',
-              'name': 'name',
-              'description': 'description',
-              'mass_or_office': 'mass_or_office',
-              'date': 'date',
-              'feast_code': 'feast_code',
-              # chant
-              'incipit': 'incipit',
-              'source': 'source_id',
-              'marginalia': 'marginalia',
-              'folio': 'folio',
-              'sequence': 'sequence',
-              'office': 'office_id',
-              'genre': 'genre_id',
-              'position': 'position',
-              'cantus_id': 'cantus_id',
-              'feast': 'feast_id',
-              'mode': 'mode',
-              'differentia': 'differentia',
-              'finalis': 'finalis',
-              'full_text': 'full_text',
-              'full_text_manuscript': 'full_text_manuscript',
-              'full_text_simssa': 'full_text_simssa',
-              'volpiano': 'volpiano',
-              'notes': 'notes',
-              'cao_concordances': 'cao_concordances',
-              'siglum': 'siglum',
-              'proofreader': 'proofreader',
-              'melody_id': 'melody_id',
-              # source
-              'title': 'title',
-              'rism': 'rism',
-              'provenance': 'provenance_id',
-              'date': 'date',
-              'century': 'century_id',
-              'notation_style': 'notation_style_id',
-              'editors': 'editors',
-              'indexers': 'indexers',
-              'summary': 'summary',
-              'liturgical_occasion': 'liturgical_occasion',
-              'description': 'description',
-              'indexing_notes': 'indexing_notes',
-              'indexing_date': 'indexing_date',
-              # indexer': '',
-              'display_name': 'display_name',
-              'given_name': 'given_name',
-              'family_name': 'family_name',
-              'institution': 'institution',
-              'city': 'city',
-              'country': 'country'}
-
     sort = sort.strip()
     sort = sort.replace(' ', '')
 
@@ -447,14 +449,15 @@ class SimpleHandler(web.RequestHandler):
             else:
                 start = self.page * 10
 
-        resp = yield ask_solr_by_id(self.type_name, resource_id, start=start, rows=self.per_page, sort=self.sort)
+        resp = yield ask_solr_by_id(self.type_name, resource_id, start=start,
+                                    rows=self.per_page, sort=self.sort)
 
         if 0 == len(resp):
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
                 self.send_error(400, reason=SimpleHandler._TOO_LARGE_PAGE)
             else:
-                self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))
+                self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
             return
         else:
             post = []
