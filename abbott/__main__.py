@@ -266,6 +266,9 @@ class SimpleHandler(web.RequestHandler):
     fields. You may specify additional fields to the :meth:`initialize` method.
     '''
 
+    _ALLOWED_METHODS = 'GET, HEAD, OPTIONS'
+    # value of the "Allow" header in response to an OPTIONS request
+
     _INVALID_PER_PAGE = 'Invalid "X-Cantus-Per-Page" header'
     # when the X-Cantus-Per-Page value doesn't work in a call to int()
 
@@ -286,9 +289,6 @@ class SimpleHandler(web.RequestHandler):
 
     _ID_NOT_FOUND = 'No {} has id "{}"'
     # when the "id" is...
-
-    _ALLOWED_METHODS = 'GET, OPTIONS'
-    # value of the "Allow" header in response to an OPTIONS request
 
     _DISALLOWED_CHARACTER_IN_SORT = 'Found a disallowed character in the X-Cantus-Sort header'
     # X-Cantus-Sort contains an invalid character
