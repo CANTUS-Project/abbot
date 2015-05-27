@@ -37,7 +37,7 @@ from abbott import util
 
 # TODO: should these constants actually be held here? (Spoiler alert: no).
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.0.6-devel'
+ABBOTT_VERSION = '0.1.0'
 CANTUS_API_VERSION = '0.1.4'
 
 
