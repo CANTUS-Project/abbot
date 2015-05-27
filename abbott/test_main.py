@@ -29,8 +29,10 @@ Tests for ``__main__.py`` of the Abbott server.
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
 #       asynchronous TestCase classes.
 
+# pylint: disable=protected-access
+# That's an important part of testing! For me, at least.
+
 import copy
-import unittest
 from unittest import mock
 from tornado import concurrent, escape, httpclient, testing, web
 import pysolrtornado
@@ -69,8 +71,10 @@ class TestHandler(testing.AsyncHTTPTestCase):
         :param on_this: The :class:`Response` object to verify.
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
         '''
-        self.assertEqual('Abbott/{}'.format(main.ABBOTT_VERSION), on_this.headers['Server'])
-        self.assertEqual('Cantus/{}'.format(main.CANTUS_API_VERSION), on_this.headers['X-Cantus-Version'])
+        expected_server = 'Abbott/{}'.format(main.ABBOTT_VERSION)
+        expected_cantus_version = 'Cantus/{}'.format(main.CANTUS_API_VERSION)
+        self.assertEqual(expected_server, on_this.headers['Server'])
+        self.assertEqual(expected_cantus_version, on_this.headers['X-Cantus-Version'])
 
 
 class TestAbbott(TestHandler):
@@ -291,9 +295,11 @@ class TestSimpleHandler(TestHandler):
 
     def test_initialize_2(self):
         "initialize() works with extra fields"
-        request = httpclient.HTTPRequest(url='/zool/', method='GET', headers={'X-Cantus-Include-Resources': 'TRue'})
+        request = httpclient.HTTPRequest(url='/zool/', method='GET',
+                                         headers={'X-Cantus-Include-Resources': 'TRue'})
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = main.SimpleHandler(self.get_app(), request, type_name='genre', additional_fields=['mass_or_office'])
+        actual = main.SimpleHandler(self.get_app(), request, type_name='genre',
+                                    additional_fields=['mass_or_office'])
         self.assertEqual('genre', actual.type_name)
         self.assertEqual('genres', actual.type_name_plural)
         self.assertEqual(5, len(actual.returned_fields))
@@ -315,7 +321,7 @@ class TestSimpleHandler(TestHandler):
     def test_format_record_1(self):
         "basic test"
         input_record = {key: str(i) for i, key in enumerate(self.handler.returned_fields)}
-        input_record['false advertising'] = 'not allowed'  # this key obviously should never appear "for real"
+        input_record['false advertising'] = 'not allowed'  # this key should never appear "for real"
         expected = {key: str(i) for i, key in enumerate(self.handler.returned_fields)}
 
         actual = self.handler.format_record(input_record)
@@ -363,7 +369,8 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
+                                              rows=None, sort=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -376,12 +383,14 @@ class TestSimpleHandler(TestHandler):
         mock_solr_response = make_results([])
         mock_ask_solr.return_value = make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
+        expected_reason = main.SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1])
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=None, rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=None,
+                                              rows=None, sort=None)
         self.assertIsNone(actual)
-        self.handler.send_error.assert_called_once_with(404, reason=main.SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1]))
+        self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
     @testing.gen_test
@@ -393,14 +402,16 @@ class TestSimpleHandler(TestHandler):
         '''
         resource_id = '888'  # such good luck
         mock_solr_response = make_results([{'id': '888'}])
-        expected = {'888': {'id': '888', 'type': 'century'}, 'resources': {'888': {'self': '/centuries/888/'}}}
+        expected = {'888': {'id': '888', 'type': 'century'},
+                    'resources': {'888': {'self': '/centuries/888/'}}}
         mock_ask_solr.return_value = make_future(mock_solr_response)
         self.handler.page = 4
         self.handler.sort = 'incipit asc'
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', start=40, rows=None, sort='incipit asc')
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', start=40,
+                                              rows=None, sort='incipit asc')
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -423,7 +434,8 @@ class TestSimpleHandler(TestHandler):
 
         # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
         # "start" of 0, so "page" 2 should have a "start" equal to "per_page" (12 in this test)
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36, rows=12, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36,
+                                              rows=12, sort=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.__main__.ask_solr_by_id')
@@ -440,7 +452,8 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=60000, rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=60000,
+                                              rows=None, sort=None)
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._TOO_LARGE_PAGE)
 
@@ -458,7 +471,8 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
+                                              rows=None, sort=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -493,7 +507,8 @@ class TestSimpleHandler(TestHandler):
                                               raise_error=False,
                                               headers={'X-Cantus-Page': '10'})
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100, rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100,
+                                              rows=None, sort=None)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(main.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
@@ -515,7 +530,8 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='HEAD')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None, rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
+                                              rows=None, sort=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -621,7 +637,8 @@ class TestComplexHandler(TestHandler):
                      'proofreaders': ['/indexers/124104/'], 'source_status': '/statii/4212/',
                      'century': '/centuries/3841/'})
 
-        def fake_solr(q_type, q_id):
+        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
             records = {'3624': [{'id': '3624', 'name': 'Klosterneuburg'}],
                        '4063': [{'id': '4063', 'name': 'CANTUS Database'}],
                        '124104': [{'id': '124104', 'display_name': 'Debra Lacoste'}],
@@ -651,7 +668,8 @@ class TestComplexHandler(TestHandler):
         expected = {'feast_desc': 'boiled goose and collard greens', 'source_status_desc': 'Ready'}
         self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
 
-        def fake_solr(q_type, q_id):
+        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
             records = {'123': [{'id': '123', 'description': 'boiled goose and collard greens'}],
                        '456': [{'id': '456', 'description': 'Ready'}],
                       }
@@ -674,7 +692,8 @@ class TestComplexHandler(TestHandler):
         expected = {}
         self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
 
-        def fake_solr(q_type, q_id):
+        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
             return make_future({})
         mock_ask_solr.side_effect = fake_solr
 
@@ -694,7 +713,8 @@ class TestComplexHandler(TestHandler):
         expected = {}
         self.handler.returned_fields = ['id']  # remove everything, so we get nothing back
 
-        def fake_solr(q_type, q_id):
+        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
             return make_future({})
         mock_ask_solr.side_effect = fake_solr
 
@@ -716,7 +736,8 @@ class TestComplexHandler(TestHandler):
                     'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
                                              'feast': '/feasts/2378/'}}}
 
-        def fake_solr(q_type, q_id, **kwargs):
+        def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
             records = {'357679': [record],
                        '161': [{'name': 'V', 'description': 'Responsory Verse'}],
                        '600482a': [],  # empty until we decide on fill_from_cantusid()
@@ -739,10 +760,10 @@ class TestComplexHandler(TestHandler):
     @testing.gen_test
     def test_get_integration_2(self, mock_ask_solr):
         "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
-        recordA = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                   'mode': '2S'}
-        recordB = {'id': '111222', 'genre_id': '161', 'feast_id': '2378', 'mode': '2S',
-                   'sequence': 4}
+        record_a = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
+                    'mode': '2S'}
+        record_b = {'id': '111222', 'genre_id': '161', 'feast_id': '2378', 'mode': '2S',
+                    'sequence': 4}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
                                'cantus_id': '600482a', 'feast': 'Jacobi',
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
@@ -750,8 +771,9 @@ class TestComplexHandler(TestHandler):
                                'sequence': 4, 'feast': 'Jacobi',
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'}}
 
-        def fake_solr(q_type, q_id, **kwargs):
-            records = {'*': [recordA, recordB],
+        def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
+            records = {'*': [record_a, record_b],
                        '161': [{'name': 'V', 'description': 'Responsory Verse'}],
                        '600482a': [],  # empty until we decide on fill_from_cantusid()
                        '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
@@ -810,7 +832,7 @@ class TestComplexHandler(TestHandler):
         exp_extra_fields_rev = 'genre,b'
         resource_id = '1234'
 
-        actual = yield self.handler.get(resource_id)
+        yield self.handler.get(resource_id)
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         if head_request:
@@ -870,7 +892,7 @@ class TestComplexHandler(TestHandler):
         exp_extra_fields_rev = 'genre,b'
         resource_id = '1234'
 
-        actual = yield self.handler.get(resource_id)
+        yield self.handler.get(resource_id)
 
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
@@ -898,7 +920,7 @@ class TestComplexHandler(TestHandler):
         self.handler.per_page = 'will not work'
         self.handler.get_handler = mock.Mock()
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._INVALID_PER_PAGE)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -910,7 +932,7 @@ class TestComplexHandler(TestHandler):
         self.handler.per_page = '-10'
         self.handler.get_handler = mock.Mock()
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._TOO_SMALL_PER_PAGE)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -923,7 +945,7 @@ class TestComplexHandler(TestHandler):
         self.handler.get_handler = mock.Mock()
         self.handler.add_header = mock.Mock()
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_once_with(507,
                                                         reason=main.SimpleHandler._TOO_BIG_PER_PAGE,
@@ -937,7 +959,7 @@ class TestComplexHandler(TestHandler):
         self.handler.page = 'will not work'
         self.handler.get_handler = mock.Mock()
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._INVALID_PAGE)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -949,13 +971,13 @@ class TestComplexHandler(TestHandler):
         self.handler.get_handler = mock.Mock()
 
         self.handler.page = '-10'
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_once_with(400, reason=main.SimpleHandler._TOO_SMALL_PAGE)
         self.assertEqual(0, self.handler.get_handler.call_count)
         #-------------------------------------------------------------------------------------------
         self.handler.page = '0'
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._TOO_SMALL_PAGE)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -967,7 +989,7 @@ class TestComplexHandler(TestHandler):
         self.handler.get_handler = mock.Mock()
         self.handler.sort = 'inc!pit, asc'
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -979,7 +1001,7 @@ class TestComplexHandler(TestHandler):
         self.handler.get_handler = mock.Mock()
         self.handler.sort = 'incipit'
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._MISSING_DIRECTION_SPEC)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -991,7 +1013,7 @@ class TestComplexHandler(TestHandler):
         self.handler.get_handler = mock.Mock()
         self.handler.sort = 'inchippit,desc'
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_with(400, reason=main.SimpleHandler._UNKNOWN_FIELD)
         self.assertEqual(0, self.handler.get_handler.call_count)
@@ -1002,6 +1024,6 @@ class TestComplexHandler(TestHandler):
         self.handler.send_error = mock.Mock()
         self.handler.get_handler = mock.Mock(side_effect=pysolrtornado.SolrError)
 
-        actual = yield self.handler.get()
+        yield self.handler.get()
 
         self.handler.send_error.assert_called_with(502, reason=main.SimpleHandler._SOLR_502_ERROR)
