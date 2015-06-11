@@ -52,7 +52,7 @@ HANDLERS = [
                 kwargs={'type_name': 'feast', 'additional_fields': ['date', 'feast_code']}),
     web.URLSpec(r'/genres/(.*/)?', handler=handlers.SimpleHandler, name='browse_genres',
                 kwargs={'type_name': 'genre', 'additional_fields': ['mass_or_office']}),
-    web.URLSpec(r'/indexers/(.*/)?', handler=handlers.ComplexHandler, name='browse_indexers',
+    web.URLSpec(r'/indexers/(.*/)?', handler=handlers.SimpleHandler, name='browse_indexers',
                 kwargs={'type_name': 'indexer',
                         'additional_fields': ['display_name', 'given_name', 'family_name',
                                               'institution', 'city', 'country']}),
