@@ -37,8 +37,8 @@ from abbott import util
 
 # TODO: should these constants actually be held here? (Spoiler alert: no).
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.1.0'
-CANTUS_API_VERSION = '0.1.4'
+ABBOTT_VERSION = '0.1.1'
+CANTUS_API_VERSION = '0.1.4-ext'
 
 
 class SimpleHandler(web.RequestHandler):
@@ -392,11 +392,18 @@ class SimpleHandler(web.RequestHandler):
         if not self.head_request:
             self.write(response)
 
+    @gen.coroutine
     def options(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
         self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
+        if resource_id:
+            if resource_id.endswith('/') and len(resource_id) > 1:
+                resource_id = resource_id[:-1]
+            resp = yield util.ask_solr_by_id(self.type_name, resource_id)
+            if 0 == len(resp):
+                self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
 
     @gen.coroutine
     def head(self, resource_id=None):  # pylint: disable=arguments-differ

@@ -524,6 +524,30 @@ class TestSimpleHandler(TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
+    def test_options_integration_2a(self, mock_ask_solr):
+        "OPTIONS request for non-existent resource gives 404"
+        mock_solr_response = make_results([])
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre/'),
+                                              method='OPTIONS',
+                                              raise_error=False)
+        self.check_standard_header(actual)
+        self.assertEqual(404, actual.code)
+        mock_ask_solr.assert_called_once_with('genre', 'nogenre')
+
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_options_integration_2b(self, mock_ask_solr):
+        "OPTIONS request for existing resource returns properly"
+        mock_solr_response = make_results(['Versicle'])
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+        actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
+        self.check_standard_header(actual)
+        self.assertEqual(0, len(actual.body))
+        mock_ask_solr.assert_called_once_with('genre', '162')
+
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
     def test_head_integration_1a(self, mock_ask_solr):
         "test_get_integration_1() but with the HEAD method"
         mock_solr_response = make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
