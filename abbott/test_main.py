@@ -522,8 +522,8 @@ class TestSimpleHandler(TestHandler):
     @testing.gen_test
     def test_options_integration_1a(self):
         "ensure the OPTIONS method works as expected ('browse' URL)"
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
-                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
+                            'X-Cantus-Page', 'X-Cantus-Sort']
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual(handlers.SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
@@ -548,7 +548,7 @@ class TestSimpleHandler(TestHandler):
     @testing.gen_test
     def test_options_integration_2b(self, mock_ask_solr):
         "OPTIONS request for existing resource returns properly ('view' URL)"
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
         mock_solr_response = make_results(['Versicle'])
         mock_ask_solr.return_value = make_future(mock_solr_response)
         actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
@@ -698,6 +698,23 @@ class TestComplexHandler(TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
+    def test_look_up_xrefs_unit_6(self, mock_ask_solr):
+        "when self.no_xref is True"
+        record = {'id': '123656', 'provenance_id': '3624'}
+        mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
+        expected = ({'id': '123656', 'provenance_id': '3624'},
+                    {'provenance': '/provenances/3624/'})
+        mock_ask_solr.return_value = make_future(mock_solr_response)
+        self.handler.no_xref = True
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        self.assertEqual(0, mock_ask_solr.call_count)
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
     def test_make_extra_fields_unit_1(self, mock_ask_solr):
         "with both a feast_id and source_status_id to look up"
         record = {}
@@ -754,6 +771,22 @@ class TestComplexHandler(TestHandler):
             "mock version of ask_solr_by_id()"
             return make_future({})
         mock_ask_solr.side_effect = fake_solr
+
+        actual = yield self.handler.make_extra_fields(record, orig_record)
+
+        self.assertEqual(0, mock_ask_solr.call_count)
+        # etc.
+        self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_make_extra_fields_unit_4(self, mock_ask_solr):
+        "when self.no_xref is True"
+        record = {}
+        orig_record = {'feast_id': '123', 'source_status_id': '456'}
+        expected = {}
+        self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
+        self.handler.no_xref = True
 
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
@@ -831,13 +864,46 @@ class TestComplexHandler(TestHandler):
         self.assertEqual('false', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual(expected, escape.json_decode(actual.body))
 
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_3(self, mock_ask_solr):
+        "test_get_integration_1 but with X-Cantus-No-Xref; include 'resources'"
+        record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
+                  'mode': '2S'}
+        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre_id': '161',
+                               'cantus_id': '600482a', 'feast_id': '2378', 'mode': '2S'},
+                    'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
+                                             'feast': '/feasts/2378/'}}}
+
+        def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
+            "mock version of ask_solr_by_id()"
+            records = {'357679': [record]}
+            return make_future(make_results(records[q_id]))
+        mock_ask_solr.side_effect = fake_solr
+
+        actual = yield self.http_client.fetch(self.get_url('/chants/357679/'),
+                                              method='GET',
+                                              headers={'X-Cantus-No-Xref': 'TRUE'})
+
+        self.check_standard_header(actual)
+        mock_ask_solr.assert_called_once_with('chant', '357679')
+        # right now, the "cantusid" won't be looked up unless "feast_id" is missing
+        self.assertEqual(expected, escape.json_decode(actual.body))
+        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
+        self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())
+
     @testing.gen_test
     def test_options_integration_1(self):
-        "ensure the OPTIONS method works as expected"
+        "ensure the OPTIONS method works as expected ('browse' URL)"
+        # adds X-Cantus-No-Xref over the SimpleHandler tests
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
+                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
         actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual(handlers.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
+        for each_header in expected_headers:
+            self.assertEqual('allow', actual.headers[each_header].lower())
 
     @testing.gen_test
     def test_get_unit_1a(self, head_request=False):
@@ -851,6 +917,7 @@ class TestComplexHandler(TestHandler):
         - X-Cantus-Per-Page returned (default value given)
         - X-Cantus-Page not given in request
         - X-Cantus-Sort not given in request
+        - X-Cantus-No-Xref given in request
         '''
         response = {'1': {'a': 'A', 'b': 'B', 'feast': 'C', 'genre': 'D'},
                     '2': {'a': 'A', 'feast': 'C'},
@@ -860,6 +927,7 @@ class TestComplexHandler(TestHandler):
         self.handler.add_header = mock.Mock()
         self.handler.field_counts = {'a': 2, 'b': 1, 'feast_id': 2, 'genre_id': 1}
         self.handler.total_results = 2
+        self.handler.no_xref = '   tRUe  '
         if head_request:
             self.handler.head_request = True
         exp_include_resources = 'true'
@@ -871,13 +939,15 @@ class TestComplexHandler(TestHandler):
 
         yield self.handler.get(resource_id)
 
+        self.assertEqual(True, self.handler.no_xref)
         self.handler.get_handler.assert_called_once_with(resource_id)
         if head_request:
             self.assertEqual(0, self.handler.write.call_count)
         else:
             self.handler.write.assert_called_once_with(response)
-        self.assertEqual(3, self.handler.add_header.call_count)
+        self.assertEqual(4, self.handler.add_header.call_count)
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
+        self.handler.add_header.assert_any_call('X-Cantus-No-Xref', 'true')
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now
         try:
@@ -903,6 +973,7 @@ class TestComplexHandler(TestHandler):
         - X-Cantus-Include-Resources is "false"
         - X-Cantus-Page is given in request
         - X-Cantus-Sort is given in request
+        - X-Cantus-No-Xref not given in request
         - no resource ID specified (meaning this is a "browse" URL)
 
         (Yes, most of the checks are still necessary, because self.include_resources may affect
@@ -929,6 +1000,7 @@ class TestComplexHandler(TestHandler):
 
         yield self.handler.get(resource_id)
 
+        self.assertEqual(self.handler.no_xref, False)
         self.handler.get_handler.assert_called_once_with(resource_id)
         self.handler.write.assert_called_once_with(response)
         self.assertEqual(exp_sort, self.handler.sort)
@@ -1084,3 +1156,15 @@ class TestComplexHandler(TestHandler):
         yield self.handler.get()
 
         self.handler.send_error.assert_called_with(502, reason=handlers.SimpleHandler._SOLR_502_ERROR)
+
+    @testing.gen_test
+    def test_get_unit_7a(self):
+        "returns 400 when X-Cantus-No-Xref has an invalid value"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock()
+        self.handler.no_xref = 'no'
+
+        yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
+        self.assertEqual(0, self.handler.get_handler.call_count)

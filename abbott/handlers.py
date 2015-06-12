@@ -85,6 +85,9 @@ class SimpleHandler(web.RequestHandler):
     _UNKNOWN_FIELD = 'Unknown field name in X-Cantus-Sort'
     # X-Cantus-Sort wants to sort on a field that doesn't exist
 
+    _INVALID_NO_XREF = 'X-Cantus-No-Xref must be either "true" or "false"'
+    # X-Cantus-No-Xref doesn't contain any sort of 'true' or 'false'
+
     _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
     # when the Solr server has an error
 
@@ -95,8 +98,8 @@ class SimpleHandler(web.RequestHandler):
     _MAX_PER_PAGE = 100
     # the highest value allowed for X-Cantus-Per-Page; higher values will get a 507
 
-    _HEADERS_FOR_BROWSE = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
-                           'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
+    _HEADERS_FOR_BROWSE = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
+                           'X-Cantus-Page', 'X-Cantus-Sort']
     # the Cantus extension headers that can sensibly be used with a "browse" URL
 
     _HEADERS_FOR_VIEW = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
@@ -119,6 +122,7 @@ class SimpleHandler(web.RequestHandler):
         self.include_resources = True
         self.sort = None
         self.total_results = 0
+        self.no_xref = False  # meaning we should process cross-references by default
 
         super(SimpleHandler, self).__init__(*args, **kwargs)
 
@@ -149,6 +153,8 @@ class SimpleHandler(web.RequestHandler):
         if 'X-Cantus-Sort' in self.request.headers:
             self.sort = self.request.headers['X-Cantus-Sort']
 
+        if 'X-Cantus-No-Xref' in self.request.headers:
+            self.no_xref = self.request.headers['X-Cantus-No-Xref']
 
     def set_default_headers(self):
         '''
@@ -344,6 +350,18 @@ class SimpleHandler(web.RequestHandler):
                     self.send_error(400, reason=SimpleHandler._UNKNOWN_FIELD)
                     return
 
+        if isinstance(self, ComplexHandler) and not isinstance(self.no_xref, bool):
+            # X-Cantus-No-Xref
+            # NB: only worry about this if we're a ComplexHandler; it doesn't apply to the others
+            no_xref = str(self.no_xref).lower().strip()
+            if 'true' == no_xref:
+                self.no_xref = True
+            elif 'false' == no_xref:
+                self.no_xref = False
+            else:
+                self.send_error(400, reason=SimpleHandler._INVALID_NO_XREF)
+                return
+
         # run the more specific GET request handler
         try:
             response = yield self.get_handler(resource_id)
@@ -385,6 +403,10 @@ class SimpleHandler(web.RequestHandler):
         else:
             self.add_header('X-Cantus-Include-Resources', 'false')
 
+        # figure out the X-Cantus-No-Xref header
+        if self.no_xref:
+            self.add_header('X-Cantus-No-Xref', 'true')
+
         if not resource_id:
             # figure out X-Cantus-Total-Results
             self.add_header('X-Cantus-Total-Results', self.total_results)
@@ -414,6 +436,7 @@ class SimpleHandler(web.RequestHandler):
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
         self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
+
         if resource_id:
             # "view" URL
             if resource_id.endswith('/') and len(resource_id) > 1:
@@ -421,6 +444,7 @@ class SimpleHandler(web.RequestHandler):
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
             if 0 == len(resp):
                 self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
+
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_VIEW:
                 self.add_header(each_header, 'allow')
@@ -429,6 +453,9 @@ class SimpleHandler(web.RequestHandler):
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_BROWSE:
                 self.add_header(each_header, 'allow')
+
+        if isinstance(self, ComplexHandler):
+            self.add_header('X-Cantus-No-Xref', 'allow')
 
     @gen.coroutine
     def head(self, resource_id=None):  # pylint: disable=arguments-differ
@@ -528,6 +555,7 @@ class ComplexHandler(SimpleHandler):
         >>> result[1]
         {'genre': '/genres/162/'}
         '''
+
         LOOKUP = ComplexHandler.LOOKUP  # pylint: disable=invalid-name
 
         post = {}
@@ -537,25 +565,30 @@ class ComplexHandler(SimpleHandler):
             if field in LOOKUP:
                 replace_to = LOOKUP[field].replace_to  # for readability
 
-                if isinstance(record[field], (list, tuple)):
-                    post[replace_to] = []
+                if not self.no_xref:
+                    # X-Cantus-No-Xref: false (usual case)
+                    if isinstance(record[field], (list, tuple)):
+                        post[replace_to] = []
 
-                    for value in record[field]:
-                        resp = yield util.ask_solr_by_id(LOOKUP[field].type, value)
-                        if len(resp) > 0 and LOOKUP[field].replace_with in resp[0]:
-                            post[replace_to].append(resp[0][LOOKUP[field].replace_with])
+                        for value in record[field]:
+                            resp = yield util.ask_solr_by_id(LOOKUP[field].type, value)
+                            if len(resp) > 0 and LOOKUP[field].replace_with in resp[0]:
+                                post[replace_to].append(resp[0][LOOKUP[field].replace_with])
 
-                    # if nothing the list was found, remove the empty list
-                    if 0 == len(post[replace_to]):
-                        del post[replace_to]
-                        continue  # avoid writing the "resources" block for a missing xref resource
+                        # if nothing the list was found, remove the empty list
+                        if 0 == len(post[replace_to]):
+                            del post[replace_to]
+                            continue  # avoid writing the "resources" block for a missing xref resource
 
-                else:
-                    resp = yield util.ask_solr_by_id(LOOKUP[field].type, record[field])
-                    if len(resp) > 0:
-                        post[replace_to] = resp[0][LOOKUP[field].replace_with]
                     else:
-                        continue  # avoid writing the "resources" block for a missing xref resource
+                        resp = yield util.ask_solr_by_id(LOOKUP[field].type, record[field])
+                        if len(resp) > 0:
+                            post[replace_to] = resp[0][LOOKUP[field].replace_with]
+                        else:
+                            continue  # avoid writing the "resources" block for a missing xref resource
+                else:
+                    # X-Cantus-No-Xref: true
+                    post[field] = record[field]
 
                 # fill in "reources" URLs
                 if self.include_resources:
@@ -587,6 +620,9 @@ class ComplexHandler(SimpleHandler):
         :returns: The record amended with additional fields as possible.
         :rtype: dict
         '''
+        if self.no_xref:
+            return record
+
         # TODO: decide if genre is truly the only thing we can fill
         # TODO: test this method
         #if 'full_text' in self.returned_fields and 'full_text' not in record:
@@ -615,6 +651,9 @@ class ComplexHandler(SimpleHandler):
         :returns: The ``record`` argument with additional fields as possible.
         :rtype: dict
         '''
+        if self.no_xref:
+            return record
+
         # (for Chant) fill in fest_desc if we have a feast_id
         if 'feast_id' in self.returned_fields and 'feast_id' in orig_record:
             resp = yield util.ask_solr_by_id('feast', orig_record['feast_id'])
