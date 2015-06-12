@@ -37,7 +37,7 @@ from abbott import util
 
 # TODO: should these constants actually be held here? (Spoiler alert: no).
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.1.1'
+ABBOTT_VERSION = '0.1.2'
 CANTUS_API_VERSION = '0.1.4-ext'
 
 
@@ -294,45 +294,48 @@ class SimpleHandler(web.RequestHandler):
 
         # first check the header-set values for sanity
         # TODO: move these header-checks to a private method
-        if self.per_page:  # X-Cantus-Per-Page
-            try:
-                self.per_page = int(self.per_page)
-            except ValueError:
-                self.send_error(400, reason=SimpleHandler._INVALID_PER_PAGE)
-                return
-            if self.per_page < 0:
-                self.send_error(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
-                return
-            elif self.per_page > SimpleHandler._MAX_PER_PAGE:
-                self.send_error(507,
-                                reason=SimpleHandler._TOO_BIG_PER_PAGE,
-                                per_page=SimpleHandler._MAX_PER_PAGE)
-                return
-            elif 0 == self.per_page:
-                self.per_page = SimpleHandler._MAX_PER_PAGE
+        if not resource_id:
+            # NB: if there is a resource_id it means we're processing a "view" URL and these headers
+            #     are irrelevant. The API specifies they should be ignored in this case.
+            if self.per_page:  # X-Cantus-Per-Page
+                try:
+                    self.per_page = int(self.per_page)
+                except ValueError:
+                    self.send_error(400, reason=SimpleHandler._INVALID_PER_PAGE)
+                    return
+                if self.per_page < 0:
+                    self.send_error(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
+                    return
+                elif self.per_page > SimpleHandler._MAX_PER_PAGE:
+                    self.send_error(507,
+                                    reason=SimpleHandler._TOO_BIG_PER_PAGE,
+                                    per_page=SimpleHandler._MAX_PER_PAGE)
+                    return
+                elif 0 == self.per_page:
+                    self.per_page = SimpleHandler._MAX_PER_PAGE
 
-        if self.page:  # X-Cantus-Page
-            try:
-                self.page = int(self.page)
-            except ValueError:
-                self.send_error(400, reason=SimpleHandler._INVALID_PAGE)
-                return
-            if self.page < 1:
-                self.send_error(400, reason=SimpleHandler._TOO_SMALL_PAGE)
-                return
+            if self.page:  # X-Cantus-Page
+                try:
+                    self.page = int(self.page)
+                except ValueError:
+                    self.send_error(400, reason=SimpleHandler._INVALID_PAGE)
+                    return
+                if self.page < 1:
+                    self.send_error(400, reason=SimpleHandler._TOO_SMALL_PAGE)
+                    return
 
-        if self.sort:  # X-Cantus-Sort
-            try:
-                self.sort = util.prepare_formatted_sort(self.sort)
-            except ValueError as val_e:
-                if val_e.args[0] == util._MISSING_DIRECTION_SPEC:
-                    self.send_error(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
-                else:
-                    self.send_error(400, reason=SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
-                return
-            except KeyError:
-                self.send_error(400, reason=SimpleHandler._UNKNOWN_FIELD)
-                return
+            if self.sort:  # X-Cantus-Sort
+                try:
+                    self.sort = util.prepare_formatted_sort(self.sort)
+                except ValueError as val_e:
+                    if val_e.args[0] == util._MISSING_DIRECTION_SPEC:
+                        self.send_error(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
+                    else:
+                        self.send_error(400, reason=SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+                    return
+                except KeyError:
+                    self.send_error(400, reason=SimpleHandler._UNKNOWN_FIELD)
+                    return
 
         # run the more specific GET request handler
         try:
@@ -375,24 +378,25 @@ class SimpleHandler(web.RequestHandler):
         else:
             self.add_header('X-Cantus-Include-Resources', 'false')
 
-        # figure out X-Cantus-Total-Results
-        self.add_header('X-Cantus-Total-Results', self.total_results)
+        if not resource_id:
+            # figure out X-Cantus-Total-Results
+            self.add_header('X-Cantus-Total-Results', self.total_results)
 
-        # figure out X-Cantus-Per-Page
-        if self.per_page:
-            self.add_header('X-Cantus-Per-Page', self.per_page)
-        else:
-            self.add_header('X-Cantus-Per-Page', 10)
+            # figure out X-Cantus-Per-Page
+            if self.per_page:
+                self.add_header('X-Cantus-Per-Page', self.per_page)
+            else:
+                self.add_header('X-Cantus-Per-Page', 10)
 
-        # figure out X-Cantus-Page
-        if self.page:
-            self.add_header('X-Cantus-Page', self.page)
-        else:
-            self.add_header('X-Cantus-Page', 1)
+            # figure out X-Cantus-Page
+            if self.page:
+                self.add_header('X-Cantus-Page', self.page)
+            else:
+                self.add_header('X-Cantus-Page', 1)
 
-        # figure out X-Cantus-Sort
-        if self.sort:
-            self.add_header('X-Cantus-Sort', util.postpare_formatted_sort(self.sort))
+            # figure out X-Cantus-Sort
+            if self.sort:
+                self.add_header('X-Cantus-Sort', util.postpare_formatted_sort(self.sort))
 
         if not self.head_request:
             self.write(response)

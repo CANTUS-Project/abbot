@@ -869,11 +869,8 @@ class TestComplexHandler(TestHandler):
             self.assertEqual(0, self.handler.write.call_count)
         else:
             self.handler.write.assert_called_once_with(response)
-        self.assertEqual(6, self.handler.add_header.call_count)
+        self.assertEqual(3, self.handler.add_header.call_count)
         self.handler.add_header.assert_any_call('X-Cantus-Include-Resources', exp_include_resources)
-        self.handler.add_header.assert_any_call('X-Cantus-Total-Results', 2)
-        self.handler.add_header.assert_any_call('X-Cantus-Per-Page', 10)
-        self.handler.add_header.assert_any_call('X-Cantus-Page', 1)
         # for these next two checks, there are two acceptable orderings for the values; I'm sure
         # there's a better way to do this, but it works for now
         try:
@@ -899,6 +896,7 @@ class TestComplexHandler(TestHandler):
         - X-Cantus-Include-Resources is "false"
         - X-Cantus-Page is given in request
         - X-Cantus-Sort is given in request
+        - no resource ID specified (meaning this is a "browse" URL)
 
         (Yes, most of the checks are still necessary, because self.include_resources may affect
          other things if it's messed up a bit).
@@ -920,7 +918,7 @@ class TestComplexHandler(TestHandler):
         exp_fields_rev = 'type,feast,a'
         exp_extra_fields = 'b,genre'
         exp_extra_fields_rev = 'genre,b'
-        resource_id = '1234'
+        resource_id = ''
 
         yield self.handler.get(resource_id)
 
@@ -1013,6 +1011,17 @@ class TestComplexHandler(TestHandler):
         self.assertEqual(0, self.handler.get_handler.call_count)
 
     @testing.gen_test
+    def test_get_unit_4c(self):
+        "doesn't return 400 when X-Cantus-Page isn't an int BUT there is a resource_id"
+        self.handler.send_error = mock.Mock()
+        self.handler.page = 'will not work'
+        self.handler.get_handler = mock.Mock(return_value=make_future({'five': 5}))
+
+        yield self.handler.get('123')
+
+        self.assertEqual(1, self.handler.get_handler.call_count)
+
+    @testing.gen_test
     def test_get_unit_5a(self):
         "returns 400 when X-Cantus-Sort has a disallowed character"
         self.handler.send_error = mock.Mock()
@@ -1038,7 +1047,7 @@ class TestComplexHandler(TestHandler):
 
     @testing.gen_test
     def test_get_unit_5c(self):
-        "returns 400 when X-Cantus-Sort is missing 'asc' or 'desc'"
+        "returns 400 when X-Cantus-Sort has an unknown field"
         self.handler.send_error = mock.Mock()
         self.handler.get_handler = mock.Mock()
         self.handler.sort = 'inchippit,desc'
@@ -1047,6 +1056,17 @@ class TestComplexHandler(TestHandler):
 
         self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._UNKNOWN_FIELD)
         self.assertEqual(0, self.handler.get_handler.call_count)
+
+    @testing.gen_test
+    def test_get_unit_5d(self):
+        "doesn't return 400 when X-Cantus-Sort has an unknown field BUT there is a resource_id"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock(return_value=make_future({'five': 5}))
+        self.handler.sort = 'inchippit,desc'
+
+        yield self.handler.get('12')
+
+        self.assertEqual(1, self.handler.get_handler.call_count)
 
     @testing.gen_test
     def test_get_unit_6(self):
