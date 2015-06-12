@@ -225,8 +225,12 @@ class TestRootHandler(TestHandler):
             'sources',
             'source_statii'
             ]
-        expected = {'browse_{}'.format(term): '/{}/id?'.format(term) for term in all_plural_resources}
-        expected['browse_source_statii'] = '/statii/id?'
+        expected = {}
+        for term in all_plural_resources:
+            expected['view_{}'.format(term)] = '/{}/id?'.format(term)
+            expected['browse_{}'.format(term)] = '/{}/'.format(term)
+        expected['view_source_statii'] = '/statii/id?'
+        expected['browse_source_statii'] = '/statii/'
         expected = {'resources': expected}
 
         actual = self.handler.prepare_get()
@@ -252,8 +256,12 @@ class TestRootHandler(TestHandler):
             'sources',
             'source_statii'
             ]
-        expected = {'browse_{}'.format(term): '/{}/id?'.format(term) for term in all_plural_resources}
-        expected['browse_source_statii'] = '/statii/id?'
+        expected = {}
+        for term in all_plural_resources:
+            expected['view_{}'.format(term)] = '/{}/id?'.format(term)
+            expected['browse_{}'.format(term)] = '/{}/'.format(term)
+        expected['view_source_statii'] = '/statii/id?'
+        expected['browse_source_statii'] = '/statii/'
         expected = {'resources': expected}
 
         actual = yield self.http_client.fetch(self.get_url('/'), method='GET')
