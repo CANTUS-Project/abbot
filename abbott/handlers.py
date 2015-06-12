@@ -237,8 +237,13 @@ class SimpleHandler(web.RequestHandler):
             else:
                 start = self.page * 10
 
-        resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
-                                         rows=self.per_page, sort=self.sort)
+        if '*' == resource_id:
+            # "browse" URLs
+            resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
+                                             rows=self.per_page, sort=self.sort)
+        else:
+            # "view" URLs
+            resp = yield util.ask_solr_by_id(self.type_name, resource_id)
 
         if 0 == len(resp):
             if start and resp.hits <= start:

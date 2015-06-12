@@ -396,8 +396,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=None,
-                                              rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
 
@@ -419,8 +418,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888', start=40,
-                                              rows=None, sort='incipit asc')
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.util.ask_solr_by_id')
@@ -461,8 +459,7 @@ class TestSimpleHandler(TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123', start=60000,
-                                              rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_LARGE_PAGE)
 
@@ -782,7 +779,7 @@ class TestComplexHandler(TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
 
         self.check_standard_header(actual)
-        mock_ask_solr.assert_any_call('chant', '357679', start=None, rows=None, sort=None)
+        mock_ask_solr.assert_any_call('chant', '357679')
         mock_ask_solr.assert_any_call('genre', '161')
         mock_ask_solr.assert_any_call('feast', '2378')
         # right now, the "cantusid" won't be looked up unless "feast_id" is missing
