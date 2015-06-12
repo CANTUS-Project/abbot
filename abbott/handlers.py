@@ -37,7 +37,7 @@ from abbott import util
 
 # TODO: should these constants actually be held here? (Spoiler alert: no).
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.1.2'
+ABBOTT_VERSION = '0.1.3'
 CANTUS_API_VERSION = '0.1.4-ext'
 
 
@@ -94,6 +94,13 @@ class SimpleHandler(web.RequestHandler):
 
     _MAX_PER_PAGE = 100
     # the highest value allowed for X-Cantus-Per-Page; higher values will get a 507
+
+    _HEADERS_FOR_BROWSE = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
+                           'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
+    # the Cantus extension headers that can sensibly be used with a "browse" URL
+
+    _HEADERS_FOR_VIEW = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
+    # the Cantus extension headers that can sensibly be used with a "view" URL
 
     def __init__(self, *args, **kwargs):
         '''
@@ -408,11 +415,20 @@ class SimpleHandler(web.RequestHandler):
         '''
         self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
         if resource_id:
+            # "view" URL
             if resource_id.endswith('/') and len(resource_id) > 1:
                 resource_id = resource_id[:-1]
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
             if 0 == len(resp):
                 self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
+            # add Cantus-specific request headers
+            for each_header in SimpleHandler._HEADERS_FOR_VIEW:
+                self.add_header(each_header, 'allow')
+        else:
+            # "browse" URL
+            # add Cantus-specific request headers
+            for each_header in SimpleHandler._HEADERS_FOR_BROWSE:
+                self.add_header(each_header, 'allow')
 
     @gen.coroutine
     def head(self, resource_id=None):  # pylint: disable=arguments-differ

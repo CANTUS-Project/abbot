@@ -520,12 +520,16 @@ class TestSimpleHandler(TestHandler):
         self.assertEqual(handlers.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
 
     @testing.gen_test
-    def test_options_integration_1(self):
-        "ensure the OPTIONS method works as expected"
+    def test_options_integration_1a(self):
+        "ensure the OPTIONS method works as expected ('browse' URL)"
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
+                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual(handlers.SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
+        for each_header in expected_headers:
+            self.assertEqual('allow', actual.headers[each_header].lower())
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -543,13 +547,16 @@ class TestSimpleHandler(TestHandler):
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
     def test_options_integration_2b(self, mock_ask_solr):
-        "OPTIONS request for existing resource returns properly"
+        "OPTIONS request for existing resource returns properly ('view' URL)"
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
         mock_solr_response = make_results(['Versicle'])
         mock_ask_solr.return_value = make_future(mock_solr_response)
         actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual(0, len(actual.body))
         mock_ask_solr.assert_called_once_with('genre', '162')
+        for each_header in expected_headers:
+            self.assertEqual('allow', actual.headers[each_header].lower())
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
