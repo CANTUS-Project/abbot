@@ -121,6 +121,79 @@ class TestUtil(TestHandler):
         self.assertEqual(expected, actual)
         util.SOLR.search.assert_called_once_with('+type:genre +id:162', rows=42, sort='incipit asc')
 
+    def test_prepare_sort_1(self):
+        '''
+        - works when there are a bunch of spaces all over
+        '''
+        sort = '  incipit  ,   asc'
+        expected = 'incipit asc'
+        actual = util.prepare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
+    def test_prepare_sort_2(self):
+        '''
+        - works when there are many field specs
+        '''
+        sort = 'incipit, asc; feast,desc; family_name, asc   '
+        expected = 'incipit asc,feast_id desc,family_name asc'
+        actual = util.prepare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
+    def test_prepare_sort_3(self):
+        '''
+        - ValueError when disallowed character
+        '''
+        sort = 'incipit~,asc'
+        self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
+
+    def test_prepare_sort_4(self):
+        '''
+        - ValueError when no direction
+        '''
+        sort = 'incipit'
+        self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
+
+    def test_prepare_sort_5(self):
+        '''
+        - ValueError when misspelled direction
+        '''
+        sort = 'incipit,dasc'
+        self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
+
+    def test_prepare_sort_6(self):
+        '''
+        - KeyError when field isn't in the approved list
+        '''
+        sort = 'password,asc'
+        self.assertRaises(KeyError, util.prepare_formatted_sort, sort)
+
+    def test_postpare_sort_1(self):
+        '''
+        - with a single field
+        '''
+        sort = 'incipit asc'
+        expected = 'incipit,asc'
+        actual = util.postpare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
+    def test_postpare_sort_2(self):
+        '''
+        - with several fields
+        '''
+        sort = 'incipit asc,id desc,family_name asc'
+        expected = 'incipit,asc;id,desc;family_name,asc'
+        actual = util.postpare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
+    def test_postpare_sort_3(self):
+        '''
+        - with several fields and lots of unnecessary spaces
+        '''
+        sort = '   incipit     asc  ,       id    desc   ,    family_name    asc     '
+        expected = 'incipit,asc;id,desc;family_name,asc'
+        actual = util.postpare_formatted_sort(sort)
+        self.assertEqual(expected, actual)
+
 
 class TestRootHandler(TestHandler):
     '''
@@ -196,79 +269,6 @@ class TestRootHandler(TestHandler):
         self.check_standard_header(actual)
         self.assertEqual(handlers.RootHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
-
-    def test_prepare_sort_1(self):
-        '''
-        - works when there are a bunch of spaces all over
-        '''
-        sort = '  incipit  ,   asc'
-        expected = 'incipit asc'
-        actual = util.prepare_formatted_sort(sort)
-        self.assertEqual(expected, actual)
-
-    def test_prepare_sort_2(self):
-        '''
-        - works when there are many field specs
-        '''
-        sort = 'incipit, asc; feast,desc; family_name, asc   '
-        expected = 'incipit asc,feast_id desc,family_name asc'
-        actual = util.prepare_formatted_sort(sort)
-        self.assertEqual(expected, actual)
-
-    def test_prepare_sort_3(self):
-        '''
-        - ValueError when disallowed character
-        '''
-        sort = 'incipit~,asc'
-        self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
-
-    def test_prepare_sort_4(self):
-        '''
-        - ValueError when no direction
-        '''
-        sort = 'incipit'
-        self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
-
-    def test_prepare_sort_5(self):
-        '''
-        - ValueError when misspelled direction
-        '''
-        sort = 'incipit,dasc'
-        self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
-
-    def test_prepare_sort_6(self):
-        '''
-        - KeyError when field isn't in the approved list
-        '''
-        sort = 'password,asc'
-        self.assertRaises(KeyError, util.prepare_formatted_sort, sort)
-
-    def test_postpare_sort_1(self):
-        '''
-        - with a single field
-        '''
-        sort = 'incipit asc'
-        expected = 'incipit,asc'
-        actual = util.postpare_formatted_sort(sort)
-        self.assertEqual(expected, actual)
-
-    def test_postpare_sort_2(self):
-        '''
-        - with several fields
-        '''
-        sort = 'incipit asc,id desc,family_name asc'
-        expected = 'incipit,asc;id,desc;family_name,asc'
-        actual = util.postpare_formatted_sort(sort)
-        self.assertEqual(expected, actual)
-
-    def test_postpare_sort_3(self):
-        '''
-        - with several fields and lots of unnecessary spaces
-        '''
-        sort = '   incipit     asc  ,       id    desc   ,    family_name    asc     '
-        expected = 'incipit,asc;id,desc;family_name,asc'
-        actual = util.postpare_formatted_sort(sort)
-        self.assertEqual(expected, actual)
 
 
 class TestSimpleHandler(TestHandler):
