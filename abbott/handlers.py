@@ -185,10 +185,10 @@ class SimpleHandler(web.RequestHandler):
 
         try:
             # hope it's a plural resource_type
-            post = self.reverse_url('browse_{}'.format(resource_type), resource_id + '/')
+            post = self.reverse_url('view_{}'.format(resource_type), resource_id + '/')
         except KeyError:
             # plural didn't work so try converting from a singular resource_type
-            post = self.reverse_url('browse_{}'.format(util.singular_resource_to_plural(resource_type)),
+            post = self.reverse_url('view_{}'.format(util.singular_resource_to_plural(resource_type)),
                                     resource_id + '/')
 
         # Because reverse_url() uses the regexp there will be an extra "?" at the end, used in the
@@ -684,8 +684,10 @@ class RootHandler(web.RequestHandler):
             'sources',
             'source_statii'
             ]
-        post = {'browse_{}'.format(term): self.reverse_url('browse_{}'.format(term), 'id')
-                for term in all_plural_resources}
+        post = {}
+        for resource_type in all_plural_resources:
+            this_url = self.reverse_url('view_{}'.format(resource_type), 'id')
+            post['view_{}'.format(resource_type)] = this_url
         return {'resources': post}
 
     def get(self):  # pylint: disable=arguments-differ
