@@ -684,11 +684,11 @@ class RootHandler(web.RequestHandler):
             'sources',
             'source_statii'
             ]
-        post = {}
+        post = {'browse': {}, 'view': {}}
         for resource_type in all_plural_resources:
             this_url = self.reverse_url('view_{}'.format(resource_type), 'id')
-            post['view_{}'.format(resource_type)] = this_url
-            post['browse_{}'.format(resource_type)] = this_url[:-3]
+            post['view'][resource_type] = this_url
+            post['browse'][resource_type] = this_url[:-3]
         return {'resources': post}
 
     def get(self):  # pylint: disable=arguments-differ
