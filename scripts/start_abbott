@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#--------------------------------------------------------------------------------------------------
+# Program Name:           abbott
+# Program Description:    HTTP Server for the CANTUS Database
+#
+# Filename:               scripts/start_abbott
+# Purpose:                Starts Abbott in a new proces (for deployment).
+#
+# Copyright (C) 2015 Christopher Antila
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#--------------------------------------------------------------------------------------------------
+
+import os
+import os.path
+import subprocess
+
+# Configuration Variables
+# -----------------------
+# NOTE: you must customize these variables for every deployment
+
+# path to the virtualenv directory
+VENV_PATH = '/usr/local/abbott-venv'
+
+# path to the Abbott code
+ABBOTT_PATH = '/usr/local/abbott'
+
+# path to the Abbott log directory
+ABBOTT_LOG_DIR = '/var/log/abbott'
+
+# Script
+# ------
+# NOTE: don't customize this part
+os.environ['PYTHONPATH'] = ABBOTT_PATH
+python = os.path.join(VENV_PATH, 'bin/python')
+main_file = os.path.join(ABBOTT_PATH, 'abbott/__main__.py')
+
+# prepare log files
+stdout_path = os.path.join(ABBOTT_LOG_DIR, 'abbott-std.log')
+stderr_path = os.path.join(ABBOTT_LOG_DIR, 'abbott-err.log')
+if not os.path.exists(ABBOTT_LOG_DIR):
+    os.mkdir(ABBOTT_LOG_DIR)
+
+subprocess.Popen([python, main_file], stdout=None, stderr=None)
