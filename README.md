@@ -25,7 +25,14 @@ Install the development requirements:
 
     $ pip install -r requirements-devel.txt
 
-Run the test suite (see below) and you're off!
+Install ``abbott`` itself. This ensure the ``abbott`` module is importable in the interpreter.
+
+    $ pip install -e .
+
+Run the test suite (see below) and you're off! To run a test instance of *Abbott*, run this command
+from the "abbott" root directory:
+
+    $ python abbott
 
 Run the Automated Test Suite
 ----------------------------
