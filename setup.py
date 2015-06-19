@@ -26,17 +26,35 @@
 Configuration for installation with setuptools.
 '''
 
-from setuptools import setup, find_packages
+from setuptools import setup, Command
 import abbott  # for __version__
+
+
+class PyTest(Command):
+    user_options = []
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import subprocess
+        import sys
+        errno = subprocess.call([sys.executable, 'runtests.py'])
+        raise SystemExit(errno)
+
 
 setup(
     name = 'Abbott',
     version = abbott.__version__,
-    packages = ['abbott'],
+    packages = ['abbott', 'tests'],
 
     install_requires = ['tornado>=4', 'pysolr-tornado'],
     tests_require = ['pytest'],
-    test_suite = 'abbott.test_main',
+
+    scripts = ['scripts/start_abbott', 'runtests.py'],
+    cmdclass = {'test': PyTest},
 
     # metadata for upload to PyPI
     author = 'Christopher Antila',

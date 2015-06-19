@@ -29,23 +29,22 @@ Install ``abbott`` itself. This ensure the ``abbott`` module is importable in th
 
     $ pip install -e .
 
-Run the test suite (see below) and you're off! To run a test instance of *Abbott*, run this command
-from the "abbott" root directory:
-
-    $ python abbott
-
-Run the Automated Test Suite
-----------------------------
-
 The test suite uses the ``pytest`` package. To run the test suite, ensure your venv is activated,
 then issue the following command from the "abbott" root directory:
 
     $ py.test
 
 ``pytest`` is quite clear in its output, so you should not have to guess whether the tests passed.
+To run a test instance of *Abbott*, run this command from the "abbott" root directory:
+
+    $ python abbott
 
 Install for Deployment
 ----------------------
 
 As for development, but use the ``requirements-deploy.txt`` file. There isn't yet a good way to
 deploy *Abbott*, but rest assured it will happen.
+
+After you install *Abbott*, you may wish to test its functionality:
+
+    $ python setup.py test
