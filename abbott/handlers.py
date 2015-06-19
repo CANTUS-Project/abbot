@@ -32,12 +32,13 @@ from collections import defaultdict, namedtuple
 from tornado import gen, web
 import pysolrtornado
 
+import abbott
 from abbott import util
 
 
 # TODO: should these constants actually be held here? (Spoiler alert: no).
 DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = '0.1.3'
+ABBOTT_VERSION = abbott.__version__
 CANTUS_API_VERSION = '0.1.4-ext'
 
 
