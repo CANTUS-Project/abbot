@@ -41,14 +41,14 @@ from abbott import handlers, util
 import shared
 
 
-class TestComplexHandler(shared.TestHandler):
+class TestLookUpXrefs(shared.TestHandler):
     '''
-    Tests for the ComplexHandler.
+    Tests for the ComplexHandler.look_up_xrefs().
     '''
 
     def setUp(self):
         "Make a ComplexHandler instance for testing."
-        super(TestComplexHandler, self).setUp()
+        super(TestLookUpXrefs, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
@@ -63,7 +63,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_look_up_xrefs_unit_1(self, mock_ask_solr):
+    def test_field_is_string_with_id(self, mock_ask_solr):
         "when the xreffed field is a string with an id"
         record = {'id': '123656', 'provenance_id': '3624'}
         mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
@@ -79,7 +79,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_look_up_xrefs_unit_2(self, mock_ask_solr):
+    def test_field_is_list_of_string(self, mock_ask_solr):
         "when the xreffed field is a list of strings"
         record = {'id': '123656', 'proofreaders': ['124104']}
         mock_solr_response = [{'id': '124104', 'display_name': 'Debra Lacoste'}]
@@ -95,7 +95,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_look_up_xrefs_unit_3(self, mock_ask_solr):
+    def test_field_not_found_1(self, mock_ask_solr):
         "when the xreffed field is a string, but it's not found in Solr"
         record = {'id': '123656', 'provenance_id': '3624'}
         mock_solr_response = []
@@ -111,7 +111,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_look_up_xrefs_unit_4(self, mock_ask_solr):
+    def test_field_not_found_2(self, mock_ask_solr):
         "when the xreffed field is a list of strings, but nothing is ever found in Solr"
         record = {'id': '123656', 'proofreaders': ['124104']}
         mock_solr_response = [{}]
@@ -127,7 +127,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_look_up_xrefs_unit_5(self, mock_ask_solr):
+    def test_many_xreffed_fields(self, mock_ask_solr):
         "with many xreffed fields"
         record = {'id': '123656', 'provenance_id': '3624', 'segment_id': '4063',
                   'proofreaders': ['124104'], 'source_status_id': '4212', 'century_id': '3841'}
@@ -162,7 +162,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_look_up_xrefs_unit_6(self, mock_ask_solr):
+    def test_no_xref_is_true(self, mock_ask_solr):
         "when self.no_xref is True"
         record = {'id': '123656', 'provenance_id': '3624'}
         mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
@@ -177,9 +177,29 @@ class TestComplexHandler(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
+
+class TestMakeExtraFields(shared.TestHandler):
+    '''
+    Tests for the ComplexHandler.make_extra_fields().
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestMakeExtraFields, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
+                                           additional_fields=['title', 'rism', 'siglum',
+                                                              'provenance_id', 'date', 'century_id',
+                                                              'notation_style_id', 'segment_id',
+                                                              'source_status_id', 'summary',
+                                                              'liturgical_occasions', 'description',
+                                                              'indexing_notes', 'indexing_date',
+                                                              'indexers', 'editors', 'proofreaders',
+                                                              'provenance_detail'])
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_make_extra_fields_unit_1(self, mock_ask_solr):
+    def test_both_things_to_lookup(self, mock_ask_solr):
         "with both a feast_id and source_status_id to look up"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
@@ -203,7 +223,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_make_extra_fields_unit_2(self, mock_ask_solr):
+    def test_both_things_but_return_nothing(self, mock_ask_solr):
         "with both a feast_id and source_status_id to look up, but they both return nothing"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
@@ -224,7 +244,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_make_extra_fields_unit_3(self, mock_ask_solr):
+    def test_nothing_to_lookup(self, mock_ask_solr):
         "with neither a feast_id nor a source_status_id to look up"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
@@ -244,7 +264,7 @@ class TestComplexHandler(shared.TestHandler):
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
-    def test_make_extra_fields_unit_4(self, mock_ask_solr):
+    def test_no_xref_is_true(self, mock_ask_solr):
         "when self.no_xref is True"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
@@ -257,6 +277,12 @@ class TestComplexHandler(shared.TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         # etc.
         self.assertEqual(expected, actual)
+
+
+class TestGetIntegration(shared.TestHandler):
+    '''
+    Unit tests for the ComplexHandler.get().
+    '''
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -356,18 +382,26 @@ class TestComplexHandler(shared.TestHandler):
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())
 
-    @testing.gen_test
-    def test_options_integration_1(self):
-        "ensure the OPTIONS method works as expected ('browse' URL)"
-        # adds X-Cantus-No-Xref over the SimpleHandler tests
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
-                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
-        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual(handlers.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
-        self.assertEqual(0, len(actual.body))
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
+
+class TestGetUnit(shared.TestHandler):
+    '''
+    Unit tests for the ComplexHandler.get().
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestGetUnit, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
+                                           additional_fields=['title', 'rism', 'siglum',
+                                                              'provenance_id', 'date', 'century_id',
+                                                              'notation_style_id', 'segment_id',
+                                                              'source_status_id', 'summary',
+                                                              'liturgical_occasions', 'description',
+                                                              'indexing_notes', 'indexing_date',
+                                                              'indexers', 'editors', 'proofreaders',
+                                                              'provenance_detail'])
 
     @testing.gen_test
     def test_get_unit_1a(self, head_request=False):
@@ -632,3 +666,37 @@ class TestComplexHandler(shared.TestHandler):
 
         self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
         self.assertEqual(0, self.handler.get_handler.call_count)
+
+
+class TestOptionsIntegration(shared.TestHandler):
+    '''
+    Integration tests for the ComplexHandler.options().
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestOptionsIntegration, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
+                                           additional_fields=['title', 'rism', 'siglum',
+                                                              'provenance_id', 'date', 'century_id',
+                                                              'notation_style_id', 'segment_id',
+                                                              'source_status_id', 'summary',
+                                                              'liturgical_occasions', 'description',
+                                                              'indexing_notes', 'indexing_date',
+                                                              'indexers', 'editors', 'proofreaders',
+                                                              'provenance_detail'])
+
+    @testing.gen_test
+    def test_options_integration_1(self):
+        "ensure the OPTIONS method works as expected ('browse' URL)"
+        # adds X-Cantus-No-Xref over the SimpleHandler tests
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
+                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
+        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
+        self.check_standard_header(actual)
+        self.assertEqual(handlers.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual(0, len(actual.body))
+        for each_header in expected_headers:
+            self.assertEqual('allow', actual.headers[each_header].lower())

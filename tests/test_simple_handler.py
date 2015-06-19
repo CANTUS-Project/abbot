@@ -41,9 +41,9 @@ from abbott import handlers, util
 import shared
 
 
-class TestSimpleHandler(shared.TestHandler):
+class TestInitialize(shared.TestHandler):
     '''
-    Tests for the SimpleHandler.
+    Tests for the SimpleHandler.initialize().
 
     NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
     unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
@@ -51,7 +51,7 @@ class TestSimpleHandler(shared.TestHandler):
 
     def setUp(self):
         "Make a SimpleHandler instance for testing."
-        super(TestSimpleHandler, self).setUp()
+        super(TestInitialize, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
@@ -89,6 +89,22 @@ class TestSimpleHandler(shared.TestHandler):
         self.assertEqual('9001', actual.per_page)
         self.assertEqual('3', actual.page)
 
+
+class TestFormatRecord(shared.TestHandler):
+    '''
+    Tests for the SimpleHandler.format_record().
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestFormatRecord, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+
     def test_format_record_1(self):
         "basic test"
         input_record = {key: str(i) for i, key in enumerate(self.handler.returned_fields)}
@@ -102,6 +118,22 @@ class TestSimpleHandler(shared.TestHandler):
         self.assertEqual(len(self.handler.returned_fields), len(self.handler.field_counts))
         for field in self.handler.returned_fields:
             self.assertEqual(1, self.handler.field_counts[field])
+
+
+class TestMakeResourceUrl(shared.TestHandler):
+    '''
+    Tests for the SimpleHandler.make_resource_url().
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestMakeResourceUrl, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
 
     def test_make_resource_url_1(self):
         "with no resource_type specified"
@@ -120,6 +152,22 @@ class TestSimpleHandler(shared.TestHandler):
         expected = '/sources/3.14159/'
         actual = self.handler.make_resource_url('3.14159', 'sources')
         self.assertEqual(expected, actual)
+
+
+class TestBasicGetUnit(shared.TestHandler):
+    '''
+    Unit tests for the SimpleHandler.basic_get().
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestBasicGetUnit, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -225,6 +273,22 @@ class TestSimpleHandler(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_LARGE_PAGE)
 
+
+class TestGetIntegration(shared.TestHandler):
+    '''
+    Integration tests for the SimpleHandler.get().
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestGetIntegration, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
@@ -281,6 +345,15 @@ class TestSimpleHandler(shared.TestHandler):
         self.assertEqual(400, actual.code)
         self.assertEqual(handlers.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
 
+
+class TestOptionsIntegration(shared.TestHandler):
+    '''
+    Integration tests for the SimpleHandler.options().
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    '''
+
     @testing.gen_test
     def test_options_integration_1a(self):
         "ensure the OPTIONS method works as expected ('browse' URL)"
@@ -319,6 +392,22 @@ class TestSimpleHandler(shared.TestHandler):
         mock_ask_solr.assert_called_once_with('genre', '162')
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
+
+
+class TestHeadIntegration(shared.TestHandler):
+    '''
+    Integration tests for the SimpleHandler.head().
+
+    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
+    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestHeadIntegration, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test

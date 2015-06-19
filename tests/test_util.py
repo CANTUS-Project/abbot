@@ -40,9 +40,9 @@ from abbott import util
 import shared
 
 
-class TestUtil(shared.TestHandler):
+class TestSingularResourceToPlura(shared.TestHandler):
     '''
-    Tests for the abbott.util module.
+    Tests for abbott.util.singular_resource_to_plural().
     '''
 
     def test_singular_resource_to_plural_1(self):
@@ -52,6 +52,12 @@ class TestUtil(shared.TestHandler):
     def test_singular_resource_to_plural_2(self):
         "When the singular form doesn't have a corresponding plural."
         self.assertIsNone(util.singular_resource_to_plural('automobiles'))
+
+
+class TestAskSolrById(shared.TestHandler):
+    '''
+    Tests for abbott.util.ask_solr_by_id().
+    '''
 
     @mock.patch('abbott.util.SOLR', spec_set=pysolrtornado.Solr)
     @testing.gen_test
@@ -82,6 +88,12 @@ class TestUtil(shared.TestHandler):
         actual = yield util.ask_solr_by_id('genre', '162', rows=42, sort='incipit asc')
         self.assertEqual(expected, actual)
         util.SOLR.search.assert_called_once_with('+type:genre +id:162', rows=42, sort='incipit asc')
+
+
+class TestFormattedSorts(shared.TestHandler):
+    '''
+    Tests for abbott.util.prepare_formatted_sort() and abbott.util.postpare_formatted_sort().
+    '''
 
     def test_prepare_sort_1(self):
         '''
