@@ -30,13 +30,12 @@ Run the test suite (see below) and you're off!
 Run the Automated Test Suite
 ----------------------------
 
-At present, the test suite only uses the built-in ``unittest`` module. You can run the automated
-test suite from the "abbott" root directory like this:
+The test suite uses the ``pytest`` package. To run the test suite, ensure your venv is activated,
+then issue the following command from the "abbott" root directory:
 
-    $ ./run_tests
+    $ py.test
 
-As part of the tests, Tornado is expected to emit some "WARNING" messages. Test failures and errors
-will be clearly marked as such.
+``pytest`` is quite clear in its output, so you should not have to guess whether the tests passed.
 
 Install for Deployment
 ----------------------
