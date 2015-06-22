@@ -293,13 +293,17 @@ class TestGetIntegration(shared.TestHandler):
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
         "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
-        mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
-        expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
-                    '3': {'id': '3', 'type': 'century'},
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
+                                                  {'id': '2', 'name': 'two'},
+                                                  {'id': '3', 'name': 'three'}])
+        expected = {'1': {'id': '1', 'name': 'one', 'type': 'century'},
+                    '2': {'id': '2', 'name': 'two', 'type': 'century'},
+                    '3': {'id': '3', 'name': 'three', 'type': 'century'},
                     'resources': {'1': {'self': '/centuries/1/'},
                                   '2': {'self': '/centuries/2/'},
                                   '3': {'self': '/centuries/3/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        expected_fields = ['id', 'name', 'type']
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
 
@@ -310,6 +314,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
         self.assertEqual('1', actual.headers['X-Cantus-Page'])
         self.assertEqual('10', actual.headers['X-Cantus-Per-Page'])
+        self.assertCountEqual(expected_fields, actual.headers['X-Cantus-Fields'].split(','))
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
