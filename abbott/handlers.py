@@ -114,16 +114,23 @@ class SimpleHandler(web.RequestHandler):
         # TODO: there are a lot of instance attrs (incl. the Tornado ones) so maybe I should put
         #       some of them into a dict?
         self.field_counts = defaultdict(lambda: 0)
-        self.type_name = None
-        self.type_name_plural = None
-        self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
+        self.type_name = None  # type name, set by the URL
+        self.type_name_plural = None  # set in initialize()
         self.head_request = False  # whether the method being processed is HEAD
-        self.per_page = None
-        self.page = None
-        self.include_resources = True
-        self.sort = None
-        self.total_results = 0
-        self.no_xref = False  # meaning we should process cross-references by default
+        self.total_results = 0  # total number of records to be returned in the response
+
+        # This holds the names of the fields that are appropriate to return for a resource of this
+        # type. We start here with the standard field names, and initialize() will add more if
+        # required. We do a deep copy so that SimpleHandler._DEFAULT_RETURNED_FIELDS doesn't change
+        # through the running time of the program.
+        self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
+
+        # request headers (these will hold the parsed and verified values)
+        self.per_page = None  # X-Cantus-Per-Page
+        self.page = None  # X-Cantus-Page
+        self.include_resources = True  # X-Cantus-Include-Resources
+        self.sort = None  # X-Cantus-Sort
+        self.no_xref = False  # X-Cantus-No-Xrefs
 
         super(SimpleHandler, self).__init__(*args, **kwargs)
 
