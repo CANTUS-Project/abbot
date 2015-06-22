@@ -40,7 +40,7 @@ from abbott import util
 import shared
 
 
-class TestSingularResourceToPlura(shared.TestHandler):
+class TestSingularResourceToPlural(shared.TestHandler):
     '''
     Tests for abbott.util.singular_resource_to_plural().
     '''
