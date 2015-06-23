@@ -311,47 +311,63 @@ class SimpleHandler(web.RequestHandler):
         '''
         return (yield self.basic_get(resource_id))
 
-    @gen.coroutine
-    def get(self, resource_id=None):  # pylint: disable=arguments-differ
+    def verify_request_headers(self, is_browse_request):
         '''
-        Response to GET requests. Returns the result of :meth:`basic_get` without modification.
+        Ensure that the request headers have valid values.
 
-        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        .. note:: If this method returns ``False`` you must stop processing the request. Refer to
+            the "side effect" explanation below.
+
+        :param bool is_browse_request: Whether the URL accessed for this request is a "browse" URL.
+        :returns: ``True`` if all the request headers have valid values, otherwise ``False``.
+        :rtype: bool
+
+        **Side Effect**
+
+        If this method discovers an invalid header value, it calls :meth:`send_error` with the
+        proper response code and reason, then returns ``False``. Therefore if this method returns
+        ``False``, the caller should consider the request to be completely finished, and should not
+        continue processing the request.
         '''
 
-        # first check the header-set values for sanity
-        # TODO: move these header-checks to a private method
-        if not resource_id:
-            # NB: if there is a resource_id it means we're processing a "view" URL and these headers
-            #     are irrelevant. The API specifies they should be ignored in this case.
-            if self.per_page:  # X-Cantus-Per-Page
+        # we'll make this False if we encounter an error
+        all_is_well = True
+
+        if is_browse_request:
+            # the API says only to pay attention to these headers for requests to "browse" URLs
+            if self.per_page:
+                # X-Cantus-Per-Page
                 try:
                     self.per_page = int(self.per_page)
                 except ValueError:
                     self.send_error(400, reason=SimpleHandler._INVALID_PER_PAGE)
-                    return
-                if self.per_page < 0:
-                    self.send_error(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
-                    return
-                elif self.per_page > SimpleHandler._MAX_PER_PAGE:
-                    self.send_error(507,
-                                    reason=SimpleHandler._TOO_BIG_PER_PAGE,
-                                    per_page=SimpleHandler._MAX_PER_PAGE)
-                    return
-                elif 0 == self.per_page:
-                    self.per_page = SimpleHandler._MAX_PER_PAGE
+                    all_is_well = False
 
-            if self.page:  # X-Cantus-Page
+                if all_is_well:
+                    if self.per_page < 0:
+                        self.send_error(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
+                        all_is_well = False
+                    elif self.per_page > SimpleHandler._MAX_PER_PAGE:
+                        self.send_error(507,
+                                        reason=SimpleHandler._TOO_BIG_PER_PAGE,
+                                        per_page=SimpleHandler._MAX_PER_PAGE)
+                        all_is_well = False
+                    elif 0 == self.per_page:
+                        self.per_page = SimpleHandler._MAX_PER_PAGE
+
+            if all_is_well and self.page:
+                # X-Cantus-Page
                 try:
                     self.page = int(self.page)
                 except ValueError:
                     self.send_error(400, reason=SimpleHandler._INVALID_PAGE)
-                    return
-                if self.page < 1:
+                    all_is_well = False
+                if all_is_well and self.page < 1:
                     self.send_error(400, reason=SimpleHandler._TOO_SMALL_PAGE)
-                    return
+                    all_is_well = False
 
-            if self.sort:  # X-Cantus-Sort
+            if all_is_well and self.sort:
+                # X-Cantus-Sort
                 try:
                     self.sort = util.prepare_formatted_sort(self.sort)
                 except ValueError as val_e:
@@ -359,12 +375,12 @@ class SimpleHandler(web.RequestHandler):
                         self.send_error(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
                     else:
                         self.send_error(400, reason=SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
-                    return
+                    all_is_well = False
                 except KeyError:
                     self.send_error(400, reason=SimpleHandler._UNKNOWN_FIELD)
-                    return
+                    all_is_well = False
 
-        if isinstance(self, ComplexHandler) and not isinstance(self.no_xref, bool):
+        if all_is_well and (isinstance(self, ComplexHandler) and not isinstance(self.no_xref, bool)):
             # X-Cantus-No-Xref
             # NB: only worry about this if we're a ComplexHandler; it doesn't apply to the others
             no_xref = str(self.no_xref).lower().strip()
@@ -374,16 +390,34 @@ class SimpleHandler(web.RequestHandler):
                 self.no_xref = False
             else:
                 self.send_error(400, reason=SimpleHandler._INVALID_NO_XREF)
-                return
+                all_is_well = False
 
-        if self.fields:
+        if all_is_well and self.fields:
             # X-Cantus-Fields
             try:
                 self.returned_fields = util.parse_fields_header(self.fields, self.returned_fields)
             except ValueError:
                 # probably the field wasn't present
                 self.send_error(400, reason=SimpleHandler._INVALID_FIELDS)
-                return
+                all_is_well = False
+
+        return all_is_well
+
+    @gen.coroutine
+    def get(self, resource_id=None):  # pylint: disable=arguments-differ
+        '''
+        Response to GET requests. Returns the result of :meth:`basic_get` without modification.
+
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        '''
+
+        # if there is a resource_id, then this request is to a "view" URL
+        is_browse_request = resource_id is None
+
+        # first check the header-set values for sanity
+        headers_good = self.verify_request_headers(is_browse_request)
+        if not headers_good:
+            return
 
         # run the more specific GET request handler
         try:
@@ -430,7 +464,7 @@ class SimpleHandler(web.RequestHandler):
         if self.no_xref:
             self.add_header('X-Cantus-No-Xref', 'true')
 
-        if not resource_id:
+        if is_browse_request:
             # figure out X-Cantus-Total-Results
             self.add_header('X-Cantus-Total-Results', self.total_results)
 

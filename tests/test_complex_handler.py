@@ -494,7 +494,7 @@ class TestGetUnit(shared.TestHandler):
         exp_fields_rev = 'type,feast,a'
         exp_extra_fields = 'b,genre'
         exp_extra_fields_rev = 'genre,b'
-        resource_id = ''
+        resource_id = None
 
         yield self.handler.get(resource_id)
 
@@ -519,133 +519,6 @@ class TestGetUnit(shared.TestHandler):
             self.handler.add_header.assert_any_call('X-Cantus-Extra-Fields', exp_extra_fields_rev)
 
     @testing.gen_test
-    def test_get_unit_3a(self):
-        "returns 400 when X-Cantus-Per-Page isn't an int"
-        self.handler.send_error = mock.Mock()
-        self.handler.per_page = 'will not work'
-        self.handler.get_handler = mock.Mock()
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._INVALID_PER_PAGE)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_3b(self):
-        "returns 400 when X-Cantus-Per-Page is negative"
-        self.handler.send_error = mock.Mock()
-        self.handler.per_page = '-10'
-        self.handler.get_handler = mock.Mock()
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PER_PAGE)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_3c(self):
-        "returns 507 when X-Cantus-Per-Page is too large"
-        self.handler.send_error = mock.Mock()
-        self.handler.per_page = handlers.SimpleHandler._MAX_PER_PAGE + 1
-        self.handler.get_handler = mock.Mock()
-        self.handler.add_header = mock.Mock()
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_once_with(507,
-                                                        reason=handlers.SimpleHandler._TOO_BIG_PER_PAGE,
-                                                        per_page=handlers.SimpleHandler._MAX_PER_PAGE)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_4a(self):
-        "returns 400 when X-Cantus-Page isn't an int"
-        self.handler.send_error = mock.Mock()
-        self.handler.page = 'will not work'
-        self.handler.get_handler = mock.Mock()
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._INVALID_PAGE)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_4b(self):
-        "returns 400 when X-Cantus-Page is negative or zero"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock()
-
-        self.handler.page = '-10'
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PAGE)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-        #-------------------------------------------------------------------------------------------
-        self.handler.page = '0'
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PAGE)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_4c(self):
-        "doesn't return 400 when X-Cantus-Page isn't an int BUT there is a resource_id"
-        self.handler.send_error = mock.Mock()
-        self.handler.page = 'will not work'
-        self.handler.get_handler = mock.Mock(return_value=shared.make_future({'five': 5}))
-
-        yield self.handler.get('123')
-
-        self.assertEqual(1, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_5a(self):
-        "returns 400 when X-Cantus-Sort has a disallowed character"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock()
-        self.handler.sort = 'inc!pit, asc'
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_5b(self):
-        "returns 400 when X-Cantus-Sort is missing 'asc' or 'desc'"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock()
-        self.handler.sort = 'incipit'
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._MISSING_DIRECTION_SPEC)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_5c(self):
-        "returns 400 when X-Cantus-Sort has an unknown field"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock()
-        self.handler.sort = 'inchippit,desc'
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._UNKNOWN_FIELD)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_5d(self):
-        "doesn't return 400 when X-Cantus-Sort has an unknown field BUT there is a resource_id"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock(return_value=shared.make_future({'five': 5}))
-        self.handler.sort = 'inchippit,desc'
-
-        yield self.handler.get('12')
-
-        self.assertEqual(1, self.handler.get_handler.call_count)
-
-    @testing.gen_test
     def test_get_unit_6(self):
         "returns 502 when the call to get_handler() raises a SolrError"
         self.handler.send_error = mock.Mock()
@@ -654,30 +527,6 @@ class TestGetUnit(shared.TestHandler):
         yield self.handler.get()
 
         self.handler.send_error.assert_called_with(502, reason=handlers.SimpleHandler._SOLR_502_ERROR)
-
-    @testing.gen_test
-    def test_get_unit_7a(self):
-        "returns 400 when X-Cantus-No-Xref has an invalid value"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock()
-        self.handler.no_xref = 'no'
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
-        self.assertEqual(0, self.handler.get_handler.call_count)
-
-    @testing.gen_test
-    def test_get_unit_8(self):
-        "returns 400 when X-Cantus-Fields has an invalid value"
-        self.handler.send_error = mock.Mock()
-        self.handler.get_handler = mock.Mock()
-        self.handler.fields = 'no'
-
-        yield self.handler.get()
-
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_FIELDS)
-        self.assertEqual(0, self.handler.get_handler.call_count)
 
 
 class TestOptionsIntegration(shared.TestHandler):
