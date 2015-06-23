@@ -45,55 +45,16 @@ _INVALID_FIELD_NAME = '{} is not a valid field name'
 # they have proper values for these things.
 ALLOWED_CHARS = ',;_'
 DIRECTIONS = ('asc', 'desc')
-# TODO: something tells me this list isn't very maintainable, and probably also isn't correct
-FIELDS = {'id': 'id',
-          'name': 'name',
-          'description': 'description',
-          'mass_or_office': 'mass_or_office',
-          'date': 'date',
-          'feast_code': 'feast_code',
-          # chant
-          'incipit': 'incipit',
-          'source': 'source_id',
-          'marginalia': 'marginalia',
-          'folio': 'folio',
-          'sequence': 'sequence',
-          'office': 'office_id',
-          'genre': 'genre_id',
-          'position': 'position',
-          'cantus_id': 'cantus_id',
-          'feast': 'feast_id',
-          'mode': 'mode',
-          'differentia': 'differentia',
-          'finalis': 'finalis',
-          'full_text': 'full_text',
-          'full_text_manuscript': 'full_text_manuscript',
-          'full_text_simssa': 'full_text_simssa',
-          'volpiano': 'volpiano',
-          'notes': 'notes',
-          'cao_concordances': 'cao_concordances',
-          'siglum': 'siglum',
-          'proofreader': 'proofreader',
-          'melody_id': 'melody_id',
-          # source
-          'title': 'title',
-          'rism': 'rism',
-          'provenance': 'provenance_id',
-          'century': 'century_id',
-          'notation_style': 'notation_style_id',
-          'editors': 'editors',
-          'indexers': 'indexers',
-          'summary': 'summary',
-          'liturgical_occasion': 'liturgical_occasion',
-          'indexing_notes': 'indexing_notes',
-          'indexing_date': 'indexing_date',
-          # indexer': '',
-          'display_name': 'display_name',
-          'given_name': 'given_name',
-          'family_name': 'family_name',
-          'institution': 'institution',
-          'city': 'city',
-          'country': 'country'}
+FIELDS = ['id', 'name', 'description', 'mass_or_office', 'date', 'feast_code', 'incipit', 'source',
+          'marginalia', 'folio', 'sequence', 'office', 'genre', 'position', 'cantus_id', 'feast',
+          'mode', 'differentia', 'finalis', 'full_text', 'full_text_manuscript', 'full_text_simssa',
+          'volpiano', 'notes', 'cao_concordances', 'siglum', 'proofreader', 'melody_id', 'title',
+          'rism', 'provenance', 'century', 'notation_style', 'editors', 'indexers', 'summary',
+          'liturgical_occasion', 'indexing_notes', 'indexing_date', 'display_name', 'given_name',
+          'family_name', 'institution', 'city', 'country']
+TRANSFORM_FIELDS = {'source': 'source_id', 'office': 'office_id', 'genre': 'genre_id',
+                    'feast': 'feast_id', 'provenance': 'provenance_id', 'century': 'century_id',
+                    'notation_style': 'notation_style_id'}
 
 
 def singular_resource_to_plural(singular):
@@ -171,9 +132,12 @@ def prepare_formatted_sort(sort):
         if direction not in DIRECTIONS:
             raise ValueError(_MISSING_DIRECTION_SPEC)
 
-        try:
-            sort.append('{} {}'.format(FIELDS[field], direction))
-        except IndexError:
+        if field in FIELDS:
+            if field in TRANSFORM_FIELDS:
+                sort.append('{} {}'.format(TRANSFORM_FIELDS[field], direction))
+            else:
+                sort.append('{} {}'.format(field, direction))
+        else:
             raise KeyError(_UNKNOWN_FIELD.format(field))
 
     sort = ','.join(sort)
