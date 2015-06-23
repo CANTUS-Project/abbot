@@ -37,9 +37,8 @@ from abbott import util
 
 
 # TODO: should these constants actually be held here? (Spoiler alert: no).
-DRUPAL_PATH = 'http://cantus2.uwaterloo.ca'
-ABBOTT_VERSION = abbott.__version__
-CANTUS_API_VERSION = '0.1.4-ext'
+#ABBOTT_VERSION = abbott.__version__
+#CANTUS_API_VERSION = abbott.__cantus_version__
 
 
 class SimpleHandler(web.RequestHandler):
@@ -176,8 +175,8 @@ class SimpleHandler(web.RequestHandler):
         Set the default headers for all requests: Server, X-Cantus-Version.
         '''
         # NOTE: keep this the same as RootHandler.set_default_headers() where relevant
-        self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
-        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
+        self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
+        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
 
     def format_record(self, record):
         '''
@@ -748,8 +747,8 @@ class RootHandler(web.RequestHandler):
         Set the default headers for all requests: Server, X-Cantus-Version.
         '''
         # NOTE: keep this the same as SimpleHandler.set_default_headers() where relevant
-        self.set_header('Server', 'Abbott/{}'.format(ABBOTT_VERSION))
-        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(CANTUS_API_VERSION))
+        self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
+        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
 
     def prepare_get(self):
         '''

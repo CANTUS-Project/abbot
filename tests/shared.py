@@ -72,6 +72,6 @@ class TestHandler(testing.AsyncHTTPTestCase):
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
         '''
         expected_server = 'Abbott/{}'.format(abbott.__version__)
-        expected_cantus_version = 'Cantus/{}'.format(handlers.CANTUS_API_VERSION)
+        expected_cantus_version = 'Cantus/{}'.format(handlers.abbott.__cantus_version__)
         self.assertEqual(expected_server, on_this.headers['Server'])
         self.assertEqual(expected_cantus_version, on_this.headers['X-Cantus-Version'])
