@@ -667,6 +667,18 @@ class TestGetUnit(shared.TestHandler):
         self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
         self.assertEqual(0, self.handler.get_handler.call_count)
 
+    @testing.gen_test
+    def test_get_unit_8(self):
+        "returns 400 when X-Cantus-Fields has an invalid value"
+        self.handler.send_error = mock.Mock()
+        self.handler.get_handler = mock.Mock()
+        self.handler.fields = 'no'
+
+        yield self.handler.get()
+
+        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_FIELDS)
+        self.assertEqual(0, self.handler.get_handler.call_count)
+
 
 class TestOptionsIntegration(shared.TestHandler):
     '''

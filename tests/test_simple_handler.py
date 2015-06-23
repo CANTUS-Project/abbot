@@ -350,6 +350,55 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(400, actual.code)
         self.assertEqual(handlers.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
 
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_4(self, mock_ask_solr):
+        "ensure the X-Cantus-Fields request header works"
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
+                                                  {'id': '2', 'name': 'two'},
+                                                  {'id': '3', 'name': 'three'}])
+        expected = {'1': {'id': '1', 'type': 'century'},
+                    '2': {'id': '2', 'type': 'century'},
+                    '3': {'id': '3', 'type': 'century'},
+                    'resources': {'1': {'self': '/centuries/1/'},
+                                  '2': {'self': '/centuries/2/'},
+                                  '3': {'self': '/centuries/3/'}}}
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        expected_fields = ['id', 'type']
+        request_header = 'id, type'
+
+        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+                                              method='GET',
+                                              headers={'X-Cantus-Fields': request_header})
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
+                                              rows=None, sort=None)
+        self.check_standard_header(actual)
+        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
+        self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
+        self.assertEqual('1', actual.headers['X-Cantus-Page'])
+        self.assertEqual('10', actual.headers['X-Cantus-Per-Page'])
+        self.assertCountEqual(expected_fields, actual.headers['X-Cantus-Fields'].split(','))
+        actual = escape.json_decode(actual.body)
+        self.assertEqual(expected, actual)
+
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_5(self, mock_ask_solr):
+        "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
+        mock_solr_response = shared.make_results([])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+
+        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+                                              method='GET',
+                                              raise_error=False,
+                                              headers={'X-Cantus-Fields': 'id, type,price'})
+
+        self.assertEqual(0, mock_ask_solr.call_count)
+        self.check_standard_header(actual)
+        self.assertEqual(400, actual.code)
+        self.assertEqual(handlers.SimpleHandler._INVALID_FIELDS, actual.reason)
+
 
 class TestOptionsIntegration(shared.TestHandler):
     '''

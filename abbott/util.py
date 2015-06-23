@@ -38,6 +38,9 @@ _DISALLOWED_CHARACTER_IN_SORT = '"{}" is not allowed in the "sort" parameter'
 _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
 _UNKNOWN_FIELD = 'Unknown field for Abbott: "{}"'
 
+# error message for parse_fields_header()
+_INVALID_FIELD_NAME = '{} is not a valid field name'
+
 # Used by prepare_formatted_sort(). Put here, they might be used by other methods to check whether
 # they have proper values for these things.
 ALLOWED_CHARS = ',;_'
@@ -246,3 +249,33 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     if sort is not None:
         extra_params['sort'] = sort
     return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id), **extra_params))
+
+
+def parse_fields_header(header, returned_fields):
+    '''
+    Parse the value of an X-Cantus-Fields request header into a list of strings that contain valid
+    field names.
+
+    .. note:: In accordance with the Cantus API, the "id" and "type" fields are always required.
+        Therefore they will always be in the returned list, regardless of whether they was in the
+        ``header`` argument.
+
+    :param str header: The value of the X-Cantus-Fields request header.
+    :param returned_fields: A list of valid field names.
+    :type returned_fields: list of str
+    :returns: The field names that are requested in the X-Cantus-Fields header.
+    :rtype: list of str
+    '''
+    post = []
+    for field in [x.strip() for x in header.split(',')]:
+        if '' == field or 'type' == field or 'id' == field:
+            continue
+        elif field not in returned_fields:
+            raise ValueError(_INVALID_FIELD_NAME.format(field))
+        else:
+            post.append(field)
+    if 'id' not in post:
+        post.append('id')
+    if 'type' not in post:
+        post.append('type')
+    return post

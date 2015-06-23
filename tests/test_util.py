@@ -32,15 +32,17 @@ Tests for abbott/util.py of the Abbott server.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
-from unittest import mock
+from unittest import mock, TestCase
+import pytest
 from tornado import testing
 import pysolrtornado
+
 from abbott import __main__ as main
 from abbott import util
 import shared
 
 
-class TestSingularResourceToPlural(shared.TestHandler):
+class TestSingularResourceToPlural(TestCase):
     '''
     Tests for abbott.util.singular_resource_to_plural().
     '''
@@ -167,3 +169,57 @@ class TestFormattedSorts(shared.TestHandler):
         expected = 'incipit,asc;id,desc;family_name,asc'
         actual = util.postpare_formatted_sort(sort)
         self.assertEqual(expected, actual)
+
+
+class TestParseFieldsHeader(TestCase):
+    '''
+    Tests for abbott.util.parse_fields_header().
+    '''
+
+    def test_empty(self):
+        "the header is empty (should return ['id'])"
+        header_val = ''
+        returned_fields = ['name', 'style']
+        expected = ['id', 'type']
+        actual = util.parse_fields_header(header_val, returned_fields)
+        self.assertCountEqual(expected, actual)
+
+    def test_all(self):
+        "when header_val says to return everything in returned_fields"
+        header_val = 'name,style'
+        returned_fields = ['name', 'style']
+        expected = ['id', 'type', 'name', 'style']
+        actual = util.parse_fields_header(header_val, returned_fields)
+        self.assertCountEqual(expected, actual)
+
+    def test_fewer(self):
+        "when 'name' isn't in header_val it shouldn't be returned"
+        header_val = 'style'
+        returned_fields = ['name', 'style']
+        expected = ['id', 'type', 'style']
+        actual = util.parse_fields_header(header_val, returned_fields)
+        self.assertCountEqual(expected, actual)
+
+    def test_lotsa_spaces(self):
+        "extra spaces shouldn't prevent correct return"
+        header_val = '     style     ,      name       '
+        returned_fields = ['name', 'style']
+        expected = ['id', 'type', 'name', 'style']
+        actual = util.parse_fields_header(header_val, returned_fields)
+        self.assertCountEqual(expected, actual)
+
+    def test_id_missing(self):
+        "when 'id' is given, it should still be returned just once"
+        header_val = 'name,id'
+        returned_fields = ['name', 'style']
+        expected = ['id', 'type', 'name']
+        actual = util.parse_fields_header(header_val, returned_fields)
+        self.assertCountEqual(expected, actual)
+
+    def test_invalid_field(self):
+        "when one of the fields in header_val isn't in returned_fields it should raise ValueError"
+        header_val = 'id, type, price'
+        returned_fields = ['name', 'style']
+        with pytest.raises(ValueError) as excinfo:
+            util.parse_fields_header(header_val, returned_fields)
+        self.assertEqual(util._INVALID_FIELD_NAME.format('price'), excinfo.value.args[0])

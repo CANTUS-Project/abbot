@@ -89,6 +89,9 @@ class SimpleHandler(web.RequestHandler):
     _INVALID_NO_XREF = 'X-Cantus-No-Xref must be either "true" or "false"'
     # X-Cantus-No-Xref doesn't contain any sort of 'true' or 'false'
 
+    _INVALID_FIELDS = 'X-Cantus-Fields header has field name(s) invalid for this resource type'
+    # X-Cantus-Fields has fields that don't exist in this resource type
+
     _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
     # when the Solr server has an error
 
@@ -131,6 +134,7 @@ class SimpleHandler(web.RequestHandler):
         self.include_resources = True  # X-Cantus-Include-Resources
         self.sort = None  # X-Cantus-Sort
         self.no_xref = False  # X-Cantus-No-Xrefs
+        self.fields = None  # X-Cantus-Fields
 
         super(SimpleHandler, self).__init__(*args, **kwargs)
 
@@ -163,6 +167,9 @@ class SimpleHandler(web.RequestHandler):
 
         if 'X-Cantus-No-Xref' in self.request.headers:
             self.no_xref = self.request.headers['X-Cantus-No-Xref']
+
+        if 'X-Cantus-Fields' in self.request.headers:
+            self.fields = self.request.headers['X-Cantus-Fields']
 
     def set_default_headers(self):
         '''
@@ -368,6 +375,15 @@ class SimpleHandler(web.RequestHandler):
                 self.no_xref = False
             else:
                 self.send_error(400, reason=SimpleHandler._INVALID_NO_XREF)
+                return
+
+        if self.fields:
+            # X-Cantus-Fields
+            try:
+                self.returned_fields = util.parse_fields_header(self.fields, self.returned_fields)
+            except ValueError:
+                # probably the field wasn't present
+                self.send_error(400, reason=SimpleHandler._INVALID_FIELDS)
                 return
 
         # run the more specific GET request handler
