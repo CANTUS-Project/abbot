@@ -55,6 +55,9 @@ class SimpleHandler(web.RequestHandler):
     _ALLOWED_METHODS = 'GET, HEAD, OPTIONS'
     # value of the "Allow" header in response to an OPTIONS request
 
+    _MANY_BAD_HEADERS = 'Multiple Invalid Headers'
+    # as advertised
+
     _INVALID_PER_PAGE = 'Invalid "X-Cantus-Per-Page" header'
     # when the X-Cantus-Per-Page value doesn't work in a call to int()
 
@@ -333,6 +336,9 @@ class SimpleHandler(web.RequestHandler):
         # we'll make this False if we encounter an error
         all_is_well = True
 
+        # we'll compile all the error messages here
+        error_messages = []
+
         if is_browse_request:
             # the API says only to pay attention to these headers for requests to "browse" URLs
             if self.per_page:
@@ -340,66 +346,71 @@ class SimpleHandler(web.RequestHandler):
                 try:
                     self.per_page = int(self.per_page)
                 except ValueError:
-                    self.send_error(400, reason=SimpleHandler._INVALID_PER_PAGE)
+                    error_messages.append(SimpleHandler._INVALID_PER_PAGE)
                     all_is_well = False
-
-                if all_is_well:
+                else:
+                    # if "per_page" was already found to be faulty, we don't need to keep checking
                     if self.per_page < 0:
-                        self.send_error(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
+                        error_messages.append(SimpleHandler._TOO_SMALL_PER_PAGE)
                         all_is_well = False
                     elif self.per_page > SimpleHandler._MAX_PER_PAGE:
                         self.send_error(507,
                                         reason=SimpleHandler._TOO_BIG_PER_PAGE,
                                         per_page=SimpleHandler._MAX_PER_PAGE)
-                        all_is_well = False
+                        return False
                     elif 0 == self.per_page:
                         self.per_page = SimpleHandler._MAX_PER_PAGE
 
-            if all_is_well and self.page:
+            if self.page:
                 # X-Cantus-Page
                 try:
                     self.page = int(self.page)
                 except ValueError:
-                    self.send_error(400, reason=SimpleHandler._INVALID_PAGE)
+                    error_messages.append(SimpleHandler._INVALID_PAGE)
                     all_is_well = False
                 if all_is_well and self.page < 1:
-                    self.send_error(400, reason=SimpleHandler._TOO_SMALL_PAGE)
+                    error_messages.append(SimpleHandler._TOO_SMALL_PAGE)
                     all_is_well = False
 
-            if all_is_well and self.sort:
+            if self.sort:
                 # X-Cantus-Sort
                 try:
                     self.sort = util.prepare_formatted_sort(self.sort)
                 except ValueError as val_e:
                     if val_e.args[0] == util._MISSING_DIRECTION_SPEC:
-                        self.send_error(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
+                        error_messages.append(SimpleHandler._MISSING_DIRECTION_SPEC)
                     else:
-                        self.send_error(400, reason=SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+                        error_messages.append(SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
                     all_is_well = False
                 except KeyError:
-                    self.send_error(400, reason=SimpleHandler._UNKNOWN_FIELD)
+                    error_messages.append(SimpleHandler._UNKNOWN_FIELD)
                     all_is_well = False
 
-        if all_is_well and (isinstance(self, ComplexHandler) and not isinstance(self.no_xref, bool)):
+        if isinstance(self, ComplexHandler) and not isinstance(self.no_xref, bool):
             # X-Cantus-No-Xref
-            # NB: only worry about this if we're a ComplexHandler; it doesn't apply to the others
             no_xref = str(self.no_xref).lower().strip()
             if 'true' == no_xref:
                 self.no_xref = True
             elif 'false' == no_xref:
                 self.no_xref = False
             else:
-                self.send_error(400, reason=SimpleHandler._INVALID_NO_XREF)
+                error_messages.append(SimpleHandler._INVALID_NO_XREF)
                 all_is_well = False
 
-        if all_is_well and self.fields:
+        if self.fields:
             # X-Cantus-Fields
             try:
                 self.returned_fields = util.parse_fields_header(self.fields, self.returned_fields)
             except ValueError:
                 # probably the field wasn't present
-                self.send_error(400, reason=SimpleHandler._INVALID_FIELDS)
+                error_messages.append(SimpleHandler._INVALID_FIELDS)
                 all_is_well = False
+
+        if not all_is_well:
+            if 1 == len(error_messages):
+                self.send_error(400, reason=error_messages[0])
+            else:
+                self.send_error(400, reason=SimpleHandler._MANY_BAD_HEADERS, body=error_messages)
 
         return all_is_well
 

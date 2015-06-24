@@ -32,12 +32,10 @@ Tests for the Abbott server's SimpleHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
-import copy
 from unittest import mock
-from tornado import concurrent, escape, httpclient, testing, web
-import pysolrtornado
+from tornado import escape, httpclient, testing
 from abbott import __main__ as main
-from abbott import handlers, util
+from abbott import handlers
 import shared
 
 
@@ -485,142 +483,454 @@ class TestHeadIntegration(shared.TestHandler):
 class TestVerifyRequestHeaders(shared.TestHandler):
     '''
     Unit tests for SimpleHandler.verify_request_headers().
-    '''
 
+    Note that I could have combined these things into fewer tests, but I'm trying a new strategy
+    to minimize the things tested per test, rather than trying to minimize the number of tests.
+    '''
 
     def setUp(self):
         "Make a SimpleHandler instance for testing."
         super(TestVerifyRequestHeaders, self).setUp()
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='century')
+        self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        self.request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), self.request, type_name='century')
 
-    def test_verify_request_headers_1(self):
-        "returns 400 when X-Cantus-Per-Page isn't an int"
-        self.handler.send_error = mock.Mock()
-        self.handler.per_page = 'will not work'
-        is_browse_request = True
+    def setup_with_complex(self):
+        "replace self.handler with a ComplexHandler instance"
+        self.handler = handlers.ComplexHandler(self.get_app(), self.request, type_name='chant')
 
-        self.handler.verify_request_headers(is_browse_request)
+    def test_vrh_template(self, **kwargs):
+        '''
+        PLEASE READ THIS WHOLE DOCSTRING BEFORE YOU MODIFY ONE OF THESE TESTS.
 
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._INVALID_PER_PAGE)
+        This is a template test. Without kwargs, it runs verify_request_headers() with "default"
+        settings, as far as that's posssible. Here are the default values for the kwargs:
 
-    def test_verify_request_headers_2(self):
-        "returns 400 when X-Cantus-Per-Page is negative"
-        self.handler.send_error = mock.Mock()
-        self.handler.per_page = '-10'
-        is_browse_request = True
+        - is_browse_request = True
+        - no_xref = False
+            - exp_no_xref = False
+        - fields = None
+            - exp_fields = ['id', 'type', 'name', 'description'] -- NOTE this is compared against self.required_fields
+        - per_page = None
+            - exp_per_page = None
+        - page = None
+            - exp_page = None
+        - sort = None
+            - exp_sort = None
 
-        self.handler.verify_request_headers(is_browse_request)
+        **However** if is_browse_request is set to False in the kwargs, "canary" values are used for
+        the following header variables, which should be ignored by verify_request_headers():
 
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PER_PAGE)
+        - per_page = 'garbage'
+            - exp_per_page = 'garbage'
+        - page = 'test'
+            - exp_page = 'test'
+        - sort = 'data'
+            - exp_sort = 'data'
 
-    def test_verify_request_headers_3(self):
-        "returns 507 when X-Cantus-Per-Page is too large"
-        self.handler.send_error = mock.Mock()
-        self.handler.per_page = handlers.SimpleHandler._MAX_PER_PAGE + 1
-        self.handler.add_header = mock.Mock()
-        is_browse_request = True
+        ------------------------
 
-        self.handler.verify_request_headers(is_browse_request)
+        The following kwargs also exist:
 
-        self.handler.send_error.assert_called_once_with(507,
-                                                        reason=handlers.SimpleHandler._TOO_BIG_PER_PAGE,
-                                                        per_page=handlers.SimpleHandler._MAX_PER_PAGE)
+        :kwarg bool use_complex_handler: Whether to call :meth:`setup_with_complex` before the test.
+            Use this for tests about self.no_xref.
+        :kwarg bool mock_send_error: Whether to install a dummy mock onto send_error(). Default is
+            True. If you send a Mock object, it will be attached appropriately, so you can run
+            assertions on it once this test method returns.
+        :kwarg int send_error_count: The number of calls to SimpleHandler.send_error(). Default is
+            no calls. This is checked if :meth:`send_error` is a :class:`Mock` object, regardless of
+            the setting of "mock_send_error," so that it works even if you mock that method yourself.
+            NOTE that if "expected" is False, this default changes to 1.
+        :kwarg bool expected: The expected return value of the method. Default is True. NOTE that
+            if "expected" is False, checks related to the header fields are skipped, and you should
+            check :meth:`send_error` and adjust "send_error_count" as required.
+        '''
 
-    def test_verify_request_headers_4(self):
-        "returns 400 when X-Cantus-Page isn't an int"
-        self.handler.send_error = mock.Mock()
-        self.handler.page = 'will not work'
-        is_browse_request = True
+        def set_default(key, val):
+            "Check in kwargs if 'key' is defined; if not, set it to 'val'."
+            if key not in kwargs:
+                kwargs[key] = val
 
-        self.handler.verify_request_headers(is_browse_request)
+        # set default kwargs
+        set_default('use_complex_handler', False)
+        set_default('mock_send_error', True)
+        set_default('is_browse_request', True)
+        set_default('expected', True)
+        set_default('no_xref', False)
+        set_default('exp_no_xref', False)
+        set_default('fields', None)
+        set_default('exp_fields', ['id', 'type', 'name', 'description'])
+        if kwargs['is_browse_request']:
+            set_default('per_page', None)
+            set_default('exp_per_page', None)
+            set_default('page', None)
+            set_default('exp_page', None)
+            set_default('sort', None)
+            set_default('exp_sort', None)
+        else:
+            set_default('per_page', 'garbage')
+            set_default('exp_per_page', 'garbage')
+            set_default('page', 'test')
+            set_default('exp_page', 'test')
+            set_default('sort', 'data')
+            set_default('exp_sort', 'data')
+        if kwargs['expected'] is False:
+            set_default('send_error_count', 1)
+        else:
+            set_default('send_error_count', 0)
 
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._INVALID_PAGE)
+        if kwargs['use_complex_handler']:
+            self.setup_with_complex()
+        if kwargs['mock_send_error'] is True:
+            mock_send_error = mock.Mock()
+            self.handler.send_error = mock_send_error
+        elif kwargs['mock_send_error']:
+            self.handler.send_error = kwargs['mock_send_error']
+        self.handler.no_xref = kwargs['no_xref']
+        self.handler.fields = kwargs['fields']
+        self.handler.per_page = kwargs['per_page']
+        self.handler.page = kwargs['page']
+        self.handler.sort = kwargs['sort']
 
-    def test_verify_request_headers_5(self):
-        "returns 400 when X-Cantus-Page is negative or zero"
-        self.handler.send_error = mock.Mock()
-        is_browse_request = True
+        actual = self.handler.verify_request_headers(kwargs['is_browse_request'])
 
-        self.handler.page = '-10'
-        self.handler.verify_request_headers(is_browse_request)
+        self.assertEqual(kwargs['expected'], actual)
+        if kwargs['expected'] is True:
+            self.assertEqual(kwargs['exp_no_xref'], self.handler.no_xref)
+            self.assertEqual(kwargs['exp_fields'], self.handler.returned_fields)
+            self.assertEqual(kwargs['exp_per_page'], self.handler.per_page)
+            self.assertEqual(kwargs['exp_page'], self.handler.page)
+            self.assertEqual(kwargs['exp_sort'], self.handler.sort)
+        if isinstance(self.handler.send_error, mock.Mock):
+            self.assertEqual(kwargs['send_error_count'], self.handler.send_error.call_count)
 
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PAGE)
-        #-------------------------------------------------------------------------------------------
-        self.handler.page = '0'
-        self.handler.verify_request_headers(is_browse_request)
 
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PAGE)
+    def test_not_browse_request_1(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.no_xref is False & self.fields is None (their defaults)
+        - other fields have invalid canary values
 
-    #def test_verify_request_headers_6(self):
-        #"doesn't return 400 when X-Cantus-Page isn't an int BUT there is a resource_id"
-        ## TODO: rewrite this according to the point
-        #self.handler.send_error = mock.Mock()
-        #self.handler.page = 'will not work'
-        #self.handler.get_handler = mock.Mock(return_value=shared.make_future({'five': 5}))
+        Postconditions:
+        - they're both still the same
+        - all the other fields still have canary values
+        - method returns True
+        '''
+        self.test_vrh_template(use_complex_handler=True, is_browse_request=False)
 
-        #yield self.handler.get('123')
+    def test_not_browse_request_2(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.no_xref is 'true'
+        - other fields have invalid canary values
 
-        #self.assertEqual(1, self.handler.get_handler.call_count)
+        Postconditions:
+        - self.no_xref comes out as True
+        - all the other fields still have canary values
+        - method returns True
+        '''
+        self.test_vrh_template(use_complex_handler=True,
+                               is_browse_request=False,
+                               no_xref='  trUE         ',
+                               exp_no_xref=True)
 
-    def test_verify_request_headers_7(self):
-        "returns 400 when X-Cantus-Sort has a disallowed character"
-        self.handler.send_error = mock.Mock()
-        self.handler.sort = 'inc!pit, asc'
-        is_browse_request = True
+    def test_not_browse_request_3(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.no_xref is 'false'
+        - other fields have invalid canary values
 
-        self.handler.verify_request_headers(is_browse_request)
+        Postconditions:
+        - self.no_xref comes out as False
+        - all the other fields still have canary values
+        - method returns True
+        '''
+        self.test_vrh_template(use_complex_handler=True,
+                               is_browse_request=False,
+                               no_xref='   falSe')
 
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+    def test_not_browse_request_4(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.no_xref is 'soup'
+        - other fields have invalid canary values
 
-    def test_verify_request_headers_8(self):
-        "returns 400 when X-Cantus-Sort is missing 'asc' or 'desc'"
-        self.handler.send_error = mock.Mock()
-        self.handler.sort = 'incipit'
-        is_browse_request = True
+        Postconditions:
+        - send_error() called
+        - method returns False
+        '''
+        mock_send_error = mock.Mock()
 
-        self.handler.verify_request_headers(is_browse_request)
+        self.test_vrh_template(use_complex_handler=True,
+                               is_browse_request=False,
+                               no_xref='soup',
+                               mock_send_error=mock_send_error,
+                               expected=False)
 
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._MISSING_DIRECTION_SPEC)
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
 
-    def test_verify_request_headers_9(self):
-        "returns 400 when X-Cantus-Sort has an unknown field"
-        self.handler.send_error = mock.Mock()
-        self.handler.sort = 'inchippit,desc'
-        is_browse_request = True
+    def test_not_browse_request_5(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.no_xref is invalid BUT it's a SimpleHandler
+        - other fields have invalid canary values
 
-        self.handler.verify_request_headers(is_browse_request)
+        Postconditions:
+        - they're both still None
+        - all the other fields still have canary values
+        - method returns True
+        '''
+        self.test_vrh_template(use_complex_handler=False,
+                               is_browse_request=False,
+                               no_xref='soup',
+                               exp_no_xref='soup')
 
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._UNKNOWN_FIELD)
+    @mock.patch('abbott.util.parse_fields_header')
+    def test_not_browse_request_6(self, mock_pfh):
+        '''
+        Preconditions:
+        - self.fields is some value
+        - parse_fields_header mock returns fine
 
-    #def test_verify_request_headers_10(self):
-        #"doesn't return 400 when X-Cantus-Sort has an unknown field BUT there is a resource_id"
-        ## TODO: rewrite this according to the point
-        #self.handler.send_error = mock.Mock()
-        #self.handler.get_handler = mock.Mock(return_value=shared.make_future({'five': 5}))
-        #self.handler.sort = 'inchippit,desc'
+        Postconditions:
+        - they're both still None
+        - all the other fields still have canary values
+        - method returns True
+        '''
+        fields = 'something'
+        parse_fields_header_return = 'whatever'
+        mock_pfh.return_value = parse_fields_header_return
 
-        #yield self.handler.get('12')
+        self.test_vrh_template(is_browse_request=False,
+                               fields=fields,
+                               exp_fields=parse_fields_header_return)
 
-        #self.assertEqual(1, self.handler.get_handler.call_count)
+        mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
 
-    def test_verify_request_headers_11(self):
-        "returns 400 when X-Cantus-No-Xref has an invalid value"
-        self.handler.send_error = mock.Mock()
-        self.handler.no_xref = 'no'
-        is_browse_request = True
+    @mock.patch('abbott.util.parse_fields_header')
+    def test_not_browse_request_7(self, mock_pfh):
+        '''
+        Preconditions:
+        - self.fields is some value
+        - parse_fields_header mock raises ValueError
 
-        self.handler.verify_request_headers(is_browse_request)
+        Postconditions:
+        - send_error() is called
+        - method returns False
+        '''
+        fields = 'something'
+        mock_pfh.side_effect = ValueError
+        mock_send_error = mock.Mock()
 
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
+        self.test_vrh_template(is_browse_request=False,
+                               fields=fields,
+                               expected=False,
+                               mock_send_error=mock_send_error)
 
-    def test_verify_request_headers_12(self):
-        "returns 400 when X-Cantus-Fields has an invalid value"
-        self.handler.send_error = mock.Mock()
-        self.handler.fields = 'no'
-        is_browse_request = True
+        mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_FIELDS)
 
-        self.handler.verify_request_headers(is_browse_request)
+    @mock.patch('abbott.util.parse_fields_header')
+    def test_not_browse_request_8(self, mock_pfh):
+        '''
+        Preconditions:
+        - self.fields is some value
+        - self.no_xref is 'soup' (and this is a ComplexHandler
+        - parse_fields_header mock raises ValueError
 
-        self.handler.send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_FIELDS)
+        Postconditions:
+        - send_error() is called with "body" argument
+        - method returns False
+        '''
+        fields = 'something'
+        mock_pfh.side_effect = ValueError
+        mock_send_error = mock.Mock()
+
+        self.test_vrh_template(use_complex_handler=True,
+                               is_browse_request=False,
+                               no_xref='soup',
+                               fields=fields,
+                               expected=False,
+                               mock_send_error=mock_send_error)
+
+        mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
+        mock_send_error.assert_called_with(400,
+                                           reason=handlers.SimpleHandler._MANY_BAD_HEADERS,
+                                           body=[handlers.SimpleHandler._INVALID_NO_XREF,
+                                                 handlers.SimpleHandler._INVALID_FIELDS])
+
+    def test_browse_request_1(self):
+        '''
+        Preconditions:
+        - per_page is an int (as a string when inputted) in the valid range
+
+        Postconditions:
+        - per_page becomes an actual int
+        '''
+        self.test_vrh_template(per_page='14', exp_per_page=14)
+
+    def test_browse_request_2(self):
+        '''
+        Preconditions:
+        - per_page isn't an int
+
+        Postconditions:
+        - send_error() called
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='five')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_PER_PAGE)
+
+    def test_browse_request_3(self):
+        '''
+        Preconditions:
+        - per_page is an int, but less than zero
+
+        Postconditions:
+        - send_error() called
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='-3')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PER_PAGE)
+
+    def test_browse_request_4(self):
+        '''
+        Preconditions:
+        - per_page is an int, but greater than _MAX_PER_PAGE
+
+        Postconditions:
+        - send_error() called *with 507*
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='40000000')
+        mock_send_error.assert_called_with(507,
+                                           reason=handlers.SimpleHandler._TOO_BIG_PER_PAGE,
+                                           per_page=handlers.SimpleHandler._MAX_PER_PAGE)
+
+    def test_browse_request_5(self):
+        '''
+        Preconditions:
+        - per_page is 0
+
+        Postconditions:
+        - per_page becomes _MAX_PER_PAGE
+        '''
+        self.test_vrh_template(per_page='0', exp_per_page=handlers.SimpleHandler._MAX_PER_PAGE)
+
+    def test_browse_request_6(self):
+        '''
+        Preconditions:
+        - page is not an int
+
+        Postconditions:
+        - send_error() called
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, page='two')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_PAGE)
+
+    def test_browse_request_7(self):
+        '''
+        Preconditions:
+        - page is an int (as a string when inputted) greater than 1
+
+        Postconditions:
+        - it is returned fine
+        '''
+        self.test_vrh_template(page='2', exp_page=2)
+
+    def test_browse_request_8(self):
+        '''
+        Preconditions:
+        - page is an int, but 1
+
+        Postconditions:
+        - it is returned fine
+        '''
+        self.test_vrh_template(page='1', exp_page=1)
+
+    def test_browse_request_9(self):
+        '''
+        Preconditions:
+        - page is an int, less than 1
+
+        Postconditions:
+        - send_error() called
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, page='0')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PAGE)
+
+    def test_browse_request_10(self):
+        '''
+        Preconditions:
+        - sort is valid
+
+        Postconditions:
+        - returns fine
+        '''
+        self.test_vrh_template(sort='name,asc', exp_sort='name asc')
+
+    def test_browse_request_11(self):
+        '''
+        Preconditions:
+        - sort is something
+        - prepare_formatted_sort() raises ValueError with _MISSING_DIRECTION_SPEC
+
+        Postconditions:
+        - send_error() called with _MISSING_DIRECTION_SPEC
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='name')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._MISSING_DIRECTION_SPEC)
+
+    def test_browse_request_12(self):
+        '''
+        Preconditions:
+        - sort is something
+        - prepare_formatted_sort() raises ValueError because of an invalid character
+
+        Postconditions:
+        - send_error() called with _DISALLOWED_CHARACTER_IN_SORT
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='n!me,asc')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+
+    def test_browse_request_13(self):
+        '''
+        Preconditions:
+        - sort is something
+        - prepare_formatted_sort() raises KeyError
+
+        Postconditions:
+        - send_error() called with _UNKNOWN_FIELD
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='nime,asc')
+        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._UNKNOWN_FIELD)
+
+    def test_browse_request_14(self):
+        '''
+        Preconditions:
+        - per_page is '-4'
+        - page is 'yes'
+        - no_xref is 'soup'
+        - it's a ComplexHandler
+
+        Postconditions:
+        - send_error() called with _TOO_SMALL_PER_PAGE; _INVALID_PAGE; _INVALID_NO_XREF
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, use_complex_handler=True,
+                               per_page='-4', page='yes', no_xref='soup')
+        mock_send_error.assert_called_with(400,
+                                           reason=handlers.SimpleHandler._MANY_BAD_HEADERS,
+                                           body=[handlers.SimpleHandler._TOO_SMALL_PER_PAGE,
+                                                 handlers.SimpleHandler._INVALID_PAGE,
+                                                 handlers.SimpleHandler._INVALID_NO_XREF])
