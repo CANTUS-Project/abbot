@@ -414,42 +414,26 @@ class SimpleHandler(web.RequestHandler):
 
         return all_is_well
 
-    @gen.coroutine
-    def get(self, resource_id=None):  # pylint: disable=arguments-differ
+    def make_response_headers(self, is_browse_request, num_records):
         '''
-        Response to GET requests. Returns the result of :meth:`basic_get` without modification.
+        Prepare the response headers for this request.
 
-        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        :param bool is_browse_request: Whether the URL accessed for this request is a "browse" URL.
+        :param int num_records: The number of records being returned in the response. This is used
+            to prepare the ``X-Cantus-Fields`` and ``X-Cantus-Extra-Fields`` headers.
+
+        **Side Effect**
+
+        This method calls :meth:`add_header` many times.
         '''
-
-        # if there is a resource_id, then this request is to a "view" URL
-        is_browse_request = resource_id is None
-
-        # first check the header-set values for sanity
-        headers_good = self.verify_request_headers(is_browse_request)
-        if not headers_good:
-            return
-
-        # run the more specific GET request handler
-        try:
-            response = yield self.get_handler(resource_id)
-            if response is None:
-                return
-        except pysolrtornado.SolrError:
-            # TODO: send back details from the SolrError, once we fully write self.send_error()
-            self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
-            return
-
-        # TODO: move these header preparations to a private method
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
-        num_records = (len(response) - 1) if self.include_resources else len(response)
         fields = ['type']  # "type" is added by Abbott, so it wouldn't have been counted
         extra_fields = []
 
         def _lookup_name(name):
             "If relevant, uses ComplexHandler.LOOKUP to adjust the field name."
-            if hasattr(self, 'LOOKUP') and name in ComplexHandler.LOOKUP:
+            if name in ComplexHandler.LOOKUP:
                 return ComplexHandler.LOOKUP[name].replace_to
             else:
                 return name
@@ -495,6 +479,42 @@ class SimpleHandler(web.RequestHandler):
             if self.sort:
                 self.add_header('X-Cantus-Sort', util.postpare_formatted_sort(self.sort))
 
+    @gen.coroutine
+    def get(self, resource_id=None):  # pylint: disable=arguments-differ
+        '''
+        Response to GET requests. Returns the result of :meth:`basic_get` without modification.
+
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+        **Side Effects**
+
+        Calls :meth:`verify_request_headers` and :meth:`make_response_headers`. May call
+        :meth:`send_error`. Calls :meth:`write` with the response body *only if* ``self.head_request``
+        is ``False``.
+        '''
+
+        # if there is a resource_id, then this request is to a "view" URL
+        is_browse_request = resource_id is None
+
+        # first check the header-set values for sanity
+        headers_good = self.verify_request_headers(is_browse_request)
+        if not headers_good:
+            return
+
+        # run the more specific GET request handler
+        try:
+            response = yield self.get_handler(resource_id)
+            if response is None:
+                return
+        except pysolrtornado.SolrError:
+            # TODO: send back details from the SolrError, once we fully write self.send_error()
+            self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
+            return
+
+        # finally, prepare the response headers
+        num_records = (len(response) - 1) if self.include_resources else len(response)
+        self.make_response_headers(is_browse_request, num_records)
+
         if not self.head_request:
             self.write(response)
 
@@ -528,7 +548,7 @@ class SimpleHandler(web.RequestHandler):
     @gen.coroutine
     def head(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
-        Response to HEAD requests. Uses :meth:`get` but without the response body.
+        Response to HEAD requests. Sets ``self.head_request`` to ``True`` then calls :meth:`get`.
         '''
         self.head_request = True
         yield self.get(resource_id)
@@ -542,6 +562,7 @@ class SimpleHandler(web.RequestHandler):
         :param int per_page: Optional value to send as the ``X-Cantus-Per-Page`` header.
         '''
         # TODO: test this, after fully rewriting it, as per issue #15
+        # TODO: add a "body" argument that takes a list of error messages and does something with it
         self.clear()
         if 'per_page' in kwargs:
             self.add_header('X-Cantus-Per-Page', kwargs['per_page'])

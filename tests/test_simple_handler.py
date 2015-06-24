@@ -934,3 +934,254 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                                            body=[handlers.SimpleHandler._TOO_SMALL_PER_PAGE,
                                                  handlers.SimpleHandler._INVALID_PAGE,
                                                  handlers.SimpleHandler._INVALID_NO_XREF])
+
+
+class TestMakeResponseHeaders(shared.TestHandler):
+    '''
+    Unit tests for SimpleHandler.make_response_headers().
+
+    Note that I could have combined these things into fewer tests, but I'm trying a new strategy
+    to minimize the things tested per test, rather than trying to minimize the number of tests.
+
+    Like the tests for :meth:`verify_request_headers`, these tests use a template. Here, I've only
+    made additional test methods for the non-default conditions
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestMakeResponseHeaders, self).setUp()
+        self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        self.request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), self.request, type_name='century')
+
+    def test_mrh_template(self, **kwargs):
+        '''
+        This is a test template for make_response_headers(). By default, the template makes several
+        assertions by itself, which are described below.
+
+        You can change a default precondition or the by using the kwargs listed here:
+        is_browse_request, num_records, field_counts, include_resources, no_xref, total_results,
+        per_page, page, sort.
+
+        You can change the expected hader value by using the kwargs listed here:
+        h_fields, h_extra_fields, h_include_resources, h_no_xref, h_total_results, h_per_page,
+        h_page, h_sort.
+
+        NOTE that if you set one of the expected header values to ``None``, it is turned into an
+        assertion that :meth:`add_header` was not called with that header.
+
+        --------
+
+        These are the "default" pre- and post-conditions.
+
+        Preconditions:
+        - is_browse_request is False
+        - num_records is 0
+        - self.field_counts is {}
+        - self.include_resources is True
+        - self.no_xref is False
+
+        Postconditions:
+        - X-Cantus-Fields called with 'type' (which is applied by the method-under-test)
+        - X-Cantus-Extra-Fields isn't called called
+        - X-Cantus-Include_Resources called with 'true'
+        - X-Cantus-No-Xref isn't called
+
+        --------
+
+        If the "is_browse_request" kwarg is True (not the default), these conditions also apply.
+
+        Additional Preconditions if "is_browse_request" is True:
+        - self.total_results is 400
+        - self.per_page is None
+        - self.page is None
+        - self.sort is None
+
+        Additional Postconditions if "is_browse_request" is True:
+        - X-Cantus-Total-Results called with 400
+        - X-Cantus-Per-Page called with 10
+        - X-Cantus-Page called with 1
+        - X-Cantus-Sort isn't called
+        '''
+
+        def set_default(key, val):
+            "Check in kwargs if 'key' is defined; if not, set it to 'val'."
+            if key not in kwargs:
+                kwargs[key] = val
+
+        # set default values for the kwargs
+        set_default('is_browse_request', False)
+        set_default('num_records', 0)
+        set_default('field_counts', {})
+        set_default('include_resources', True)
+        set_default('no_xref', False)
+        set_default('h_fields', 'type')
+        set_default('h_extra_fields', None)
+        set_default('h_include_resources', 'true')
+        set_default('h_no_xref', None)
+        if kwargs['is_browse_request']:
+            set_default('total_results', 400)
+            set_default('per_page', None)
+            set_default('page', None)
+            set_default('sort', None)
+            set_default('h_total_results', 400)
+            set_default('h_per_page', 10)
+            set_default('h_page', 1)
+            set_default('h_sort', None)
+
+        # prepare the pre-conditions
+        self.handler.field_counts = kwargs['field_counts']
+        self.handler.include_resources = kwargs['include_resources']
+        self.handler.no_xref = kwargs['no_xref']
+        if kwargs['is_browse_request']:
+            self.handler.total_results = kwargs['total_results']
+            self.handler.per_page = kwargs['per_page']
+            self.handler.page = kwargs['page']
+            self.handler.sort = kwargs['sort']
+
+        # run the test
+        mock_add_header = mock.Mock()
+        self.handler.add_header = mock_add_header
+        self.handler.make_response_headers(kwargs['is_browse_request'], kwargs['num_records'])
+
+        # check the headers (that are always present)
+        header_correspondences = {'h_fields': 'X-Cantus-Fields',
+                                  'h_extra_fields': 'X-Cantus-Extra-Fields',
+                                  'h_include_resources': 'X-Cantus-Include-Resources',
+                                  'h_no_xref': 'X-Cantus-No-Xref'}
+        for key, header in header_correspondences.items():
+            if kwargs[key] is None:
+                assert mock.call(header, mock.ANY) not in mock_add_header.call_args_list
+            elif 'h_fields' == key or 'h_extra_fields' == key:
+                # we accept any order for these header values, so it's a little complicated to test
+                mock_add_header.assert_any_call(header, mock.ANY)
+                for each_call in mock_add_header.call_args_list:
+                    if header == each_call[0][0]:
+                        self.assertCountEqual(kwargs[key].split(','), each_call[0][1].split(','))
+                        break
+            else:
+                mock_add_header.assert_any_call(header, kwargs[key])
+
+        # check the headers (only if is_browse_request)
+        if not kwargs['is_browse_request']:
+            return
+        header_correspondences = {'h_total_results': 'X-Cantus-Total-Results',
+                                  'h_per_page': 'X-Cantus-Per-Page',
+                                  'h_page': 'X-Cantus-Page',
+                                  'h_sort': 'X-Cantus-Sort'}
+        for key, header in header_correspondences.items():
+            if kwargs[key] is None:
+                assert mock.call(header, mock.ANY) not in mock_add_header.call_args_list
+            else:
+                mock_add_header.assert_any_call(header, kwargs[key])
+
+    def test_basic_browse_request(self):
+        '''
+        Calls test_mrh_template() with "is_browse_request" set to True.
+        '''
+        self.test_mrh_template(is_browse_request=True)
+
+    def test_fields_1(self):
+        '''
+        Preconditions:
+        - num_records is 5
+        - self.field_counts has these counts
+            - 'name': 5
+            - 'id': 5
+            - 'source_id': 3
+
+        Postconditions:
+        - X-Cantus-Fields called with something like 'id,name,type'
+        - X-Cantus-Extra-Fields called with 'source'
+        - ('source_id' is replaced with 'source')
+        '''
+        self.test_mrh_template(num_records=5,
+                               field_counts={'name': 5, 'id': 5, 'source_id': 3},
+                               h_fields='id,name,type',
+                               h_extra_fields='source')
+
+    def test_fields_2(self):
+        '''
+        Preconditions:
+        - num_records is 5
+        - self.field_counts has these counts
+            - 'name': 5
+            - 'id': 5
+            - 'source_id': 5
+
+        Postconditions:
+        - X-Cantus-Fields called with something like 'id,name,source,type'
+        - ('source_id' is replaced with 'source')
+        '''
+        self.test_mrh_template(num_records=5,
+                               field_counts={'name': 5, 'id': 5, 'source_id': 5},
+                               h_fields='id,name,type,source')
+
+    def test_resources(self):
+        '''
+        Preconditions:
+        - self.include_resources is False
+
+        Postconditions:
+        - self.add_header('X-Cantus-Include-Resources', 'false')
+        '''
+        self.test_mrh_template(include_resources=False,
+                               h_include_resources='false')
+
+    def test_xref_1(self):
+        '''
+        Preconditions:
+        - self.no_xref is True
+
+        Postconditions:
+        - X-Cantus-No-Xref with 'true'
+        '''
+        self.test_mrh_template(no_xref=True, h_no_xref='true')
+
+    def test_total_results(self):
+        '''
+        Preconditions:
+        - is_browse_request is True
+        - self.total_results is 50
+
+        Postconditions:
+        - X-Cantus-Total-Results with 50
+        '''
+        self.test_mrh_template(is_browse_request=True, total_results=50, h_total_results=50)
+
+    def test_per_page(self):
+        '''
+        Preconditions:
+        - is_browse_request is True
+        - self.per_page is 14
+
+        Postconditions:
+        - X-Cantus-Per-Page with 14
+        '''
+        self.test_mrh_template(is_browse_request=True, per_page=14, h_per_page=14)
+
+    def test_page(self):
+        '''
+        Preconditions:
+        - is_browse_request is True
+        - self.page is 8
+
+        Postconditions:
+        - X-Cantus-Page with 8
+        '''
+        self.test_mrh_template(is_browse_request=True, page=8, h_page=8)
+
+    @mock.patch('abbott.util.postpare_formatted_sort')
+    def test_sort(self, mock_pfs):
+        '''
+        Preconditions:
+        - is_browse_request is True
+        - self.sort is 'testing sort'
+
+        Postconditions:
+        - postpare_formatted_sort() called with 'testing sort' (mock returns 'sorted')
+        - X-Cantus-Sort with 'sorted'
+        '''
+        mock_pfs.return_value = 'sorted'
+        self.test_mrh_template(is_browse_request=True, sort='testing sort', h_sort='sorted')
+        mock_pfs.assert_called_once_with('testing sort')
