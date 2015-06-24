@@ -69,7 +69,7 @@ class TestInitialize(shared.TestHandler):
                                          headers={'X-Cantus-Include-Resources': 'TRue'})
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = handlers.SimpleHandler(self.get_app(), request, type_name='genre',
-                                    additional_fields=['mass_or_office'])
+                                        additional_fields=['mass_or_office'])
         self.assertEqual('genre', actual.type_name)
         self.assertEqual('genres', actual.type_name_plural)
         self.assertEqual(5, len(actual.returned_fields))
@@ -265,12 +265,13 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
         self.handler.page = 6000
+        exp_reason = handlers.SimpleHandler._TOO_LARGE_PAGE
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
         self.assertIsNone(actual)
-        self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_LARGE_PAGE)
+        self.handler.send_error.assert_called_once_with(400, reason=exp_reason)
 
 
 class TestGetUnit(shared.TestHandler):
@@ -702,7 +703,8 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - no_xref = False
             - exp_no_xref = False
         - fields = None
-            - exp_fields = ['id', 'type', 'name', 'description'] -- NOTE this is compared against self.required_fields
+            - exp_fields = ['id', 'type', 'name', 'description']
+                - NOTE: exp_fields is compared against self.required_fields
         - per_page = None
             - exp_per_page = None
         - page = None
@@ -1091,8 +1093,9 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - send_error() called with _DISALLOWED_CHARACTER_IN_SORT
         '''
         mock_send_error = mock.Mock()
+        exp_reason = handlers.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='n!me,asc')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+        mock_send_error.assert_called_with(400, reason=exp_reason)
 
     def test_browse_request_13(self):
         '''
