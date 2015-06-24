@@ -497,8 +497,7 @@ class SimpleHandler(web.RequestHandler):
         is_browse_request = resource_id is None
 
         # first check the header-set values for sanity
-        headers_good = self.verify_request_headers(is_browse_request)
-        if not headers_good:
+        if not self.verify_request_headers(is_browse_request):
             return
 
         # run the more specific GET request handler

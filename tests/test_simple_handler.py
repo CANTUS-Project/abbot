@@ -34,6 +34,7 @@ Tests for the Abbott server's SimpleHandler.
 
 from unittest import mock
 from tornado import escape, httpclient, testing
+import pysolrtornado
 from abbott import __main__ as main
 from abbott import handlers
 import shared
@@ -271,6 +272,197 @@ class TestBasicGetUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=handlers.SimpleHandler._TOO_LARGE_PAGE)
 
+
+class TestGetUnit(shared.TestHandler):
+    '''
+    Unit tests for the SimpleHandler.get().
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestGetUnit, self).setUp()
+        self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        self.request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = handlers.SimpleHandler(self.get_app(), self.request, type_name='century')
+
+    def test_normal_browse(self):
+        '''
+        Preconditions:
+        - resource_id is None
+        - self.include_resources is True
+        - self.verify_request_headers() returns True
+        - self.get_handler() returns Future with three-item list
+        - self.head_request is False
+
+        Postconditions:
+        - is_browse_request is True
+        - self.verify_request_headers() called with True
+        - self.get_handler() called with None
+        - self.make_response_headers() called with (True, 2)
+        - self.write() is called
+        '''
+        resource_id = None
+        self.handler.include_resources = True
+        self.handler.head_request = False
+        mock_vrh = mock.Mock(return_value=True)
+        self.handler.verify_request_headers = mock_vrh
+        response = [1, 2, 3]
+        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
+        self.handler.get_handler = mock_get_handler
+        mock_mrh = mock.Mock()
+        self.handler.make_response_headers = mock_mrh
+        mock_write = mock.Mock()
+        self.handler.write = mock_write
+
+        self.handler.get(resource_id)
+
+        mock_vrh.assert_called_once_with(True)
+        mock_get_handler.assert_called_once_with(resource_id)
+        mock_mrh.assert_called_once_with(True, len(response) - 1)
+        mock_write.assert_called_once_with(response)
+
+    def test_normal_view(self):
+        '''
+        Preconditions:
+        - resource_id is '123'
+        - self.include_resources is False
+        - self.verify_request_headers() returns True
+        - self.get_handler() returns Future with one-item list
+        - self.head_request is True
+
+        Postconditions:
+        - is_browse_request is False
+        - self.verify_request_headers() called with False
+        - self.get_handler() called with '123'
+        - self.make_response_headers() called with (False, 1)
+        - self.write() is not called
+        '''
+        resource_id = '123'
+        self.handler.include_resources = False
+        self.handler.head_request = True
+        mock_vrh = mock.Mock(return_value=True)
+        self.handler.verify_request_headers = mock_vrh
+        response = [1]
+        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
+        self.handler.get_handler = mock_get_handler
+        mock_mrh = mock.Mock()
+        self.handler.make_response_headers = mock_mrh
+        mock_write = mock.Mock()
+        self.handler.write = mock_write
+
+        self.handler.get(resource_id)
+
+        mock_vrh.assert_called_once_with(False)
+        mock_get_handler.assert_called_once_with(resource_id)
+        mock_mrh.assert_called_once_with(False, len(response))
+        self.assertEqual(0, mock_write.call_count)
+
+    def test_no_resources_found(self):
+        '''
+        Preconditions:
+        - resource_id is None
+        - self.verify_request_headers() returns True
+        - self.get_handler() returns Future with None
+        - self.head_request is False
+
+        Postconditions:
+        - is_browse_request is True
+        - self.verify_request_headers() called with True
+        - self.get_handler() called with None
+        - self.make_response_headers() is not called
+        - self.write() is not called
+        '''
+        resource_id = None
+        self.handler.include_resources = True
+        self.handler.head_request = False
+        mock_vrh = mock.Mock(return_value=True)
+        self.handler.verify_request_headers = mock_vrh
+        response = None
+        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
+        self.handler.get_handler = mock_get_handler
+        mock_mrh = mock.Mock()
+        self.handler.make_response_headers = mock_mrh
+        mock_write = mock.Mock()
+        self.handler.write = mock_write
+
+        self.handler.get(resource_id)
+
+        mock_vrh.assert_called_once_with(True)
+        mock_get_handler.assert_called_once_with(resource_id)
+        self.assertEqual(0, mock_mrh.call_count)
+        self.assertEqual(0, mock_write.call_count)
+
+    def test_bad_headers(self):
+        '''
+        Preconditions:
+        - resource_id is None
+        - self.verify_request_headers() returns False
+        - self.head_request is False
+
+        Postconditions:
+        - is_browse_request is True
+        - self.verify_request_headers() called with True
+        - self.get_handler() is not called
+        - self.make_response_headers() is not called
+        - self.write() is not called
+        '''
+        resource_id = None
+        self.handler.include_resources = True
+        self.handler.head_request = False
+        mock_vrh = mock.Mock(return_value=False)
+        self.handler.verify_request_headers = mock_vrh
+        response = None
+        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
+        self.handler.get_handler = mock_get_handler
+        mock_mrh = mock.Mock()
+        self.handler.make_response_headers = mock_mrh
+        mock_write = mock.Mock()
+        self.handler.write = mock_write
+
+        self.handler.get(resource_id)
+
+        mock_vrh.assert_called_once_with(True)
+        self.assertEqual(0, mock_get_handler.call_count)
+        self.assertEqual(0, mock_mrh.call_count)
+        self.assertEqual(0, mock_write.call_count)
+
+    def test_solr_error(self):
+        '''
+        Preconditions:
+        - resource_id is None
+        - self.verify_request_headers() returns True
+        - self.get_handler() raises pysolrtornado.SolrError
+        - self.head_request is False
+
+        Postconditions:
+        - is_browse_request is True
+        - self.verify_request_headers() called with True
+        - self.get_handler() called with None
+        - self.make_response_headers() is not called
+        - self.write() is not called
+        - self.send_error() is called with (502, reason=handlers.SimpleHandler._SOLR_502_ERROR)
+        '''
+        resource_id = None
+        self.handler.include_resources = True
+        self.handler.head_request = False
+        mock_vrh = mock.Mock(return_value=True)
+        self.handler.verify_request_headers = mock_vrh
+        mock_get_handler = mock.Mock(side_effect=pysolrtornado.SolrError)
+        self.handler.get_handler = mock_get_handler
+        mock_mrh = mock.Mock()
+        self.handler.make_response_headers = mock_mrh
+        mock_write = mock.Mock()
+        self.handler.write = mock_write
+        mock_send_error = mock.Mock()
+        self.handler.send_error = mock_send_error
+
+        self.handler.get(resource_id)
+
+        mock_vrh.assert_called_once_with(True)
+        mock_get_handler.assert_called_once_with(resource_id)
+        self.assertEqual(0, mock_mrh.call_count)
+        self.assertEqual(0, mock_write.call_count)
+        mock_send_error.assert_called_once_with(502, reason=handlers.SimpleHandler._SOLR_502_ERROR)
 
 class TestGetIntegration(shared.TestHandler):
     '''
