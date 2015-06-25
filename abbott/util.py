@@ -243,3 +243,32 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     if sort is not None:
         extra_params['sort'] = sort
     return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id), **extra_params))
+
+
+@gen.coroutine
+def search_solr(query, start=None, rows=None, sort=None):
+    '''
+    Query the Solr server.
+
+    .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+    :param str query: The query to submit to Solr.
+    :param int start: The "start" field to use when calling Solr (i.e., in a list of results, start
+        at the ``start``-th result). Default is Solr default (effectively 0).
+    :param int rows: The "rows" field to use when calling Solr (i.e., the maximum number of results
+        to include for a single search). Default is Solr default (effectively 10).
+    :param str sort: The "sort" field to use when calling Solr, like ``'incipit asc'`` or
+        ``'cantus_id desc'``. Default is Solr default.
+    :returns: Results from the Solr server, in an object that acts like a list of dicts.
+    :rtype: :class:`pysolrtornado.Results`
+    :raises: :exc:`pysolrtornado.SolrError` when there's an error while connecting to Solr.
+    '''
+    # TODO: finalize then test this function
+    extra_params = {}
+    if start is not None:
+        extra_params['start'] = start
+    if rows is not None:
+        extra_params['rows'] = rows
+    if sort is not None:
+        extra_params['sort'] = sort
+    return (yield SOLR.search(query, **extra_params))
