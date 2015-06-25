@@ -36,11 +36,6 @@ import abbott
 from abbott import util
 
 
-# TODO: should these constants actually be held here? (Spoiler alert: no).
-#ABBOTT_VERSION = abbott.__version__
-#CANTUS_API_VERSION = abbott.__cantus_version__
-
-
 class SimpleHandler(web.RequestHandler):
     '''
     For the resource types that were represented in Drupal with its "taxonomy" feature. This class
