@@ -175,6 +175,9 @@ class SimpleHandler(web.RequestHandler):
         # NOTE: keep this the same as RootHandler.set_default_headers() where relevant
         self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
+        # DEBUG TODO: remove these
+        self.add_header('Access-Control-Allow-Origin', '*')
+        self.add_header('Access-Control-Allow-Headers', 'x-cantus-per-page, x-cantus-page, x-cantus-include-resources, x-cantus-sort, x-cantus-no-xref, x-cantus-fields')
 
     def format_record(self, record):
         '''
@@ -809,6 +812,7 @@ class RootHandler(web.RequestHandler):
         # NOTE: keep this the same as SimpleHandler.set_default_headers() where relevant
         self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
+        self.add_header('Access-Control-Allow-Origin', '*')  # DEBUG TODO: remove this
 
     def prepare_get(self):
         '''
