@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Test Client for Abbott (the Cantus API Server)</title>
+        <script src="jquery-2.1.4.js"></script>
+        <style>
+            .pre { font-family: monospace; }
+            ul.no-bullets li { list-style-type: none; }
+
+            /* the box that contains the following two things */
+            .request-box { }
+
+            /* for the request currently being prepared */
+            .preparation-values { width: 50%; float:left; padding: 0; }
+
+            /* for the previously-submitted request */
+            .submitted-values { width: 50%; float:right; padding: 0; }
+            /* ---------------------------------------------------------------------------------- */
+            /* CRA: I got this tricker from JSFiddle: https://jsfiddle.net/unLSJ/                 */
+            pre.output {
+                background-color: ghostwhite;
+                border: 1px solid silver;
+                padding: 10px 20px;
+                margin: 20px;
+            }
+            .json-key { color: brown; }
+            .json-value { color: navy; }
+            .json-string { color: olive; }
+            /* end of content from JSFiddle                                                       */
+            /* ---------------------------------------------------------------------------------- */
+        </style>
+    </head>
+
+    <body>
+        <h1>Test Client for Abbott (the Cantus API Server)</h1>
+
+        <h2>Request</h2>
+
+        <div class="request-box">
+            <ul class="preparation-values no-bullets">
+                <li>URL: <input type="url" id="input-server-url"></span></li>
+                <li>X-Cantus-Per-Page: <input type="number" id="input-per-page"></input></li>
+                <li>X-Cantus-Page: <input type="number" id="input-page"></input></li>
+                <li>X-Cantus-Include-Resources: <input type="checkbox" id="input-include-resources"></input></li>
+                <li>X-Cantus-Sort: <input type="text" id="input-sort"></input></li>
+                <li>X-Cantus-No-Xref: <input type="checkbox" id="input-no-xref"></input></li>
+                <li>X-Cantus-Fields: <input type="text" id="input-fields"></input></li>
+            </ul>
+
+            <ul class="submitted-values no-bullets">
+                <!-- <li>?: <span class="pre" id="?"></span></li> -->
+                <li>URL: <span class="pre" id="display-server-url"></span></li>
+                <li>X-Cantus-Per-Page: <span class="pre" id="display-per-page"></span></li>
+                <li>X-Cantus-Page: <span class="pre" id="display-page"></span></li>
+                <li>X-Cantus-Include-Resources: <span class="pre" id="display-include-resources"></span></li>
+                <li>X-Cantus-Sort: <span class="pre" id="display-sort"></span></li>
+                <li>X-Cantus-No-Xref: <span class="pre" id="display-no-xref"></span></li>
+                <li>X-Cantus-Fields: <span class="pre" id="display-fields"></span></li>
+            </ul>
+        </div>
+
+        <p>
+            <button id="btn-submit">Submit Request</button>
+        </p>
+
+        <h2>Response</h2>
+        <pre class="output"><code id="output"></code></pre>
+
+        <script>
+            // ---------------------------------------------------------------------------------- //
+            // CRA: I got this tricker from JSFiddle: https://jsfiddle.net/unLSJ/
+            if (!library) { var library = {}; }
+
+            library.json = {
+                replacer: function(match, pIndent, pKey, pVal, pEnd) {
+                    var key = '<span class=json-key>';
+                    var val = '<span class=json-value>';
+                    var str = '<span class=json-string>';
+                    var r = pIndent || '';
+                    if (pKey)
+                        r = r + key + pKey.replace(/[": ]/g, '') + '</span>: ';
+                    if (pVal)
+                        r = r + (pVal[0] == '"' ? str : val) + pVal + '</span>';
+                    return r + (pEnd || '');
+                    },
+                prettyPrint: function(obj) {
+                    var jsonLine = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{])?$/mg;
+                    return JSON.stringify(obj, null, 3)
+                        .replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
+                        .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(jsonLine, library.json.replacer);
+                    }
+            };
+
+            // end of content from JSFiddle
+            // ---------------------------------------------------------------------------------- //
+
+            // set default values -------------------------
+            var serverUrl = 'http://localhost:8888/chants/';
+            var headerPerPage = '0';
+            var headerPage = '1';
+            var headerIncludeResources = true;
+            var headerSort = '';
+            var headerNoXref = false;
+            var headerFields = '';
+
+            // fetch things -------------------------------
+            // input controls
+            var btnSubmit = $('#btn-submit');
+            var inputServerUrl = $('#input-server-url');
+            var inputPerPage = $('#input-per-page');
+            var inputPage = $('#input-page');
+            var inputIncludeResources = $('#input-include-resources');
+            var inputSort = $('#input-sort');
+            var inputNoXref = $('#input-no-xref');
+            var inputFields = $('#input-fields');
+
+            // "submitted" displays
+            var displayRequestUrl = $('#display-server-url');
+            var displayPerPage = $('#display-per-page');
+            var displayPage = $('#display-page');
+            var displayIncludeResources = $('#display-include-resources');
+            var displaySort = $('#display-sort');
+            var displayNoXref = $('#display-no-xref');
+            var displayFields = $('#display-fields');
+
+            // attach things to controls
+            btnSubmit.click(runThing);
+
+            function setControlsToDefaults() {
+                // Call this when the page is loaded. It sets all the request input controls to the
+                // values stored in their variables.
+                inputServerUrl.val(serverUrl);
+                inputPerPage.val(headerPerPage);
+                inputPage.val(headerPage);
+                inputIncludeResources.prop('checked', headerIncludeResources);
+                inputSort.val(headerSort);
+                inputNoXref.prop('checked', headerNoXref);
+                inputFields.val(headerFields);
+            }
+
+            function updateSubmissionDisplays() {
+                // Call this after you updated the request variables but before submitting. It sets
+                // the "display" things for the previously-submitted request.
+                displayRequestUrl.html(serverUrl);
+
+                if ('0' == headerPerPage)
+                    displayPerPage.html('N/A');
+                else
+                    displayPerPage.html(headerPerPage);
+
+                if ('0' == headerPage || '1' == headerPage)
+                    displayPage.html('N/A');
+                else
+                    displayPage.html(headerPage);
+
+                if (headerIncludeResources)
+                    displayIncludeResources.html('N/A');
+                else
+                    displayIncludeResources.html('false');
+
+                if ('' == headerSort)
+                    displaySort.html('N/A');
+                else
+                    displaySort.html(headerSort);
+
+                if (headerNoXref)
+                    displayNoXref.html('true');
+                else
+                    displayNoXref.html('N/A');
+
+                if ('' == headerFields)
+                    displayFields.html('N/A');
+                else
+                    displayFields.html(headerFields);
+            }
+
+            function updateOutput(data) {
+                // Call this with the response body.
+                $('#output').html(library.json.prettyPrint(data));
+            }
+
+            function runThing() {
+                // update values from controls
+                headerPerPage = inputPerPage.val();
+                headerPage = inputPage.val();
+                headerIncludeResources = inputIncludeResources.is(':checked');
+                headerSort = inputSort.val();
+                headerNoXref = inputNoXref.is(':checked');
+                headerFields = inputFields.val();
+
+                // show the values we're about to submit
+                updateSubmissionDisplays();
+
+                // prepare the headers object
+                var headers = {};
+                if (headerPerPage != '0')
+                    headers['X-Cantus-Per-Page'] = headerPerPage;
+
+                if (headerPage != '0' && headerPage != '1')
+                    headers['X-Cantus-Page'] = headerPage;
+
+                if (!headerIncludeResources)
+                    headers['X-Cantus-Include-Resources'] = 'false';
+
+                if ('' != headerSort)
+                    headers['X-Cantus-Sort'] = headerSort;
+
+                if (headerNoXref)
+                    headers['X-Cantus-No-Xref'] = 'true';
+
+                if ('' != headerFields)
+                    headers['X-Cantus-Fields'] = headerFields;
+
+                // send the request
+                $.ajax({url: serverUrl,
+                        success: updateOutput,
+                        dataType: 'json',
+                        headers: headers,
+                       }
+                      );
+            }
+
+            window.onload = function() { $(document).ready(setControlsToDefaults); };
+        </script>
+    </body>
+</html>
