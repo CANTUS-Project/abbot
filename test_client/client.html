@@ -39,13 +39,35 @@
 
         <div class="request-box">
             <ul class="preparation-values no-bullets">
-                <li>URL: <input type="url" id="input-server-url"></span></li>
-                <li>X-Cantus-Per-Page: <input type="number" id="input-per-page"></input></li>
-                <li>X-Cantus-Page: <input type="number" id="input-page"></input></li>
-                <li>X-Cantus-Include-Resources: <input type="checkbox" id="input-include-resources"></input></li>
-                <li>X-Cantus-Sort: <input type="text" id="input-sort"></input></li>
-                <li>X-Cantus-No-Xref: <input type="checkbox" id="input-no-xref"></input></li>
-                <li>X-Cantus-Fields: <input type="text" id="input-fields"></input></li>
+                <li>URL: <span class="pre" id="input-request-url"></span></li>
+                <li>Action: <select id="input-action">
+                                <option value="browse">Browse</option>
+<!--                                 <option value="search">Search</option> -->
+                                <option value="view">View</option>
+                            </select></li>
+                <li>Resource Type: <select id="input-type">
+                                       <option value="cantusids">Cantus ID</option>
+                                       <option value="centuries">Century</option>
+                                       <option value="chants">Chant</option>
+                                       <option value="feasts">Feast</option>
+                                       <option value="genres">Genre</option>
+                                       <option value="indexers">Indexer</option>
+                                       <option value="notations">Notation</option>
+                                       <option value="offices">Office</option>
+                                       <option value="portfolia">Portfolio</option>
+                                       <option value="provenances">Provenance</option>
+                                       <option value="sigla">Siglum</option>
+                                       <option value="segments">Segment</option>
+                                       <option value="sources">Source</option>
+                                   </select></li>
+                <li>ID: <input type="text" id="input-id" disabled="true"/></li>
+                <li>X-Cantus-Per-Page: <input type="number" id="input-per-page"/></li>
+                <li>X-Cantus-Page: <input type="number" id="input-page"/></li>
+                <li>X-Cantus-Include-Resources: <input type="checkbox" id="input-include-resources"/></li>
+                <li>X-Cantus-Sort: <input type="text" id="input-sort"/></li>
+                <li>X-Cantus-No-Xref: <input type="checkbox" id="input-no-xref"/></li>
+                <li>X-Cantus-Fields: <input type="text" id="input-fields"/></li>
+                <li>X-Cantus-Search-Help: <input type="text" id="input-search-help" value="not implemented" disabled="true"/></li>
             </ul>
 
             <ul class="submitted-values no-bullets">
@@ -57,6 +79,7 @@
                 <li>X-Cantus-Sort: <span class="pre" id="display-sort"></span></li>
                 <li>X-Cantus-No-Xref: <span class="pre" id="display-no-xref"></span></li>
                 <li>X-Cantus-Fields: <span class="pre" id="display-fields"></span></li>
+                <li>X-Cantus-Search-Help: <span class="pre" id="display-search-help">not implemented</span></li>
             </ul>
         </div>
 
@@ -65,6 +88,21 @@
         </p>
 
         <h2>Response</h2>
+        <ul class="response-values no-bullets">
+            <!-- <li>?: <span class="pre" id="?"></span></li> -->
+            <li>Status: <span class="pre" id="response-status"></span></li>
+            <li>Server: <span class="pre" id="response-server"></span></li>
+            <li>X-Cantus-Version: <span class="pre" id="response-cantus-version"></span></li>
+            <li>X-Cantus-Per-Page: <span class="pre" id="response-per-page"></span></li>
+            <li>X-Cantus-Page: <span class="pre" id="response-page"></span></li>
+            <li>X-Cantus-Include-Resources: <span class="pre" id="response-include-resources"></span></li>
+            <li>X-Cantus-Sort: <span class="pre" id="response-sort"></span></li>
+            <li>X-Cantus-No-Xref: <span class="pre" id="response-no-xref"></span></li>
+            <li>X-Cantus-Fields: <span class="pre" id="response-fields"></span></li>
+            <li>X-Cantus-Total-Results: <span class="pre" id="response-total-results"></span></li>
+            <li>X-Cantus-Search-Help: <span class="pre" id="response-search-help">not implemented</span></li>
+        </ul>
+
         <pre class="output"><code id="output"></code></pre>
 
         <script>
@@ -97,7 +135,9 @@
             // ---------------------------------------------------------------------------------- //
 
             // set default values -------------------------
-            var serverUrl = 'http://localhost:8888/chants/';
+            var SERVER_URL = 'http://localhost:8888';
+            var requestUrl = SERVER_URL;  // updated by updateRequestUrl()
+            var urlDirectory = null;
             var headerPerPage = '0';
             var headerPage = '1';
             var headerIncludeResources = true;
@@ -108,13 +148,17 @@
             // fetch things -------------------------------
             // input controls
             var btnSubmit = $('#btn-submit');
-            var inputServerUrl = $('#input-server-url');
+            var inputAction = $('#input-action');
+            var inputType = $('#input-type');
+            var inputId = $('#input-id');
+            var inputRequestUrl = $('#input-request-url');
             var inputPerPage = $('#input-per-page');
             var inputPage = $('#input-page');
             var inputIncludeResources = $('#input-include-resources');
             var inputSort = $('#input-sort');
             var inputNoXref = $('#input-no-xref');
             var inputFields = $('#input-fields');
+            // var inputSearchHelp = $('#input-search-help');
 
             // "submitted" displays
             var displayRequestUrl = $('#display-server-url');
@@ -124,26 +168,66 @@
             var displaySort = $('#display-sort');
             var displayNoXref = $('#display-no-xref');
             var displayFields = $('#display-fields');
+            // var displaySearchHelp = $('#display-search-help');
+
+            // response headers
+            var responseStatus = $('#response-status');
+            var responseServer = $('#response-server');
+            var responseCantusVersion = $('#response-cantus-version');
+            var responsePerPage = $('#response-per-page');
+            var responsePage = $('#response-page');
+            var responseIncludeResources = $('#response-include-resources');
+            var responseSort = $('#response-sort');
+            var responseNoXref = $('#response-no-xref');
+            var responseFields = $('#response-fields');
+            var responseTotalResults = $('#response-total-results');
+            // var responseSearchHelp = $('#response-search-help');
 
             // attach things to controls
             btnSubmit.click(runThing);
+            inputAction.change(updateRequestUrl);
+            inputType.change(updateRequestUrl);
 
             function setControlsToDefaults() {
                 // Call this when the page is loaded. It sets all the request input controls to the
                 // values stored in their variables.
-                inputServerUrl.val(serverUrl);
                 inputPerPage.val(headerPerPage);
                 inputPage.val(headerPage);
                 inputIncludeResources.prop('checked', headerIncludeResources);
                 inputSort.val(headerSort);
                 inputNoXref.prop('checked', headerNoXref);
                 inputFields.val(headerFields);
+                updateRequestUrl();
+            }
+
+            function updateRequestUrl(arg) {
+                // Call this when you want to update the request URL (because the action or resource
+                // type was changed).
+                if (null == urlDirectory && (typeof arg == 'undefined')) {
+                    $.ajax({url: SERVER_URL, dataType: 'json', success: updateRequestUrl});
+                }
+                else {
+                    if (typeof arg != 'undefined' && arg.resources) {
+                        // there is usually an argument, so we have to make sure it has "resources",
+                        // which means we're the callback from the AJAX request just above
+                        urlDirectory = arg;
+                    }
+                    var action = inputAction.val();
+                    var specificPath = urlDirectory['resources'][action][inputType.val()]
+                    requestUrl = SERVER_URL + specificPath;
+                    inputRequestUrl.html(requestUrl);
+                    // also update the "ID" input box
+                    if ('view' == action)
+                        inputId.attr('disabled', false);
+                    else
+                        inputId.attr('disabled', true);
+                }
             }
 
             function updateSubmissionDisplays() {
                 // Call this after you updated the request variables but before submitting. It sets
                 // the "display" things for the previously-submitted request.
-                displayRequestUrl.html(serverUrl);
+                displayRequestUrl.html(requestUrl);
 
                 if ('0' == headerPerPage)
                     displayPerPage.html('N/A');
@@ -181,6 +265,26 @@
                 $('#output').html(library.json.prettyPrint(data));
             }
 
+            function updateOutputFail(data) {
+                // Call this with the response body when the request fails.
+                $('#output').html('error');
+            }
+
+            function writeResponseHeaders(jqxhr, textStatus) {
+                // This should be the "complete" callback for an AJAX request to the server. The
+                // function updates the displayed response headers.
+                responseStatus.html(jqxhr.status + ' ' + jqxhr.statusText);
+                responseServer.html(jqxhr.getResponseHeader('Server'));
+                responseCantusVersion.html(jqxhr.getResponseHeader('X-Cantus-Version'));
+                responsePerPage.html(jqxhr.getResponseHeader('X-Cantus-Per-Page'));
+                responsePage.html(jqxhr.getResponseHeader('X-Cantus-Page'));
+                responseIncludeResources.html(jqxhr.getResponseHeader('X-Cantus-Include-Resources'));
+                responseSort.html(jqxhr.getResponseHeader('X-Cantus-Sort'));
+                responseNoXref.html(jqxhr.getResponseHeader('X-Cantus-No-Xref'));
+                responseFields.html(jqxhr.getResponseHeader('X-Cantus-Fields'));
+                responseTotalResults.html(jqxhr.getResponseHeader('X-Cantus-Total-Results'));
+            }
+
             function runThing() {
                 // update values from controls
                 headerPerPage = inputPerPage.val();
@@ -189,6 +293,12 @@
                 headerSort = inputSort.val();
                 headerNoXref = inputNoXref.is(':checked');
                 headerFields = inputFields.val();
+
+                // maybe we have to substitute an "id?"?
+                if ('view' == inputAction.val()) {
+                    requestUrl = requestUrl.replace('id?', inputId.val() + '/');
+                    console.log(requestUrl);
+                }
 
                 // show the values we're about to submit
                 updateSubmissionDisplays();
@@ -214,8 +324,10 @@
                     headers['X-Cantus-Fields'] = headerFields;
 
                 // send the request
-                $.ajax({url: serverUrl,
+                $.ajax({url: requestUrl,
                         success: updateOutput,
+                        error: updateOutputFail,
+                        complete: writeResponseHeaders,
                         dataType: 'json',
                         headers: headers,
                        }
