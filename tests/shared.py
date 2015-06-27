@@ -65,13 +65,26 @@ class TestHandler(testing.AsyncHTTPTestCase):
 
     def check_standard_header(self, on_this):
         '''
-        Verify the proper values for the headers that should be part of every response, Server and
-        X-Cantus-Version.
+        Verify the proper values for the headers that should be part of every response:
+
+        - Server
+        - X-Cantus-Version
+        - Access-Control-Allow-Headers
+        - Access-Control-Expose-Headers
+        - Access-Control-Allow-Origin (if DEBUG is True)
 
         :param on_this: The :class:`Response` object to verify.
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
         '''
-        expected_server = 'Abbott/{}'.format(abbott.__version__)
-        expected_cantus_version = 'Cantus/{}'.format(handlers.abbott.__cantus_version__)
-        self.assertEqual(expected_server, on_this.headers['Server'])
-        self.assertEqual(expected_cantus_version, on_this.headers['X-Cantus-Version'])
+        exp_server = 'Abbott/{}'.format(abbott.__version__)
+        exp_cantus_version = 'Cantus/{}'.format(handlers.abbott.__cantus_version__)
+        exp_allow_headers = ','.join(abbott.CANTUS_REQUEST_HEADERS)
+        exp_expose_headers = ','.join(abbott.CANTUS_RESPONSE_HEADERS)
+        exp_allow_origin = 'http://localhost:8000'
+
+        self.assertEqual(exp_server, on_this.headers['Server'])
+        self.assertEqual(exp_cantus_version, on_this.headers['X-Cantus-Version'])
+        self.assertEqual(exp_allow_headers, on_this.headers['Access-Control-Allow-Headers'])
+        self.assertEqual(exp_expose_headers, on_this.headers['Access-Control-Expose-Headers'])
+        if abbott.DEBUG:
+            self.assertEqual(exp_allow_origin, on_this.headers['Access-Control-Allow-Origin'])

@@ -171,13 +171,20 @@ class SimpleHandler(web.RequestHandler):
     def set_default_headers(self):
         '''
         Set the default headers for all requests: Server, X-Cantus-Version.
+
+        Also sets CORS headers:
+        - Access-Control-Allow-Origin (if abbott.DEBUG is True)
+        - Access-Control-Allow-Headers
+        - Access-Control-Expose-Headers
+
+        .. note:: This method is also used by :meth:`RootHandler.set_default_headers`.
         '''
-        # NOTE: keep this the same as RootHandler.set_default_headers() where relevant
         self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
-        # DEBUG TODO: remove these
-        self.add_header('Access-Control-Allow-Origin', '*')
-        self.add_header('Access-Control-Allow-Headers', 'x-cantus-per-page, x-cantus-page, x-cantus-include-resources, x-cantus-sort, x-cantus-no-xref, x-cantus-fields')
+        if abbott.DEBUG:
+            self.add_header('Access-Control-Allow-Origin', 'http://localhost:8000')
+        self.add_header('Access-Control-Allow-Headers', ','.join(abbott.CANTUS_REQUEST_HEADERS))
+        self.add_header('Access-Control-Expose-Headers', ','.join(abbott.CANTUS_RESPONSE_HEADERS))
 
     def format_record(self, record):
         '''
@@ -807,12 +814,9 @@ class RootHandler(web.RequestHandler):
 
     def set_default_headers(self):
         '''
-        Set the default headers for all requests: Server, X-Cantus-Version.
+        Use :meth:`SimpleHandler.set_default_headers` to set the default headers.
         '''
-        # NOTE: keep this the same as SimpleHandler.set_default_headers() where relevant
-        self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
-        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
-        self.add_header('Access-Control-Allow-Origin', '*')  # DEBUG TODO: remove this
+        SimpleHandler.set_default_headers(self)
 
     def prepare_get(self):
         '''
