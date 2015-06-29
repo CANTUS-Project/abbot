@@ -36,7 +36,8 @@ from unittest import mock
 from tornado import escape, httpclient, testing
 import pysolrtornado
 from abbott import __main__ as main
-from abbott import handlers
+from abbott.complex_handler import ComplexHandler
+from abbott.simple_handler import SimpleHandler
 import shared
 
 
@@ -53,7 +54,7 @@ class TestInitialize(shared.TestHandler):
         super(TestInitialize, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
     def test_initialize_1(self):
         "initialize() works with no extra fields"
@@ -68,8 +69,8 @@ class TestInitialize(shared.TestHandler):
         request = httpclient.HTTPRequest(url='/zool/', method='GET',
                                          headers={'X-Cantus-Include-Resources': 'TRue'})
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = handlers.SimpleHandler(self.get_app(), request, type_name='genre',
-                                        additional_fields=['mass_or_office'])
+        actual = SimpleHandler(self.get_app(), request, type_name='genre',
+                               additional_fields=['mass_or_office'])
         self.assertEqual('genre', actual.type_name)
         self.assertEqual('genres', actual.type_name_plural)
         self.assertEqual(5, len(actual.returned_fields))
@@ -83,7 +84,7 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Per-Page': '9001',
                                                   'X-Cantus-Page': '3'})
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = handlers.SimpleHandler(self.get_app(), request, type_name='twist')
+        actual = SimpleHandler(self.get_app(), request, type_name='twist')
         self.assertFalse(actual.include_resources)
         self.assertEqual('9001', actual.per_page)
         self.assertEqual('3', actual.page)
@@ -102,7 +103,7 @@ class TestFormatRecord(shared.TestHandler):
         super(TestFormatRecord, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
     def test_format_record_1(self):
         "basic test"
@@ -132,7 +133,7 @@ class TestMakeResourceUrl(shared.TestHandler):
         super(TestMakeResourceUrl, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
     def test_make_resource_url_1(self):
         "with no resource_type specified"
@@ -166,7 +167,7 @@ class TestBasicGetUnit(shared.TestHandler):
         super(TestBasicGetUnit, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -201,7 +202,7 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_solr_response = shared.make_results([])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
-        expected_reason = handlers.SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1])
+        expected_reason = SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1])
 
         actual = yield self.handler.basic_get(resource_id)
 
@@ -265,7 +266,7 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
         self.handler.page = 6000
-        exp_reason = handlers.SimpleHandler._TOO_LARGE_PAGE
+        exp_reason = SimpleHandler._TOO_LARGE_PAGE
 
         actual = yield self.handler.basic_get(resource_id)
 
@@ -284,7 +285,7 @@ class TestGetUnit(shared.TestHandler):
         super(TestGetUnit, self).setUp()
         self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
         self.request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), self.request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), self.request, type_name='century')
 
     def test_normal_browse(self):
         '''
@@ -441,7 +442,7 @@ class TestGetUnit(shared.TestHandler):
         - self.get_handler() called with None
         - self.make_response_headers() is not called
         - self.write() is not called
-        - self.send_error() is called with (502, reason=handlers.SimpleHandler._SOLR_502_ERROR)
+        - self.send_error() is called with (502, reason=SimpleHandler._SOLR_502_ERROR)
         '''
         resource_id = None
         self.handler.include_resources = True
@@ -463,7 +464,7 @@ class TestGetUnit(shared.TestHandler):
         mock_get_handler.assert_called_once_with(resource_id)
         self.assertEqual(0, mock_mrh.call_count)
         self.assertEqual(0, mock_write.call_count)
-        mock_send_error.assert_called_once_with(502, reason=handlers.SimpleHandler._SOLR_502_ERROR)
+        mock_send_error.assert_called_once_with(502, reason=SimpleHandler._SOLR_502_ERROR)
 
 class TestGetIntegration(shared.TestHandler):
     '''
@@ -478,7 +479,7 @@ class TestGetIntegration(shared.TestHandler):
         super(TestGetIntegration, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -521,7 +522,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
-        self.assertEqual(handlers.SimpleHandler._INVALID_PER_PAGE, actual.reason)
+        self.assertEqual(SimpleHandler._INVALID_PER_PAGE, actual.reason)
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -539,7 +540,7 @@ class TestGetIntegration(shared.TestHandler):
                                               rows=None, sort=None)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
-        self.assertEqual(handlers.SimpleHandler._TOO_LARGE_PAGE, actual.reason)
+        self.assertEqual(SimpleHandler._TOO_LARGE_PAGE, actual.reason)
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -588,7 +589,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
-        self.assertEqual(handlers.SimpleHandler._INVALID_FIELDS, actual.reason)
+        self.assertEqual(SimpleHandler._INVALID_FIELDS, actual.reason)
 
 
 class TestOptionsIntegration(shared.TestHandler):
@@ -606,7 +607,7 @@ class TestOptionsIntegration(shared.TestHandler):
                             'X-Cantus-Page', 'X-Cantus-Sort']
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
         self.check_standard_header(actual)
-        self.assertEqual(handlers.SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual(SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
@@ -652,7 +653,7 @@ class TestHeadIntegration(shared.TestHandler):
         super(TestHeadIntegration, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -686,11 +687,11 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         super(TestVerifyRequestHeaders, self).setUp()
         self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
         self.request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), self.request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), self.request, type_name='century')
 
     def setup_with_complex(self):
         "replace self.handler with a ComplexHandler instance"
-        self.handler = handlers.ComplexHandler(self.get_app(), self.request, type_name='chant')
+        self.handler = ComplexHandler(self.get_app(), self.request, type_name='chant')
 
     def test_vrh_template(self, **kwargs):
         '''
@@ -700,8 +701,6 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         settings, as far as that's posssible. Here are the default values for the kwargs:
 
         - is_browse_request = True
-        - no_xref = False
-            - exp_no_xref = False
         - fields = None
             - exp_fields = ['id', 'type', 'name', 'description']
                 - NOTE: exp_fields is compared against self.required_fields
@@ -726,8 +725,6 @@ class TestVerifyRequestHeaders(shared.TestHandler):
 
         The following kwargs also exist:
 
-        :kwarg bool use_complex_handler: Whether to call :meth:`setup_with_complex` before the test.
-            Use this for tests about self.no_xref.
         :kwarg bool mock_send_error: Whether to install a dummy mock onto send_error(). Default is
             True. If you send a Mock object, it will be attached appropriately, so you can run
             assertions on it once this test method returns.
@@ -746,12 +743,9 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                 kwargs[key] = val
 
         # set default kwargs
-        set_default('use_complex_handler', False)
         set_default('mock_send_error', True)
         set_default('is_browse_request', True)
         set_default('expected', True)
-        set_default('no_xref', False)
-        set_default('exp_no_xref', False)
         set_default('fields', None)
         set_default('exp_fields', ['id', 'type', 'name', 'description'])
         if kwargs['is_browse_request']:
@@ -773,14 +767,11 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         else:
             set_default('send_error_count', 0)
 
-        if kwargs['use_complex_handler']:
-            self.setup_with_complex()
         if kwargs['mock_send_error'] is True:
             mock_send_error = mock.Mock()
             self.handler.send_error = mock_send_error
         elif kwargs['mock_send_error']:
             self.handler.send_error = kwargs['mock_send_error']
-        self.handler.no_xref = kwargs['no_xref']
         self.handler.fields = kwargs['fields']
         self.handler.per_page = kwargs['per_page']
         self.handler.page = kwargs['page']
@@ -790,7 +781,6 @@ class TestVerifyRequestHeaders(shared.TestHandler):
 
         self.assertEqual(kwargs['expected'], actual)
         if kwargs['expected'] is True:
-            self.assertEqual(kwargs['exp_no_xref'], self.handler.no_xref)
             self.assertEqual(kwargs['exp_fields'], self.handler.returned_fields)
             self.assertEqual(kwargs['exp_per_page'], self.handler.per_page)
             self.assertEqual(kwargs['exp_page'], self.handler.page)
@@ -803,7 +793,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         Preconditions:
         - is_browse_request = False
-        - self.no_xref is False & self.fields is None (their defaults)
+        - self.fields is None (its default)
         - other fields have invalid canary values
 
         Postconditions:
@@ -811,81 +801,10 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - all the other fields still have canary values
         - method returns True
         '''
-        self.test_vrh_template(use_complex_handler=True, is_browse_request=False)
-
-    def test_not_browse_request_2(self):
-        '''
-        Preconditions:
-        - is_browse_request = False
-        - self.no_xref is 'true'
-        - other fields have invalid canary values
-
-        Postconditions:
-        - self.no_xref comes out as True
-        - all the other fields still have canary values
-        - method returns True
-        '''
-        self.test_vrh_template(use_complex_handler=True,
-                               is_browse_request=False,
-                               no_xref='  trUE         ',
-                               exp_no_xref=True)
-
-    def test_not_browse_request_3(self):
-        '''
-        Preconditions:
-        - is_browse_request = False
-        - self.no_xref is 'false'
-        - other fields have invalid canary values
-
-        Postconditions:
-        - self.no_xref comes out as False
-        - all the other fields still have canary values
-        - method returns True
-        '''
-        self.test_vrh_template(use_complex_handler=True,
-                               is_browse_request=False,
-                               no_xref='   falSe')
-
-    def test_not_browse_request_4(self):
-        '''
-        Preconditions:
-        - is_browse_request = False
-        - self.no_xref is 'soup'
-        - other fields have invalid canary values
-
-        Postconditions:
-        - send_error() called
-        - method returns False
-        '''
-        mock_send_error = mock.Mock()
-
-        self.test_vrh_template(use_complex_handler=True,
-                               is_browse_request=False,
-                               no_xref='soup',
-                               mock_send_error=mock_send_error,
-                               expected=False)
-
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_NO_XREF)
-
-    def test_not_browse_request_5(self):
-        '''
-        Preconditions:
-        - is_browse_request = False
-        - self.no_xref is invalid BUT it's a SimpleHandler
-        - other fields have invalid canary values
-
-        Postconditions:
-        - they're both still None
-        - all the other fields still have canary values
-        - method returns True
-        '''
-        self.test_vrh_template(use_complex_handler=False,
-                               is_browse_request=False,
-                               no_xref='soup',
-                               exp_no_xref='soup')
+        self.test_vrh_template( is_browse_request=False)
 
     @mock.patch('abbott.util.parse_fields_header')
-    def test_not_browse_request_6(self, mock_pfh):
+    def test_not_browse_request_2(self, mock_pfh):
         '''
         Preconditions:
         - self.fields is some value
@@ -907,7 +826,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
 
     @mock.patch('abbott.util.parse_fields_header')
-    def test_not_browse_request_7(self, mock_pfh):
+    def test_not_browse_request_3(self, mock_pfh):
         '''
         Preconditions:
         - self.fields is some value
@@ -927,36 +846,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                                mock_send_error=mock_send_error)
 
         mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_FIELDS)
-
-    @mock.patch('abbott.util.parse_fields_header')
-    def test_not_browse_request_8(self, mock_pfh):
-        '''
-        Preconditions:
-        - self.fields is some value
-        - self.no_xref is 'soup' (and this is a ComplexHandler
-        - parse_fields_header mock raises ValueError
-
-        Postconditions:
-        - send_error() is called with "body" argument
-        - method returns False
-        '''
-        fields = 'something'
-        mock_pfh.side_effect = ValueError
-        mock_send_error = mock.Mock()
-
-        self.test_vrh_template(use_complex_handler=True,
-                               is_browse_request=False,
-                               no_xref='soup',
-                               fields=fields,
-                               expected=False,
-                               mock_send_error=mock_send_error)
-
-        mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
-        mock_send_error.assert_called_with(400,
-                                           reason=handlers.SimpleHandler._MANY_BAD_HEADERS,
-                                           body=[handlers.SimpleHandler._INVALID_NO_XREF,
-                                                 handlers.SimpleHandler._INVALID_FIELDS])
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_FIELDS)
 
     def test_browse_request_1(self):
         '''
@@ -978,7 +868,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='five')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_PER_PAGE)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_PER_PAGE)
 
     def test_browse_request_3(self):
         '''
@@ -990,7 +880,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='-3')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PER_PAGE)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
 
     def test_browse_request_4(self):
         '''
@@ -1003,8 +893,8 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='40000000')
         mock_send_error.assert_called_with(507,
-                                           reason=handlers.SimpleHandler._TOO_BIG_PER_PAGE,
-                                           per_page=handlers.SimpleHandler._MAX_PER_PAGE)
+                                           reason=SimpleHandler._TOO_BIG_PER_PAGE,
+                                           per_page=SimpleHandler._MAX_PER_PAGE)
 
     def test_browse_request_5(self):
         '''
@@ -1014,7 +904,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         Postconditions:
         - per_page becomes _MAX_PER_PAGE
         '''
-        self.test_vrh_template(per_page='0', exp_per_page=handlers.SimpleHandler._MAX_PER_PAGE)
+        self.test_vrh_template(per_page='0', exp_per_page=SimpleHandler._MAX_PER_PAGE)
 
     def test_browse_request_6(self):
         '''
@@ -1026,7 +916,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, page='two')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._INVALID_PAGE)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_PAGE)
 
     def test_browse_request_7(self):
         '''
@@ -1058,7 +948,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, page='0')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._TOO_SMALL_PAGE)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._TOO_SMALL_PAGE)
 
     def test_browse_request_10(self):
         '''
@@ -1081,7 +971,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='name')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._MISSING_DIRECTION_SPEC)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
 
     def test_browse_request_12(self):
         '''
@@ -1093,7 +983,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - send_error() called with _DISALLOWED_CHARACTER_IN_SORT
         '''
         mock_send_error = mock.Mock()
-        exp_reason = handlers.SimpleHandler._DISALLOWED_CHARACTER_IN_SORT
+        exp_reason = SimpleHandler._DISALLOWED_CHARACTER_IN_SORT
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='n!me,asc')
         mock_send_error.assert_called_with(400, reason=exp_reason)
 
@@ -1108,27 +998,25 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='nime,asc')
-        mock_send_error.assert_called_with(400, reason=handlers.SimpleHandler._UNKNOWN_FIELD)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._UNKNOWN_FIELD)
 
     def test_browse_request_14(self):
         '''
         Preconditions:
         - per_page is '-4'
         - page is 'yes'
-        - no_xref is 'soup'
         - it's a ComplexHandler
 
         Postconditions:
-        - send_error() called with _TOO_SMALL_PER_PAGE; _INVALID_PAGE; _INVALID_NO_XREF
+        - send_error() called with _TOO_SMALL_PER_PAGE; _INVALID_PAGE
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, use_complex_handler=True,
-                               per_page='-4', page='yes', no_xref='soup')
+                               per_page='-4', page='yes')
         mock_send_error.assert_called_with(400,
-                                           reason=handlers.SimpleHandler._MANY_BAD_HEADERS,
-                                           body=[handlers.SimpleHandler._TOO_SMALL_PER_PAGE,
-                                                 handlers.SimpleHandler._INVALID_PAGE,
-                                                 handlers.SimpleHandler._INVALID_NO_XREF])
+                                           reason=SimpleHandler._MANY_BAD_HEADERS,
+                                           body=[SimpleHandler._TOO_SMALL_PER_PAGE,
+                                                 SimpleHandler._INVALID_PAGE])
 
 
 class TestMakeResponseHeaders(shared.TestHandler):
@@ -1147,7 +1035,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         super(TestMakeResponseHeaders, self).setUp()
         self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
         self.request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.SimpleHandler(self.get_app(), self.request, type_name='century')
+        self.handler = SimpleHandler(self.get_app(), self.request, type_name='century')
 
     def test_mrh_template(self, **kwargs):
         '''
@@ -1283,17 +1171,16 @@ class TestMakeResponseHeaders(shared.TestHandler):
         - self.field_counts has these counts
             - 'name': 5
             - 'id': 5
-            - 'source_id': 3
+            - 'feast_code': 3
 
         Postconditions:
         - X-Cantus-Fields called with something like 'id,name,type'
-        - X-Cantus-Extra-Fields called with 'source'
-        - ('source_id' is replaced with 'source')
+        - X-Cantus-Extra-Fields called with 'feast_code'
         '''
         self.test_mrh_template(num_records=5,
-                               field_counts={'name': 5, 'id': 5, 'source_id': 3},
+                               field_counts={'name': 5, 'id': 5, 'feast_code': 3},
                                h_fields='id,name,type',
-                               h_extra_fields='source')
+                               h_extra_fields='feast_code')
 
     def test_fields_2(self):
         '''
@@ -1302,15 +1189,14 @@ class TestMakeResponseHeaders(shared.TestHandler):
         - self.field_counts has these counts
             - 'name': 5
             - 'id': 5
-            - 'source_id': 5
+            - 'feast_code': 5
 
         Postconditions:
         - X-Cantus-Fields called with something like 'id,name,source,type'
-        - ('source_id' is replaced with 'source')
         '''
         self.test_mrh_template(num_records=5,
-                               field_counts={'name': 5, 'id': 5, 'source_id': 5},
-                               h_fields='id,name,type,source')
+                               field_counts={'name': 5, 'id': 5, 'feast_code': 5},
+                               h_fields='id,name,type,feast_code')
 
     def test_resources(self):
         '''

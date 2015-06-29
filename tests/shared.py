@@ -36,7 +36,6 @@ from tornado import concurrent, testing, web
 import pysolrtornado
 import abbott
 from abbott import __main__ as main
-from abbott import handlers
 
 
 def make_future(with_this):
@@ -77,7 +76,7 @@ class TestHandler(testing.AsyncHTTPTestCase):
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
         '''
         exp_server = 'Abbott/{}'.format(abbott.__version__)
-        exp_cantus_version = 'Cantus/{}'.format(handlers.abbott.__cantus_version__)
+        exp_cantus_version = 'Cantus/{}'.format(abbott.__cantus_version__)
         exp_allow_headers = ','.join(abbott.CANTUS_REQUEST_HEADERS)
         exp_expose_headers = ','.join(abbott.CANTUS_RESPONSE_HEADERS)
         exp_allow_origin = 'http://localhost:8000'

@@ -27,20 +27,22 @@ Main file for the Abbott server reference implementation of the Cantus API.
 '''
 
 from tornado import ioloop, web
-from abbott import handlers
+from abbott.handlers import RootHandler
+from abbott.simple_handler import SimpleHandler
+from abbott.complex_handler import ComplexHandler
 
 PORT = 8888
 
 
 # NOTE: these URLs require a terminating /
 HANDLERS = [
-    web.url(r'/', handlers.RootHandler),
-    web.URLSpec(r'/cantusids/(.*/)?', handler=handlers.ComplexHandler, name='view_cantusids',
+    web.url(r'/', RootHandler),
+    web.URLSpec(r'/cantusids/(.*/)?', handler=ComplexHandler, name='view_cantusids',
                 kwargs={'type_name': 'cantusid',
                         'additional_fields': ['incipit', 'full_text', 'genre_id']}),
-    web.URLSpec(r'/centuries/(.*/)?', handler=handlers.SimpleHandler, name='view_centuries',
+    web.URLSpec(r'/centuries/(.*/)?', handler=SimpleHandler, name='view_centuries',
                 kwargs={'type_name': 'century'}),
-    web.URLSpec(r'/chants/(.*/)?', handler=handlers.ComplexHandler, name='view_chants',
+    web.URLSpec(r'/chants/(.*/)?', handler=ComplexHandler, name='view_chants',
                 kwargs={'type_name': 'chant',
                         'additional_fields': {'incipit', 'folio', 'position', 'sequence', 'mode',
                                               'id', 'cantus_id', 'full_text_simssa', 'full_text',
@@ -48,27 +50,27 @@ HANDLERS = [
                                               'cao_concordances', 'melody_id', 'marginalia',
                                               'differentia', 'finalis', 'siglum', 'feast_id',
                                               'genre_id', 'office_id', 'source_id'}}),
-    web.URLSpec(r'/feasts/(.*/)?', handler=handlers.SimpleHandler, name='view_feasts',
+    web.URLSpec(r'/feasts/(.*/)?', handler=SimpleHandler, name='view_feasts',
                 kwargs={'type_name': 'feast', 'additional_fields': ['date', 'feast_code']}),
-    web.URLSpec(r'/genres/(.*/)?', handler=handlers.SimpleHandler, name='view_genres',
+    web.URLSpec(r'/genres/(.*/)?', handler=SimpleHandler, name='view_genres',
                 kwargs={'type_name': 'genre', 'additional_fields': ['mass_or_office']}),
-    web.URLSpec(r'/indexers/(.*/)?', handler=handlers.SimpleHandler, name='view_indexers',
+    web.URLSpec(r'/indexers/(.*/)?', handler=SimpleHandler, name='view_indexers',
                 kwargs={'type_name': 'indexer',
                         'additional_fields': ['display_name', 'given_name', 'family_name',
                                               'institution', 'city', 'country']}),
-    web.URLSpec(r'/notations/(.*/)?', handler=handlers.SimpleHandler, name='view_notations',
+    web.URLSpec(r'/notations/(.*/)?', handler=SimpleHandler, name='view_notations',
                 kwargs={'type_name': 'notation'}),
-    web.URLSpec(r'/offices/(.*/)?', handler=handlers.SimpleHandler, name='view_offices',
+    web.URLSpec(r'/offices/(.*/)?', handler=SimpleHandler, name='view_offices',
                 kwargs={'type_name': 'office'}),
-    web.URLSpec(r'/portfolia/(.*/)?', handler=handlers.SimpleHandler, name='view_portfolia',
+    web.URLSpec(r'/portfolia/(.*/)?', handler=SimpleHandler, name='view_portfolia',
                 kwargs={'type_name': 'portfolio'}),
-    web.URLSpec(r'/provenances/(.*/)?', handler=handlers.SimpleHandler, name='view_provenances',
+    web.URLSpec(r'/provenances/(.*/)?', handler=SimpleHandler, name='view_provenances',
                 kwargs={'type_name': 'provenance'}),
-    web.URLSpec(r'/sigla/(.*/)?', handler=handlers.SimpleHandler, name='view_sigla',
+    web.URLSpec(r'/sigla/(.*/)?', handler=SimpleHandler, name='view_sigla',
                 kwargs={'type_name': 'siglum'}),
-    web.URLSpec(r'/segments/(.*/)?', handler=handlers.SimpleHandler, name='view_segments',
+    web.URLSpec(r'/segments/(.*/)?', handler=SimpleHandler, name='view_segments',
                 kwargs={'type_name': 'segment'}),
-    web.URLSpec(r'/sources/(.*/)?', handler=handlers.ComplexHandler, name='view_sources',
+    web.URLSpec(r'/sources/(.*/)?', handler=ComplexHandler, name='view_sources',
                 kwargs={'type_name': 'source',
                         'additional_fields': ['title', 'rism', 'siglum', 'provenance_id',
                                               'date', 'century_id', 'notation_style_id',
@@ -76,7 +78,7 @@ HANDLERS = [
                                               'liturgical_occasions', 'description',
                                               'indexing_notes', 'indexing_date', 'indexers',
                                               'editors', 'proofreaders', 'provenance_detail']}),
-    web.URLSpec(r'/statii/(.*/)?', handler=handlers.SimpleHandler, name='view_source_statii',
+    web.URLSpec(r'/statii/(.*/)?', handler=SimpleHandler, name='view_source_statii',
                 kwargs={'type_name': 'source_status'}),
     ]
 

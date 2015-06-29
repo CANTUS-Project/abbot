@@ -32,12 +32,10 @@ Tests for the Abbott server's ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
-import copy
 from unittest import mock
-from tornado import concurrent, escape, httpclient, testing, web
-import pysolrtornado
+from tornado import escape, httpclient, testing
 from abbott import __main__ as main
-from abbott import handlers, util
+from abbott.complex_handler import ComplexHandler
 import shared
 
 
@@ -51,15 +49,15 @@ class TestLookUpXrefs(shared.TestHandler):
         super(TestLookUpXrefs, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
-                                           additional_fields=['title', 'rism', 'siglum',
-                                                              'provenance_id', 'date', 'century_id',
-                                                              'notation_style_id', 'segment_id',
-                                                              'source_status_id', 'summary',
-                                                              'liturgical_occasions', 'description',
-                                                              'indexing_notes', 'indexing_date',
-                                                              'indexers', 'editors', 'proofreaders',
-                                                              'provenance_detail'])
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source',
+                                      additional_fields=['title', 'rism', 'siglum',
+                                                         'provenance_id', 'date', 'century_id',
+                                                         'notation_style_id', 'segment_id',
+                                                         'source_status_id', 'summary',
+                                                         'liturgical_occasions', 'description',
+                                                         'indexing_notes', 'indexing_date',
+                                                         'indexers', 'editors', 'proofreaders',
+                                                         'provenance_detail'])
 
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
@@ -177,6 +175,32 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
+    def test_lookup_name_for_response_1(self):
+        '''
+        ComplexHandler._lookup_name_for_response()
+        It's not actually look_up_xrefs() but it's related... sort of... I just didn't want to make
+        a whole new TestCase for that one method that has two tests.
+
+        This tests a field that isn't changed.
+        '''
+        in_val = 'regular_field'
+        expected = 'regular_field'
+        actual = self.handler._lookup_name_for_response(in_val)
+        self.assertEqual(expected, actual)
+
+    def test_lookup_name_for_response_2(self):
+        '''
+        ComplexHandler._lookup_name_for_response()
+        It's not actually look_up_xrefs() but it's related... sort of... I just didn't want to make
+        a whole new TestCase for that one method that has two tests.
+
+        This tests a field that is changed.
+        '''
+        in_val = 'source_id'
+        expected = 'source'
+        actual = self.handler._lookup_name_for_response(in_val)
+        self.assertEqual(expected, actual)
+
 
 class TestMakeExtraFields(shared.TestHandler):
     '''
@@ -188,15 +212,15 @@ class TestMakeExtraFields(shared.TestHandler):
         super(TestMakeExtraFields, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
-                                           additional_fields=['title', 'rism', 'siglum',
-                                                              'provenance_id', 'date', 'century_id',
-                                                              'notation_style_id', 'segment_id',
-                                                              'source_status_id', 'summary',
-                                                              'liturgical_occasions', 'description',
-                                                              'indexing_notes', 'indexing_date',
-                                                              'indexers', 'editors', 'proofreaders',
-                                                              'provenance_detail'])
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source',
+                                      additional_fields=['title', 'rism', 'siglum',
+                                                         'provenance_id', 'date', 'century_id',
+                                                         'notation_style_id', 'segment_id',
+                                                         'source_status_id', 'summary',
+                                                         'liturgical_occasions', 'description',
+                                                         'indexing_notes', 'indexing_date',
+                                                         'indexers', 'editors', 'proofreaders',
+                                                         'provenance_detail'])
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
     def test_both_things_to_lookup(self, mock_ask_solr):
@@ -393,15 +417,15 @@ class TestOptionsIntegration(shared.TestHandler):
         super(TestOptionsIntegration, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = handlers.ComplexHandler(self.get_app(), request, type_name='source',
-                                           additional_fields=['title', 'rism', 'siglum',
-                                                              'provenance_id', 'date', 'century_id',
-                                                              'notation_style_id', 'segment_id',
-                                                              'source_status_id', 'summary',
-                                                              'liturgical_occasions', 'description',
-                                                              'indexing_notes', 'indexing_date',
-                                                              'indexers', 'editors', 'proofreaders',
-                                                              'provenance_detail'])
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source',
+                                      additional_fields=['title', 'rism', 'siglum',
+                                                         'provenance_id', 'date', 'century_id',
+                                                         'notation_style_id', 'segment_id',
+                                                         'source_status_id', 'summary',
+                                                         'liturgical_occasions', 'description',
+                                                         'indexing_notes', 'indexing_date',
+                                                         'indexers', 'editors', 'proofreaders',
+                                                         'provenance_detail'])
 
     @testing.gen_test
     def test_options_integration_1(self):
@@ -411,7 +435,103 @@ class TestOptionsIntegration(shared.TestHandler):
                             'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
         actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
         self.check_standard_header(actual)
-        self.assertEqual(handlers.ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual(ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
+
+
+class TestVerifyRequestHeaders(shared.TestHandler):
+    '''
+    Tests for the ComplexHandler.verify_request_headers().
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestVerifyRequestHeaders, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source')
+        # the full "additional_fields" aren't important here
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    def test_when_other_header_invalid(self, mock_super_meth):
+        '''
+        When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
+
+        The header shouldn't be checked, send_error() shouldn't be called.
+        '''
+        mock_super_meth.return_value = False
+        mock_send_error = mock.Mock()
+        self.handler.send_error = mock_send_error
+        self.handler.no_xref = 'switchboard'
+        exp_no_xref = 'switchboard'
+        is_browse_request = True
+        expected = False
+
+        actual = self.handler.verify_request_headers(is_browse_request)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_send_error.call_count)
+        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
+        self.assertEqual(exp_no_xref, self.handler.no_xref)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    def test_no_xref_true(self, mock_super_meth):
+        '''
+        When self.no_xref comes out as True
+        '''
+        mock_super_meth.return_value = True
+        mock_send_error = mock.Mock()
+        self.handler.send_error = mock_send_error
+        self.handler.no_xref = ' trUE   '
+        exp_no_xref = True
+        is_browse_request = True
+        expected = True
+
+        actual = self.handler.verify_request_headers(is_browse_request)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_send_error.call_count)
+        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
+        self.assertEqual(exp_no_xref, self.handler.no_xref)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    def test_no_xref_false(self, mock_super_meth):
+        '''
+        When self.no_xref comes out as False
+        '''
+        mock_super_meth.return_value = True
+        mock_send_error = mock.Mock()
+        self.handler.send_error = mock_send_error
+        self.handler.no_xref = 'FALSE '
+        exp_no_xref = False
+        is_browse_request = True
+        expected = True
+
+        actual = self.handler.verify_request_headers(is_browse_request)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_send_error.call_count)
+        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
+        self.assertEqual(exp_no_xref, self.handler.no_xref)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    def test_no_xref_invalid(self, mock_super_meth):
+        '''
+        When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
+
+        The header shouldn't be checked, send_error() shouldn't be called.
+        '''
+        mock_super_meth.return_value = True
+        mock_send_error = mock.Mock()
+        self.handler.send_error = mock_send_error
+        self.handler.no_xref = 'switchboard'
+        is_browse_request = True
+        expected = False
+
+        actual = self.handler.verify_request_headers(is_browse_request)
+
+        self.assertEqual(expected, actual)
+        mock_send_error.assert_called_once_with(400, reason=ComplexHandler._INVALID_NO_XREF)
+        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)

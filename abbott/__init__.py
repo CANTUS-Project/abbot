@@ -1,8 +1,7 @@
-__all__ = ['handlers', 'util']
+__all__ = ['complex_handler', 'handlers', 'simple_handler', 'util']
 __version__ = '0.1.5'
 __cantus_version__ = '0.1.4-ext'
 
-from abbott import *
 
 DEBUG = True
 '''

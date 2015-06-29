@@ -32,12 +32,10 @@ Tests for the Abbott server's RootHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
-import copy
 from unittest import mock
-from tornado import concurrent, escape, httpclient, testing, web
-import pysolrtornado
+from tornado import escape, httpclient, testing
 from abbott import __main__ as main
-from abbott import handlers, util
+from abbott import handlers
 import shared
 
 
