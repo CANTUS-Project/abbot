@@ -5,6 +5,7 @@
         <title>Test Client for Abbott (the Cantus API Server)</title>
         <script src="jquery-2.1.4.js"></script>
         <style>
+            .emboxed { border: 1px solid silver; background-color: ghostwhite; }
             .pre { font-family: monospace; }
             ul.no-bullets li { list-style-type: none; }
 
@@ -12,12 +13,14 @@
             .request-box { overflow: hidden; clear: both; }
 
             /* for the request currently being prepared */
-            .preparation-values { width: 50%; float:left; padding: 0; }
+            .div-request-input { width: 50%; float:left; }
+            .div-request-input ul { padding: 0; }
 
             /* for the previously-submitted request */
-            .submitted-values { width: 50%; float:right; padding: 0; }
+            .div-request-display { width: 50%; float:right; }
+            .div-request-display ul { padding: 0; }
             /* ---------------------------------------------------------------------------------- */
-            /* CRA: I got this tricker from JSFiddle: https://jsfiddle.net/unLSJ/                 */
+            /* CRA: I got this trick from JSFiddle: https://jsfiddle.net/unLSJ/                   */
             pre.output {
                 background-color: ghostwhite;
                 border: 1px solid silver;
@@ -38,11 +41,12 @@
         <h2>Request</h2>
 
         <div class="request-box">
-            <ul class="preparation-values no-bullets">
+            <div class="div-request-input">
+            <ul class="no-bullets">
                 <li>URL: <span class="pre" id="input-request-url"></span></li>
                 <li>Action: <select id="input-action">
                                 <option value="browse">Browse</option>
-<!--                                 <option value="search">Search</option> -->
+                                <option value="search">Search</option>
                                 <option value="view">View</option>
                             </select></li>
                 <li>Resource Type: <select id="input-type">
@@ -69,8 +73,12 @@
                 <li>X-Cantus-Fields: <input type="text" id="input-fields"/></li>
                 <li>X-Cantus-Search-Help: <input type="text" id="input-search-help" value="not implemented" disabled="true"/></li>
             </ul>
+            <label for="input-request-body">Request Body:<br/></label>
+            <textarea id="input-request-body" autocomplete="off" cols="100" rows="10" wrap="soft"></textarea>
+            </div>
 
-            <ul class="submitted-values no-bullets">
+            <div class="div-request-display">
+            <ul class="no-bullets">
                 <!-- <li>?: <span class="pre" id="?"></span></li> -->
                 <li>URL: <span class="pre" id="display-server-url"></span></li>
                 <li>X-Cantus-Per-Page: <span class="pre" id="display-per-page"></span></li>
@@ -81,6 +89,9 @@
                 <li>X-Cantus-Fields: <span class="pre" id="display-fields"></span></li>
                 <li>X-Cantus-Search-Help: <span class="pre" id="display-search-help">not implemented</span></li>
             </ul>
+            <label for="display-request-body">Request Body:<br/></label>
+            <p id="display-request-body" class="pre emboxed"></p>
+            </div>
         </div>
 
         <p>
@@ -107,7 +118,7 @@
 
         <script>
             // ---------------------------------------------------------------------------------- //
-            // CRA: I got this tricker from JSFiddle: https://jsfiddle.net/unLSJ/
+            // CRA: I got this trick from JSFiddle: https://jsfiddle.net/unLSJ/
             if (!library) { var library = {}; }
 
             library.json = {
@@ -137,6 +148,7 @@
             // set default values -------------------------
             var SERVER_URL = 'http://localhost:8888';
             var requestUrl = SERVER_URL;  // updated by updateRequestUrl()
+            var requestMethod = '';
             var urlDirectory = null;
             var headerPerPage = '0';
             var headerPage = '1';
@@ -144,6 +156,7 @@
             var headerSort = '';
             var headerNoXref = false;
             var headerFields = '';
+            var requestBody = '';
 
             // fetch things -------------------------------
             // input controls
@@ -159,6 +172,7 @@
             var inputNoXref = $('#input-no-xref');
             var inputFields = $('#input-fields');
             // var inputSearchHelp = $('#input-search-help');
+            var inputRequestBody = $('#input-request-body');
 
             // "submitted" displays
             var displayRequestUrl = $('#display-server-url');
@@ -169,6 +183,7 @@
             var displayNoXref = $('#display-no-xref');
             var displayFields = $('#display-fields');
             // var displaySearchHelp = $('#display-search-help');
+            var displayRequestBody = $('#display-request-body');
 
             // response headers
             var responseStatus = $('#response-status');
@@ -213,6 +228,8 @@
                         urlDirectory = arg;
                     }
                     var action = inputAction.val();
+                    if ('search' == action)
+                        action = 'browse';
                     var specificPath = urlDirectory['resources'][action][inputType.val()]
                     requestUrl = SERVER_URL + specificPath;
                     inputRequestUrl.html(requestUrl);
@@ -227,7 +244,7 @@
             function updateSubmissionDisplays() {
                 // Call this after you updated the request variables but before submitting. It sets
                 // the "display" things for the previously-submitted request.
-                displayRequestUrl.html(requestUrl);
+                displayRequestUrl.html(requestMethod + ' ' + requestUrl);
 
                 if ('0' == headerPerPage)
                     displayPerPage.html('N/A');
@@ -258,6 +275,17 @@
                     displayFields.html('N/A');
                 else
                     displayFields.html(headerFields);
+
+                try {
+                    displayRequestBody.html(library.json.prettyPrint(JSON.parse(requestBody)));
+                } catch (possibleError) {
+                    if ('SyntaxError' == possibleError.name) {
+                        // if it doesn't parse to JSON, just send it as a string
+                        displayRequestBody.html(requestBody);
+                    } else {
+                        throw possibleError;
+                    }
+                }
             }
 
             function updateOutput(data) {
@@ -293,12 +321,19 @@
                 headerSort = inputSort.val();
                 headerNoXref = inputNoXref.is(':checked');
                 headerFields = inputFields.val();
+                requestBody = inputRequestBody.val();
 
                 // maybe we have to substitute an "id?"?
                 if ('view' == inputAction.val()) {
                     requestUrl = requestUrl.replace('id?', inputId.val() + '/');
                     console.log(requestUrl);
                 }
+
+                // maybe we're submitted a "SEARCH" request?
+                if ('search' == inputAction.val())
+                    requestMethod = 'SEARCH';
+                else
+                    requestMethod = 'GET';
 
                 // show the values we're about to submit
                 updateSubmissionDisplays();
@@ -323,15 +358,22 @@
                 if ('' != headerFields)
                     headers['X-Cantus-Fields'] = headerFields;
 
+                // prepare the request settings
+                var requestSettings = {url: requestUrl,
+                                       success: updateOutput,
+                                       error: updateOutputFail,
+                                       complete: writeResponseHeaders,
+                                       dataType: 'json',
+                                       headers: headers,
+                                       method: requestMethod,
+                                      };
+                if (requestBody.length > 0) {
+                    requestSettings['data'] = requestBody;
+                    requestSettings['processData'] = false;
+                }
+
                 // send the request
-                $.ajax({url: requestUrl,
-                        success: updateOutput,
-                        error: updateOutputFail,
-                        complete: writeResponseHeaders,
-                        dataType: 'json',
-                        headers: headers,
-                       }
-                      );
+                $.ajax(requestSettings);
             }
 
             window.onload = function() { $(document).ready(setControlsToDefaults); };
