@@ -608,6 +608,7 @@ class TestOptionsIntegration(shared.TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
+        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
@@ -635,6 +636,7 @@ class TestOptionsIntegration(shared.TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
+        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
         mock_ask_solr.assert_called_once_with('genre', '162')
         for each_header in expected_headers:
