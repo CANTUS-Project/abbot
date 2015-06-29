@@ -604,10 +604,10 @@ class TestOptionsIntegration(shared.TestHandler):
     def test_options_integration_1a(self):
         "ensure the OPTIONS method works as expected ('browse' URL)"
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
-                            'X-Cantus-Page', 'X-Cantus-Sort']
+                            'X-Cantus-Page', 'X-Cantus-Sort', 'X-Cantus-Search-Help']
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
         self.check_standard_header(actual)
-        self.assertEqual(SimpleHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
@@ -634,6 +634,7 @@ class TestOptionsIntegration(shared.TestHandler):
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
         self.check_standard_header(actual)
+        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
         mock_ask_solr.assert_called_once_with('genre', '162')
         for each_header in expected_headers:

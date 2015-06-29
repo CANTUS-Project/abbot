@@ -48,8 +48,11 @@ class SimpleHandler(web.RequestHandler):
     fields. You may specify additional fields to the :meth:`initialize` method.
     '''
 
-    _ALLOWED_METHODS = 'GET, HEAD, OPTIONS'
-    # value of the "Allow" header in response to an OPTIONS request
+    _ALLOWED_BROWSE_METHODS = 'GET, HEAD, OPTIONS, SEARCH'
+    # value of the "Allow" header in response to an OPTIONS request on a "browse" URL
+
+    _ALLOWED_VIEW_METHODS = 'GET, HEAD, OPTIONS'
+    # value of the "Allow" header in response to an OPTIONS request on a "view" URL
 
     _MANY_BAD_HEADERS = 'Multiple Invalid Headers'
     # as advertised
@@ -98,10 +101,10 @@ class SimpleHandler(web.RequestHandler):
     # the highest value allowed for X-Cantus-Per-Page; higher values will get a 507
 
     _HEADERS_FOR_BROWSE = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
-                           'X-Cantus-Page', 'X-Cantus-Sort']
+                           'X-Cantus-Page', 'X-Cantus-Sort', 'X-Cantus-Search-Help']
     # the Cantus extension headers that can sensibly be used with a "browse" URL
 
-    _HEADERS_FOR_VIEW = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
+    _HEADERS_FOR_VIEW = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
     # the Cantus extension headers that can sensibly be used with a "view" URL
 
     def __init__(self, *args, **kwargs):
@@ -522,10 +525,11 @@ class SimpleHandler(web.RequestHandler):
         '''
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
-        self.add_header('Allow', SimpleHandler._ALLOWED_METHODS)
 
         if resource_id:
             # "view" URL
+            self.add_header('Allow', SimpleHandler._ALLOWED_VIEW_METHODS)
+
             if resource_id.endswith('/') and len(resource_id) > 1:
                 resource_id = resource_id[:-1]
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
@@ -535,8 +539,11 @@ class SimpleHandler(web.RequestHandler):
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_VIEW:
                 self.add_header(each_header, 'allow')
+
         else:
             # "browse" URL
+            self.add_header('Allow', SimpleHandler._ALLOWED_BROWSE_METHODS)
+
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_BROWSE:
                 self.add_header(each_header, 'allow')

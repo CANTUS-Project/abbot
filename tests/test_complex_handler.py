@@ -432,11 +432,28 @@ class TestOptionsIntegration(shared.TestHandler):
         "ensure the OPTIONS method works as expected ('browse' URL)"
         # adds X-Cantus-No-Xref over the SimpleHandler tests
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
-                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort']
+                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort',
+                            'X-Cantus-Search-Help']
         actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
         self.check_standard_header(actual)
-        self.assertEqual(ComplexHandler._ALLOWED_METHODS, actual.headers['Allow'])
+        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
+        for each_header in expected_headers:
+            self.assertEqual('allow', actual.headers[each_header].lower())
+
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_options_integration_2(self, mock_ask_solr):
+        "ensure the OPTIONS method works as expected ('view' URL)"
+        # adds X-Cantus-No-Xref over the SimpleHandler tests
+        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
+        mock_solr_response = shared.make_results(['Versicle'])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        actual = yield self.http_client.fetch(self.get_url('/chants/432/'), method='OPTIONS')
+        self.check_standard_header(actual)
+        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
+        self.assertEqual(0, len(actual.body))
+        mock_ask_solr.assert_called_once_with('chant', '432')
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
