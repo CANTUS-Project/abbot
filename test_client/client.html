@@ -286,6 +286,18 @@
                         throw possibleError;
                     }
                 }
+
+                $('#output').html('(waiting for response)');
+                responseStatus.html('(waiting for response)');
+                responseServer.html('');
+                responseCantusVersion.html('');
+                responsePerPage.html('');
+                responsePage.html('');
+                responseIncludeResources.html('');
+                responseSort.html('');
+                responseNoXref.html('');
+                responseFields.html('');
+                responseTotalResults.html('');
             }
 
             function updateOutput(data) {
