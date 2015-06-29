@@ -485,7 +485,7 @@ class SimpleHandler(web.RequestHandler):
     @gen.coroutine
     def get(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
-        Response to GET requests. Returns the result of :meth:`basic_get` without modification.
+        Response to GET requests. Returns the result of :meth:`get_handler` without modification.
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
