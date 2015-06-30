@@ -30,7 +30,7 @@ import copy
 from collections import defaultdict
 import importlib
 
-from tornado import gen, web
+from tornado import escape, gen, web
 import pysolrtornado
 
 import abbott
@@ -47,6 +47,9 @@ class SimpleHandler(web.RequestHandler):
     By default, :class:`SimpleHandler` only includes the ``'id'``, ``'name'``, and ``'description'``
     fields. You may specify additional fields to the :meth:`initialize` method.
     '''
+
+    SUPPORTED_METHODS = web.RequestHandler.SUPPORTED_METHODS + ('SEARCH',)
+    # this registers the SEARCH method as something that Tornado can do
 
     _ALLOWED_BROWSE_METHODS = 'GET, HEAD, OPTIONS, SEARCH'
     # value of the "Allow" header in response to an OPTIONS request on a "browse" URL
@@ -236,7 +239,8 @@ class SimpleHandler(web.RequestHandler):
         return post
 
     @gen.coroutine
-    def basic_get(self, resource_id=None):
+    def basic_get(self, resource_id=None, query=None):
+        # TODO: tests for "query" functionality
         '''
         Prepare a basic response for the relevant records. This method queries for the specified
         resources and filters out unwanted fields (those not specified in ``returned_fields``).
@@ -254,12 +258,16 @@ class SimpleHandler(web.RequestHandler):
 
         :param str resource_id: The "id" field of the resource to fetch. The default, ``None``, will
             fetch the appropriate amount of resources with arbitrary "id".
+        :param str query: The "query" to send to Solr. If this argument is provided, ``resource_id``
+            will be ignored.
         :returns: A dictionary that may be used as the response body. There will always be at least
             one member, ``"resources"``, although when there are no other records it will simply be
             an empty dict. Returns ``None`` when there are no results, and sends the required
             status code.
         :rtype: dict or NoneType
         '''
+
+        # prepare the query -------------------------------
         if not resource_id:
             resource_id = '*'
         elif resource_id.endswith('/') and len(resource_id) > 1:
@@ -273,7 +281,11 @@ class SimpleHandler(web.RequestHandler):
             else:
                 start = self.page * 10
 
-        if '*' == resource_id:
+        # run the query -----------------------------------
+        if query:
+            # SEARCH method
+            resp = yield util.search_solr(query, start=start, rows=self.per_page, sort=self.sort)
+        elif '*' == resource_id:
             # "browse" URLs
             resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
                                              rows=self.per_page, sort=self.sort)
@@ -281,6 +293,7 @@ class SimpleHandler(web.RequestHandler):
             # "view" URLs
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
 
+        # format the query --------------------------------
         if 0 == len(resp):
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
@@ -318,7 +331,7 @@ class SimpleHandler(web.RequestHandler):
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
         '''
-        return (yield self.basic_get(resource_id))
+        return (yield self.basic_get(resource_id=resource_id))
 
     def verify_request_headers(self, is_browse_request):
         '''
@@ -578,3 +591,70 @@ class SimpleHandler(web.RequestHandler):
             self.set_status(code)
             response = str(code)
         self.write(response)
+
+    @gen.coroutine
+    def search_handler(self):
+        # TODO: tests
+        '''
+        Prepare a basic response to a search query. This method should be overridden in subclasses,
+        if required, to modify the search behaviour.
+
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+        '''
+        print('search_handler() has this request body: {}'.format(self.request.body))
+
+        body = self.request.body
+        if len(body) > 1:
+            try:
+                body = escape.json_decode(self.request.body)
+            except ValueError:
+                # TODO: return error
+                body = {}
+        else:
+            body = {}
+
+        if 'query' in body:
+            query = body['query']
+        else:
+            query = ''
+        return (yield self.basic_get(query='+type:{} {}'.format(self.type_name, query)))
+
+    @gen.coroutine
+    def search(self, resource_id=None):
+        # TODO: tests
+        '''
+        Response to SEARCH requests. Returns the result of :meth:`search_handler` without modification.
+
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+        :param any resource_id: This is always ignored. We have to keep it for consistency with
+            the GET-handling methods, which Tornado requires.
+
+        **Side Effects**
+
+        Does the same header things as get()
+        '''
+
+        # every SEARCH query is a sub-type of browse
+        is_browse_request = True
+
+        # first check the header-set values for sanity
+        if not self.verify_request_headers(is_browse_request):
+            return
+
+        # run the more specific SEARCH request handler
+        try:
+            response = yield self.search_handler()
+            if response is None:
+                return
+        except pysolrtornado.SolrError:
+            # TODO: send back details from the SolrError, once we fully write self.send_error()
+            self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
+            return
+
+        # finally, prepare the response headers
+        num_records = (len(response) - 1) if self.include_resources else len(response)
+        self.make_response_headers(is_browse_request, num_records)
+
+        if not self.head_request:
+            self.write(response)
