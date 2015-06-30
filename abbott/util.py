@@ -192,10 +192,12 @@ def parse_fields_header(header, returned_fields):
     for field in [x.strip() for x in header.split(',')]:
         if '' == field or 'type' == field or 'id' == field:
             continue
-        elif field not in returned_fields:
-            raise ValueError(_INVALID_FIELD_NAME.format(field))
-        else:
+        elif field in returned_fields:
             post.append(field)
+        elif '{}_id'.format(field) in returned_fields:
+            post.append('{}_id'.format(field))
+        else:
+            raise ValueError(_INVALID_FIELD_NAME.format(field))
     if 'id' not in post:
         post.append('id')
     if 'type' not in post:

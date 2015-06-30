@@ -224,3 +224,16 @@ class TestParseFieldsHeader(TestCase):
         with pytest.raises(ValueError) as excinfo:
             util.parse_fields_header(header_val, returned_fields)
         self.assertEqual(util._INVALID_FIELD_NAME.format('price'), excinfo.value.args[0])
+
+    def test_id_suffixed_field(self):
+        '''
+        One of the fields in header_val corresponds to a field with an "_id" suffix in
+        returned_fields. This is like when users specify "genre" instead of "genre_id" in the header,
+        which is what we expect users to do, but because we manage this with self.returned_fields
+        it must be the _id suffixed version that we return.
+        '''
+        header_val = 'name,style,product'
+        returned_fields = ['name', 'style', 'product_id']
+        expected = ['id', 'type', 'name', 'style', 'product_id']
+        actual = util.parse_fields_header(header_val, returned_fields)
+        self.assertCountEqual(expected, actual)
