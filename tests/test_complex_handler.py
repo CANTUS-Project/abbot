@@ -474,66 +474,70 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         # the full "additional_fields" aren't important here
 
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    def test_template(self, mock_super_meth, **kwargs):
+        '''
+        Template for tests against SimpleHandler.verify_request_headers().
+
+        Use these kwargs to set test variables:
+
+        - mock_super_meth_return: return value of the mock installed on
+            SimpleHandler.verify_request_headers() (default is True)
+        - no_xref: value for the handler's "no_xref" instance variable (default is 'false')
+        - exp_no_xref: expected value of the "no_xref" after the method executes (default is False)
+        - is_browse_request: value for that argument to the method under test (default is True)
+        - expected: the method's expected return value (default is True)
+        - exp_send_error_count: how many calls to the mock installed on send_error() are expected
+            (default is 0)
+        '''
+
+        def get_from_kwargs(key, val):
+            "Return kwargs[key] if that will work, otherwise return 'val.'"
+            if key in kwargs:
+                return kwargs[key]
+            else:
+                return val
+
+        mock_super_meth.return_value = get_from_kwargs('mock_super_meth_return', True)
+        self.handler.no_xref = get_from_kwargs('no_xref', 'false')
+        exp_no_xref = get_from_kwargs('exp_no_xref', False)
+        is_browse_request = get_from_kwargs('is_browse_request', True)
+        expected = get_from_kwargs('expected', True)
+        exp_send_error_count = get_from_kwargs('exp_send_error_count', 0)
+        mock_send_error = mock.Mock()
+        self.handler.send_error = mock_send_error
+
+        actual = self.handler.verify_request_headers(is_browse_request)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(exp_send_error_count, mock_send_error.call_count)
+        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
+        self.assertEqual(exp_no_xref, self.handler.no_xref)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_when_other_header_invalid(self, mock_super_meth):
         '''
         When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
 
         The header shouldn't be checked, send_error() shouldn't be called.
         '''
-        mock_super_meth.return_value = False
-        mock_send_error = mock.Mock()
-        self.handler.send_error = mock_send_error
-        self.handler.no_xref = 'switchboard'
-        exp_no_xref = 'switchboard'
-        is_browse_request = True
-        expected = False
-
-        actual = self.handler.verify_request_headers(is_browse_request)
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(0, mock_send_error.call_count)
-        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
-        self.assertEqual(exp_no_xref, self.handler.no_xref)
+        self.test_template(mock_super_meth_return=False,
+                           no_xref='switchboard',
+                           exp_no_xref='switchboard',
+                           expected=False)
 
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_true(self, mock_super_meth):
         '''
         When self.no_xref comes out as True
         '''
-        mock_super_meth.return_value = True
-        mock_send_error = mock.Mock()
-        self.handler.send_error = mock_send_error
-        self.handler.no_xref = ' trUE   '
-        exp_no_xref = True
-        is_browse_request = True
-        expected = True
-
-        actual = self.handler.verify_request_headers(is_browse_request)
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(0, mock_send_error.call_count)
-        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
-        self.assertEqual(exp_no_xref, self.handler.no_xref)
+        self.test_template(no_xref='  trUE   ', exp_no_xref=True)
 
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_false(self, mock_super_meth):
         '''
         When self.no_xref comes out as False
         '''
-        mock_super_meth.return_value = True
-        mock_send_error = mock.Mock()
-        self.handler.send_error = mock_send_error
-        self.handler.no_xref = 'FALSE '
-        exp_no_xref = False
-        is_browse_request = True
-        expected = True
-
-        actual = self.handler.verify_request_headers(is_browse_request)
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(0, mock_send_error.call_count)
-        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
-        self.assertEqual(exp_no_xref, self.handler.no_xref)
+        self.test_template(no_xref='FALSE ', exp_no_xref=False)
 
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_invalid(self, mock_super_meth):
@@ -542,15 +546,8 @@ class TestVerifyRequestHeaders(shared.TestHandler):
 
         The header shouldn't be checked, send_error() shouldn't be called.
         '''
-        mock_super_meth.return_value = True
-        mock_send_error = mock.Mock()
-        self.handler.send_error = mock_send_error
-        self.handler.no_xref = 'switchboard'
-        is_browse_request = True
-        expected = False
-
-        actual = self.handler.verify_request_headers(is_browse_request)
-
-        self.assertEqual(expected, actual)
-        mock_send_error.assert_called_once_with(400, reason=ComplexHandler._INVALID_NO_XREF)
-        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
+        self.test_template(no_xref='switchboard',
+                           exp_no_xref='switchboard',
+                           expected=False,
+                           exp_send_error_count=1)
+        self.handler.send_error.assert_called_once_with(400, reason=ComplexHandler._INVALID_NO_XREF)
