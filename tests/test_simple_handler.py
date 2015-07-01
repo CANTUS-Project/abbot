@@ -137,19 +137,19 @@ class TestMakeResourceUrl(shared.TestHandler):
 
     def test_make_resource_url_1(self):
         "with no resource_type specified"
-        expected = '/centuries/420/'
+        expected = 'https://cantus.org/centuries/420/'
         actual = self.handler.make_resource_url('420')
         self.assertEqual(expected, actual)
 
     def test_make_resource_url_2(self):
         "with singuler resource_type"
-        expected = '/chants/69/'
+        expected = 'https://cantus.org/chants/69/'
         actual = self.handler.make_resource_url('69', 'chant')
         self.assertEqual(expected, actual)
 
     def test_make_resource_url_3(self):
         "with plural resource_type"
-        expected = '/sources/3.14159/'
+        expected = 'https://cantus.org/sources/3.14159/'
         actual = self.handler.make_resource_url('3.14159', 'sources')
         self.assertEqual(expected, actual)
 
@@ -181,9 +181,9 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
-                    'resources': {'1': {'self': '/centuries/1/'},
-                                  '2': {'self': '/centuries/2/'},
-                                  '3': {'self': '/centuries/3/'}}}
+                    'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
+                                  '2': {'self': 'https://cantus.org/centuries/2/'},
+                                  '3': {'self': 'https://cantus.org/centuries/3/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.basic_get(resource_id)
@@ -221,7 +221,7 @@ class TestBasicGetUnit(shared.TestHandler):
         resource_id = '888'  # such good luck
         mock_solr_response = shared.make_results([{'id': '888'}])
         expected = {'888': {'id': '888', 'type': 'century'},
-                    'resources': {'888': {'self': '/centuries/888/'}}}
+                    'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.page = 4
         self.handler.sort = 'incipit asc'
@@ -491,9 +491,9 @@ class TestGetIntegration(shared.TestHandler):
         expected = {'1': {'id': '1', 'name': 'one', 'type': 'century'},
                     '2': {'id': '2', 'name': 'two', 'type': 'century'},
                     '3': {'id': '3', 'name': 'three', 'type': 'century'},
-                    'resources': {'1': {'self': '/centuries/1/'},
-                                  '2': {'self': '/centuries/2/'},
-                                  '3': {'self': '/centuries/3/'}}}
+                    'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
+                                  '2': {'self': 'https://cantus.org/centuries/2/'},
+                                  '3': {'self': 'https://cantus.org/centuries/3/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         expected_fields = ['id', 'name', 'type']
 
@@ -552,9 +552,9 @@ class TestGetIntegration(shared.TestHandler):
         expected = {'1': {'id': '1', 'type': 'century'},
                     '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
-                    'resources': {'1': {'self': '/centuries/1/'},
-                                  '2': {'self': '/centuries/2/'},
-                                  '3': {'self': '/centuries/3/'}}}
+                    'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
+                                  '2': {'self': 'https://cantus.org/centuries/2/'},
+                                  '3': {'self': 'https://cantus.org/centuries/3/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         expected_fields = ['id', 'type']
         request_header = 'id, type'

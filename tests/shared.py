@@ -38,6 +38,9 @@ import pysolrtornado
 import abbott
 from abbott import __main__ as main
 
+# ensure we have a consistent "server_name" for all the tests
+options.server_name = 'https://cantus.org/'
+
 
 def make_future(with_this):
     '''

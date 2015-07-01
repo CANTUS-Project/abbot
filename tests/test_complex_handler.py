@@ -66,7 +66,7 @@ class TestLookUpXrefs(shared.TestHandler):
         record = {'id': '123656', 'provenance_id': '3624'}
         mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
         expected = ({'id': '123656', 'provenance': 'Klosterneuburg'},
-                    {'provenance': '/provenances/3624/'})
+                    {'provenance': 'https://cantus.org/provenances/3624/'})
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.look_up_xrefs(record)
@@ -82,7 +82,7 @@ class TestLookUpXrefs(shared.TestHandler):
         record = {'id': '123656', 'proofreaders': ['124104']}
         mock_solr_response = [{'id': '124104', 'display_name': 'Debra Lacoste'}]
         expected = ({'id': '123656', 'proofreaders': ['Debra Lacoste']},
-                    {'proofreaders': ['/indexers/124104/']})
+                    {'proofreaders': ['https://cantus.org/indexers/124104/']})
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.look_up_xrefs(record)
@@ -132,9 +132,11 @@ class TestLookUpXrefs(shared.TestHandler):
         expected = ({'id': '123656', 'provenance': 'Klosterneuburg', 'segment': 'CANTUS Database',
                      'proofreaders': ['Debra Lacoste'], 'source_status': 'Published / Complete',
                      'century': '14th century'},
-                    {'provenance': '/provenances/3624/', 'segment': '/segments/4063/',
-                     'proofreaders': ['/indexers/124104/'], 'source_status': '/statii/4212/',
-                     'century': '/centuries/3841/'})
+                    {'provenance': 'https://cantus.org/provenances/3624/',
+                     'segment': 'https://cantus.org/segments/4063/',
+                     'proofreaders': ['https://cantus.org/indexers/124104/'],
+                     'source_status': 'https://cantus.org/statii/4212/',
+                     'century': 'https://cantus.org/centuries/3841/'})
 
         def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
             "mock version of ask_solr_by_id()"
@@ -165,7 +167,7 @@ class TestLookUpXrefs(shared.TestHandler):
         record = {'id': '123656', 'provenance_id': '3624'}
         mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
         expected = ({'id': '123656', 'provenance_id': '3624'},
-                    {'provenance': '/provenances/3624/'})
+                    {'provenance': 'https://cantus.org/provenances/3624/'})
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.no_xref = True
 
@@ -317,8 +319,9 @@ class TestGetIntegration(shared.TestHandler):
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
                                'cantus_id': '600482a', 'feast': 'Jacobi',
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
-                    'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
-                                             'feast': '/feasts/2378/'}}}
+                    'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
+                                             'genre': 'https://cantus.org/genres/161/',
+                                             'feast': 'https://cantus.org/feasts/2378/'}}}
 
         def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
             "mock version of ask_solr_by_id()"
@@ -386,8 +389,9 @@ class TestGetIntegration(shared.TestHandler):
                   'mode': '2S'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre_id': '161',
                                'cantus_id': '600482a', 'feast_id': '2378', 'mode': '2S'},
-                    'resources': {'357679': {'self': '/chants/357679/', 'genre': '/genres/161/',
-                                             'feast': '/feasts/2378/'}}}
+                    'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
+                                             'genre': 'https://cantus.org/genres/161/',
+                                             'feast': 'https://cantus.org/feasts/2378/'}}}
 
         def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
             "mock version of ask_solr_by_id()"

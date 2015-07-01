@@ -225,19 +225,22 @@ class SimpleHandler(web.RequestHandler):
 
         try:
             # hope it's a plural resource_type
-            post = self.reverse_url('view_{}'.format(resource_type), resource_id + '/')
+            resource_path = self.reverse_url('view_{}'.format(resource_type), resource_id + '/')
         except KeyError:
             # plural didn't work so try converting from a singular resource_type
-            post = self.reverse_url('view_{}'.format(util.singular_resource_to_plural(resource_type)),
-                                    resource_id + '/')
+            resource_path = self.reverse_url('view_{}'.format(util.singular_resource_to_plural(resource_type)),
+                                             resource_id + '/')
 
-        # Because reverse_url() uses the regexp there will be an extra "?" at the end, used in the
-        # regexp to mean that the "id" part is optional. We don't want the "?" here, because we do
-        # have an "id".
-        if post.endswith('?'):
-            post = post[:-1]
+        # Because of the handler configuration, reverse_url() returns something like this:
+        #    /chants/125522/?
+        # Since the server_name looks like this:
+        #    https://cantus.org/
+        # We need to remove the first and last characters of our resource_path
+        resource_path = resource_path[1:-1]
 
-        return post
+        # finally, prepend the host-related info to get a FQDN
+        return '{server_name}{resource_path}'.format(server_name=options.server_name,
+                                                     resource_path=resource_path)
 
     @gen.coroutine
     def basic_get(self, resource_id=None, query=None):
