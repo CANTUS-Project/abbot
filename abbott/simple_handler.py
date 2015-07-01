@@ -31,6 +31,7 @@ from collections import defaultdict
 import importlib
 
 from tornado import escape, gen, web
+from tornado.options import options
 import pysolrtornado
 
 import abbott
@@ -177,7 +178,7 @@ class SimpleHandler(web.RequestHandler):
         Set the default headers for all requests: Server, X-Cantus-Version.
 
         Also sets CORS headers:
-        - Access-Control-Allow-Origin (if abbott.DEBUG is True)
+        - Access-Control-Allow-Origin (if the "debug" setting is True)
         - Access-Control-Allow-Headers
         - Access-Control-Expose-Headers
 
@@ -185,7 +186,7 @@ class SimpleHandler(web.RequestHandler):
         '''
         self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
-        if abbott.DEBUG:
+        if options.debug:
             self.add_header('Access-Control-Allow-Origin', 'http://localhost:8000')
         self.add_header('Access-Control-Allow-Headers', ','.join(abbott.CANTUS_REQUEST_HEADERS))
         self.add_header('Access-Control-Expose-Headers', ','.join(abbott.CANTUS_RESPONSE_HEADERS))

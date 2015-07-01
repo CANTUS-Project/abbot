@@ -26,12 +26,19 @@
 Main file for the Abbott server reference implementation of the Cantus API.
 '''
 
-from tornado import ioloop, web
+from tornado import httpserver, ioloop, options, web
+from tornado.options import define, options
+from tornado.options import Error as OptionsError
+import abbott
 from abbott.handlers import RootHandler
 from abbott.simple_handler import SimpleHandler
 from abbott.complex_handler import ComplexHandler
 
-PORT = 8888
+define('port', default=8888, type=int,
+       help='port for Abbott to listen on, between 1024 and 32768')
+define('hostname', default='localhost', type=str, help='hostname for FQDN in "resources" links')
+define('scheme', default='http', type=str, help='http or https')
+define('server_name', default='', type=str, help='automatically set with scheme, hostname, and port; no need to override')
 
 
 # NOTE: these URLs require a terminating /
@@ -83,25 +90,76 @@ HANDLERS = [
     ]
 
 
-def main(port=None):
+def main():
     '''
     This function creates a Tornado Web Application listening on the specified port, then starts
     an event loop and blocks until the event loop finishes.
-
-    :param int port: The optional port to listen on. If not provided, we will try to start on the
-        module-level ``PORT`` value after checking its validity (an integer between 1024 and 32768
-        exclusive). If ``PORT`` is invalid, the server will start on port 8888.
     '''
 
-    if port is None:
-        if isinstance(PORT, int) and PORT > 1024 and PORT < 32768:
-            port = PORT
-        else:
-            port = 8888
+    try:
+        options.parse_command_line()
+    except OptionsError as opt_err:
+        print(str(opt_err))
+        return
 
-    app = web.Application(HANDLERS)
-    app.listen(port)
-    ioloop.IOLoop.current().start()
+    # to allow --copyright, --license, and --licence to work identically
+    if options.license or options.copyright:
+        options.licence = True
+
+    # print the standard header
+    if options.debug or options.about or options.licence or options.version:
+        print('Abbott Server {} for Cantus API {}'.format(abbott.__version__, abbott.__cantus_version__))
+
+    # simple, early-end options
+    if options.about:
+        # thing about Abbott
+        print('\nAbbott is a server implementation of the Cantus API, allowing access to a\n'
+              'database of Mediaeval chant manuscripts (hand-written books with religious\n'
+              'music). You can learn more about the CANTUS Project, which is responsible for\n'
+              'Abbott, the Cantus API, and the Cantus Database, at http://cantusdatabase.org/.')
+    if options.licence or options.about:
+        # thing about the licence
+        print('\nAbbott Copyright (C) 2015 Christopher Antila\n'
+              'This program comes with ABSOLUTELY NO WARRANTY\n'
+              'This is free software, and you are welcome to redistribute it under\n'
+              'certaion conditions (Affero General Public Licence, version 3 or later).\n'
+              'For details, refer to the LICENSE file or https://gnu.org/licenses/agpl-3.0.html\n'
+              'Although the source code is included with Abbott, you may access our source code\n'
+              'repository at https://github.com/CANTUS-Project/abbott/\n')
+    if options.about or options.licence or options.version:
+        return
+
+    # check port is okay
+    if not isinstance(options.port, int) or options.port < 1024 or options.port > 32768:
+        print('Invalid port ({}). Choose a port between 1024 and 32768.\nExiting.'.format(options.port))
+        return
+
+    # check URL access scheme
+    if options.scheme.lower() not in ('http', 'https'):
+        print('Invalid access scheme ({}). Require "http" or "https"'.format(options.scheme))
+        return
+
+    # set the server_name option
+    options.server_name = '{}://{}:{}/'.format(options.scheme, options.hostname, options.port)
+
+    if options.debug:
+        print('Listening on {}'.format(options.server_name))
+
+    settings = {'debug': options.debug,
+                'compress_response': not options.debug,
+               }
+
+    server = httpserver.HTTPServer(web.Application(handlers=HANDLERS, settings=settings))
+    server.listen(options.port)
+    # TODO: use multi-process? http://www.tornadoweb.org/en/stable/httpserver.html#tornado.httpserver.HTTPServer
+
+    if options.debug:
+        print('')
+
+    try:
+        ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == '__main__':

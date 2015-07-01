@@ -33,6 +33,7 @@ Shared classes and functions for Abbott's automated test suite.
 # That's an important part of testing! For me, at least.
 
 from tornado import concurrent, testing, web
+from tornado.options import options
 import pysolrtornado
 import abbott
 from abbott import __main__ as main
@@ -70,7 +71,7 @@ class TestHandler(testing.AsyncHTTPTestCase):
         - X-Cantus-Version
         - Access-Control-Allow-Headers
         - Access-Control-Expose-Headers
-        - Access-Control-Allow-Origin (if DEBUG is True)
+        - Access-Control-Allow-Origin (if the "debug" setting is True)
 
         :param on_this: The :class:`Response` object to verify.
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
@@ -85,5 +86,5 @@ class TestHandler(testing.AsyncHTTPTestCase):
         self.assertEqual(exp_cantus_version, on_this.headers['X-Cantus-Version'])
         self.assertEqual(exp_allow_headers, on_this.headers['Access-Control-Allow-Headers'])
         self.assertEqual(exp_expose_headers, on_this.headers['Access-Control-Expose-Headers'])
-        if abbott.DEBUG:
+        if options.debug:
             self.assertEqual(exp_allow_origin, on_this.headers['Access-Control-Allow-Origin'])

@@ -3,11 +3,17 @@ __version__ = '0.1.6'
 __cantus_version__ = '0.1.5'
 
 
-DEBUG = True
-'''
-Whether the server is in debugging mode. If it is, several things are changed to allow less secure,
-more verbose, often slower operation.
-'''
+from tornado.options import define
+define('debug', default=True, type=bool, help='whether to start Abbott in a debugging-friendly mode')
+define('about', default=False, type=bool, help='display an message telling about Abbott')
+define('version', default=False, type=bool, help='print Abbott\'s version and of the implemented Cantus API')
+define('licence', default=False, type=bool, help='show licence information')
+define('license', default=False, type=bool, help='show license information')
+define('copyright', default=False, type=bool, help='show copyright information')
+
+from abbott import *
+# we must retain this import statement to ensure that all modules will be imported with
+# "import abbott" so that all the Tornado options will be definitely registered before use
 
 CANTUS_REQUEST_HEADERS = ('X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Include-Resources',
                           'X-Cantus-Sort', 'X-Cantus-No-Xref', 'X-Cantus-Fields',
