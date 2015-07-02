@@ -131,12 +131,14 @@ class SimpleHandler(web.RequestHandler):
         self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
 
         # request headers (these will hold the parsed and verified values)
-        self.per_page = None  # X-Cantus-Per-Page
-        self.page = None  # X-Cantus-Page
-        self.include_resources = True  # X-Cantus-Include-Resources
-        self.sort = None  # X-Cantus-Sort
-        self.no_xref = False  # X-Cantus-No-Xrefs
-        self.fields = None  # X-Cantus-Fields
+        self.hparams = {  # "hparams" means "header parameters"
+            'per_page': None,           # X-Cantus-Per-Page
+            'page': None,               # X-Cantus-Page
+            'include_resources': True,  # X-Cantus-Include-Resources
+            'sort': None,               # X-Cantus-Sort
+            'no_xref': False,           # X-Cantus-No-Xrefs
+            'fields': None,             # X-Cantus-Fields
+            }
 
         super(SimpleHandler, self).__init__(*args, **kwargs)
 
@@ -153,25 +155,15 @@ class SimpleHandler(web.RequestHandler):
         if additional_fields:
             self.returned_fields.extend(additional_fields)
 
-        # set headers
-        if 'X-Cantus-Per-Page' in self.request.headers:
-            self.per_page = self.request.headers['X-Cantus-Per-Page']
-
-        if 'X-Cantus-Page' in self.request.headers:
-            self.page = self.request.headers['X-Cantus-Page']
-
-        if ('X-Cantus-Include-Resources' in self.request.headers and
-            'false' in self.request.headers['X-Cantus-Include-Resources'].lower()):  # pylint: disable=bad-continuation
-            self.include_resources = False
-
-        if 'X-Cantus-Sort' in self.request.headers:
-            self.sort = self.request.headers['X-Cantus-Sort']
-
-        if 'X-Cantus-No-Xref' in self.request.headers:
-            self.no_xref = self.request.headers['X-Cantus-No-Xref']
-
-        if 'X-Cantus-Fields' in self.request.headers:
-            self.fields = self.request.headers['X-Cantus-Fields']
+        # take settings from headers
+        header_to_setting = (('X-Cantus-Per-Page', 'per_page'),
+                             ('X-Cantus-Page', 'page'),
+                             ('X-Cantus-Include-Resources', 'include_resources'),
+                             ('X-Cantus-Sort', 'sort'),
+                             ('X-Cantus-No-Xref', 'no_xref'),
+                             ('X-Cantus-Fields', 'fields')
+                            )
+        self.hparams.update(util.do_dict_transfer(self.request.headers, header_to_setting))
 
     def set_default_headers(self):
         '''
@@ -279,20 +271,20 @@ class SimpleHandler(web.RequestHandler):
 
         # calculate the "start" argument for Solr
         start = None
-        if self.page:
-            if self.per_page:
-                start = (self.page - 1) * self.per_page
+        if self.hparams['page']:
+            if self.hparams['per_page']:
+                start = (self.hparams['page'] - 1) * self.hparams['per_page']
             else:
-                start = self.page * 10
+                start = self.hparams['page'] * 10
 
         # run the query -----------------------------------
         if query:
             # SEARCH method
-            resp = yield util.search_solr(query, start=start, rows=self.per_page, sort=self.sort)
+            resp = yield util.search_solr(query, start=start, rows=self.hparams['per_page'], sort=self.hparams['sort'])
         elif '*' == resource_id:
             # "browse" URLs
             resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
-                                             rows=self.per_page, sort=self.sort)
+                                             rows=self.hparams['per_page'], sort=self.hparams['sort'])
         else:
             # "view" URLs
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
@@ -316,7 +308,7 @@ class SimpleHandler(web.RequestHandler):
         self.total_results = resp.hits
 
         post = {res['id']: res for res in post}
-        if self.include_resources:
+        if self.hparams['include_resources']:
             post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
 
         return post
@@ -364,41 +356,41 @@ class SimpleHandler(web.RequestHandler):
 
         if is_browse_request:
             # the API says only to pay attention to these headers for requests to "browse" URLs
-            if self.per_page:
+            if self.hparams['per_page']:
                 # X-Cantus-Per-Page
                 try:
-                    self.per_page = int(self.per_page)
+                    self.hparams['per_page'] = int(self.hparams['per_page'])
                 except ValueError:
                     error_messages.append(SimpleHandler._INVALID_PER_PAGE)
                     all_is_well = False
                 else:
                     # if "per_page" was already found to be faulty, we don't need to keep checking
-                    if self.per_page < 0:
+                    if self.hparams['per_page'] < 0:
                         error_messages.append(SimpleHandler._TOO_SMALL_PER_PAGE)
                         all_is_well = False
-                    elif self.per_page > SimpleHandler._MAX_PER_PAGE:
+                    elif self.hparams['per_page'] > SimpleHandler._MAX_PER_PAGE:
                         self.send_error(507,
                                         reason=SimpleHandler._TOO_BIG_PER_PAGE,
                                         per_page=SimpleHandler._MAX_PER_PAGE)
                         return False
-                    elif 0 == self.per_page:
-                        self.per_page = SimpleHandler._MAX_PER_PAGE
+                    elif 0 == self.hparams['per_page']:
+                        self.hparams['per_page'] = SimpleHandler._MAX_PER_PAGE
 
-            if self.page:
+            if self.hparams['page']:
                 # X-Cantus-Page
                 try:
-                    self.page = int(self.page)
+                    self.hparams['page'] = int(self.hparams['page'])
                 except ValueError:
                     error_messages.append(SimpleHandler._INVALID_PAGE)
                     all_is_well = False
-                if all_is_well and self.page < 1:
+                if all_is_well and self.hparams['page'] < 1:
                     error_messages.append(SimpleHandler._TOO_SMALL_PAGE)
                     all_is_well = False
 
-            if self.sort:
+            if self.hparams['sort']:
                 # X-Cantus-Sort
                 try:
-                    self.sort = util.prepare_formatted_sort(self.sort)
+                    self.hparams['sort'] = util.prepare_formatted_sort(self.hparams['sort'])
                 except ValueError as val_e:
                     if val_e.args[0] == util._MISSING_DIRECTION_SPEC:
                         error_messages.append(SimpleHandler._MISSING_DIRECTION_SPEC)
@@ -409,10 +401,10 @@ class SimpleHandler(web.RequestHandler):
                     error_messages.append(SimpleHandler._UNKNOWN_FIELD)
                     all_is_well = False
 
-        if self.fields:
+        if self.hparams['fields']:
             # X-Cantus-Fields
             try:
-                self.returned_fields = util.parse_fields_header(self.fields, self.returned_fields)
+                self.returned_fields = util.parse_fields_header(self.hparams['fields'], self.returned_fields)
             except ValueError:
                 # probably the field wasn't present
                 error_messages.append(SimpleHandler._INVALID_FIELDS)
@@ -470,13 +462,13 @@ class SimpleHandler(web.RequestHandler):
             self.add_header('X-Cantus-Extra-Fields', ','.join(extra_fields))
 
         # figure out the X-Cantus-Include-Resources header
-        if self.include_resources:
+        if self.hparams['include_resources']:
             self.add_header('X-Cantus-Include-Resources', 'true')
         else:
             self.add_header('X-Cantus-Include-Resources', 'false')
 
         # figure out the X-Cantus-No-Xref header
-        if self.no_xref:
+        if self.hparams['no_xref']:
             self.add_header('X-Cantus-No-Xref', 'true')
 
         if is_browse_request:
@@ -484,20 +476,20 @@ class SimpleHandler(web.RequestHandler):
             self.add_header('X-Cantus-Total-Results', self.total_results)
 
             # figure out X-Cantus-Per-Page
-            if self.per_page:
-                self.add_header('X-Cantus-Per-Page', self.per_page)
+            if self.hparams['per_page']:
+                self.add_header('X-Cantus-Per-Page', self.hparams['per_page'])
             else:
                 self.add_header('X-Cantus-Per-Page', 10)
 
             # figure out X-Cantus-Page
-            if self.page:
-                self.add_header('X-Cantus-Page', self.page)
+            if self.hparams['page']:
+                self.add_header('X-Cantus-Page', self.hparams['page'])
             else:
                 self.add_header('X-Cantus-Page', 1)
 
             # figure out X-Cantus-Sort
-            if self.sort:
-                self.add_header('X-Cantus-Sort', util.postpare_formatted_sort(self.sort))
+            if self.hparams['sort']:
+                self.add_header('X-Cantus-Sort', util.postpare_formatted_sort(self.hparams['sort']))
 
     @gen.coroutine
     def get(self, resource_id=None):  # pylint: disable=arguments-differ
@@ -531,7 +523,7 @@ class SimpleHandler(web.RequestHandler):
             return
 
         # finally, prepare the response headers
-        num_records = (len(response) - 1) if self.include_resources else len(response)
+        num_records = (len(response) - 1) if self.hparams['include_resources'] else len(response)
         self.make_response_headers(is_browse_request, num_records)
 
         if not self.head_request:
@@ -657,7 +649,7 @@ class SimpleHandler(web.RequestHandler):
             return
 
         # finally, prepare the response headers
-        num_records = (len(response) - 1) if self.include_resources else len(response)
+        num_records = (len(response) - 1) if self.hparams['include_resources'] else len(response)
         self.make_response_headers(is_browse_request, num_records)
 
         if not self.head_request:

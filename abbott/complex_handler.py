@@ -117,7 +117,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
             if field in LOOKUP:
                 replace_to = LOOKUP[field].replace_to  # for readability
 
-                if not self.no_xref:
+                if not self.hparams['no_xref']:
                     # X-Cantus-No-Xref: false (usual case)
                     if isinstance(record[field], (list, tuple)):
                         post[replace_to] = []
@@ -143,7 +143,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
                     post[field] = record[field]
 
                 # fill in "reources" URLs
-                if self.include_resources:
+                if self.hparams['include_resources']:
                     plural = util.singular_resource_to_plural(LOOKUP[field].replace_to)
                     if isinstance(record[field], (list, tuple)):
                         resource_url = [self.make_resource_url(x, plural) for x in record[field]]
@@ -172,7 +172,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         :returns: The record amended with additional fields as possible.
         :rtype: dict
         '''
-        if self.no_xref:
+        if self.hparams['no_xref']:
             return record
 
         # TODO: decide if genre is truly the only thing we can fill
@@ -203,7 +203,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         :returns: The ``record`` argument with additional fields as possible.
         :rtype: dict
         '''
-        if self.no_xref:
+        if self.hparams['no_xref']:
             return record
 
         # (for Chant) fill in fest_desc if we have a feast_id
@@ -235,7 +235,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         if results is None:
             return
 
-        if self.include_resources:
+        if self.hparams['include_resources']:
             post = {'resources': results['resources']}
         else:
             post = {}
@@ -249,7 +249,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
             post[record] = xreffed[0]
 
             # add resources' URLs to "resources" member
-            if self.include_resources:
+            if self.hparams['include_resources']:
                 for key, value in xreffed[1].items():
                     post['resources'][record][key] = value
 
@@ -274,11 +274,11 @@ class ComplexHandler(simple_handler.SimpleHandler):
 
         if all_is_well:
             # X-Cantus-No-Xref
-            no_xref = str(self.no_xref).lower().strip()
+            no_xref = str(self.hparams['no_xref']).lower().strip()
             if 'true' == no_xref:
-                self.no_xref = True
+                self.hparams['no_xref'] = True
             elif 'false' == no_xref:
-                self.no_xref = False
+                self.hparams['no_xref'] = False
             else:
                 self.send_error(400, reason=ComplexHandler._INVALID_NO_XREF)
                 all_is_well = False

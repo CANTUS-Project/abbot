@@ -205,6 +205,30 @@ def parse_fields_header(header, returned_fields):
     return post
 
 
+def do_dict_transfer(from_here, translations):
+    '''
+    Transfer values from one dict to a new one, changing the key along the way, ignoring keys that
+    don't exist in "from_here".
+
+    :param dict from_here: The source dictionary.
+    :param iterable translations: A list/tuple of two-element iterables where the first element
+        corresponds to a key that might be in "from_here" and the second element is what the key
+        should be called in the returned dictionary.
+    :returns: New dictionary with renamed keys.
+    :rtype: dict
+
+    **Example**
+
+    >>> do_dict_transfer(from_here={'a': 42}, translations=(('a', 'b'), ('c', 'd')))
+    {'b': 42}
+    '''
+    to_here = {}
+    for from_key, to_key in translations:
+        if from_key in from_here:
+            to_here[to_key] = from_here[from_key]
+    return to_here
+
+
 @gen.coroutine
 def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     '''

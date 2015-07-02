@@ -237,3 +237,47 @@ class TestParseFieldsHeader(TestCase):
         expected = ['id', 'type', 'name', 'style', 'product_id']
         actual = util.parse_fields_header(header_val, returned_fields)
         self.assertCountEqual(expected, actual)
+
+
+class TestDoDictTransfer(TestCase):
+    "Tests for util.do_dict_transfer()."
+
+    def test_all_keys(self):
+        '''
+        All keys in "translations" appear in "from_here."
+        '''
+        from_here = {'a': 1, 'c': 2, 'e': 3}
+        translations = (('a', 'b'), ('c', 'd'), ('e', 'f'))
+        expected = {'b': 1, 'd': 2, 'f': 3}
+        actual = util.do_dict_transfer(from_here, translations)
+        self.assertEqual(expected, actual)
+
+    def test_no_keys(self):
+        '''
+        No keys in "translations" appear in "from_here."
+        '''
+        from_here = {'z': 1, 'y': 2}
+        translations = (('a', 'b'), ('c', 'd'), ('e', 'f'))
+        expected = {}
+        actual = util.do_dict_transfer(from_here, translations)
+        self.assertEqual(expected, actual)
+
+    def test_some_keys(self):
+        '''
+        Some keys in "translations" appear in "from_here."
+        '''
+        from_here = {'a': 1, 'c': 2}
+        translations = (('a', 'b'), ('c', 'd'), ('e', 'f'))
+        expected = {'b': 1, 'd': 2}
+        actual = util.do_dict_transfer(from_here, translations)
+        self.assertEqual(expected, actual)
+
+    def test_empty_from_here(self):
+        '''
+        There are no keys in "from_here."
+        '''
+        from_here = {}
+        translations = (('a', 'b'), ('c', 'd'))
+        expected = {}
+        actual = util.do_dict_transfer(from_here, translations)
+        self.assertEqual(expected, actual)

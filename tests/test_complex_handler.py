@@ -163,13 +163,13 @@ class TestLookUpXrefs(shared.TestHandler):
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
     def test_no_xref_is_true(self, mock_ask_solr):
-        "when self.no_xref is True"
+        "when self.hparams['no_xref'] is True"
         record = {'id': '123656', 'provenance_id': '3624'}
         mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
         expected = ({'id': '123656', 'provenance_id': '3624'},
                     {'provenance': 'https://cantus.org/provenances/3624/'})
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
-        self.handler.no_xref = True
+        self.handler.hparams['no_xref'] = True
 
         actual = yield self.handler.look_up_xrefs(record)
 
@@ -291,12 +291,12 @@ class TestMakeExtraFields(shared.TestHandler):
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
     def test_no_xref_is_true(self, mock_ask_solr):
-        "when self.no_xref is True"
+        "when self.hparams['no_xref'] is True"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
         expected = {}
         self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
-        self.handler.no_xref = True
+        self.handler.hparams['no_xref'] = True
 
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
@@ -502,7 +502,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                 return val
 
         mock_super_meth.return_value = get_from_kwargs('mock_super_meth_return', True)
-        self.handler.no_xref = get_from_kwargs('no_xref', 'false')
+        self.handler.hparams['no_xref'] = get_from_kwargs('no_xref', 'false')
         exp_no_xref = get_from_kwargs('exp_no_xref', False)
         is_browse_request = get_from_kwargs('is_browse_request', True)
         expected = get_from_kwargs('expected', True)
@@ -515,7 +515,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         self.assertEqual(expected, actual)
         self.assertEqual(exp_send_error_count, mock_send_error.call_count)
         mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
-        self.assertEqual(exp_no_xref, self.handler.no_xref)
+        self.assertEqual(exp_no_xref, self.handler.hparams['no_xref'])
 
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_when_other_header_invalid(self, mock_super_meth):
@@ -532,14 +532,14 @@ class TestVerifyRequestHeaders(shared.TestHandler):
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_true(self, mock_super_meth):
         '''
-        When self.no_xref comes out as True
+        When self.hparams['no_xref'] comes out as True
         '''
         self.test_template(no_xref='  trUE   ', exp_no_xref=True)
 
     @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_false(self, mock_super_meth):
         '''
-        When self.no_xref comes out as False
+        When self.hparams['no_xref'] comes out as False
         '''
         self.test_template(no_xref='FALSE ', exp_no_xref=False)
 

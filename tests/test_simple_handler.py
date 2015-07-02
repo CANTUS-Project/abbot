@@ -61,8 +61,8 @@ class TestInitialize(shared.TestHandler):
         self.assertEqual('century', self.handler.type_name)
         self.assertEqual('centuries', self.handler.type_name_plural)
         self.assertEqual(4, len(self.handler.returned_fields))
-        self.assertIsNone(self.handler.per_page)
-        self.assertIsNone(self.handler.page)
+        self.assertIsNone(self.handler.hparams['per_page'])
+        self.assertIsNone(self.handler.hparams['page'])
 
     def test_initialize_2(self):
         "initialize() works with extra fields"
@@ -75,7 +75,7 @@ class TestInitialize(shared.TestHandler):
         self.assertEqual('genres', actual.type_name_plural)
         self.assertEqual(5, len(actual.returned_fields))
         self.assertTrue('mass_or_office' in actual.returned_fields)
-        self.assertTrue(actual.include_resources)
+        self.assertTrue(actual.hparams['include_resources'])
 
     def test_initialize_3(self):
         "initialize() works with extra fields (different values)"
@@ -85,9 +85,9 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Page': '3'})
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = SimpleHandler(self.get_app(), request, type_name='twist')
-        self.assertFalse(actual.include_resources)
-        self.assertEqual('9001', actual.per_page)
-        self.assertEqual('3', actual.page)
+        self.assertEqual('fALSe', actual.hparams['include_resources'])
+        self.assertEqual('9001', actual.hparams['per_page'])
+        self.assertEqual('3', actual.hparams['page'])
 
 
 class TestFormatRecord(shared.TestHandler):
@@ -174,8 +174,8 @@ class TestBasicGetUnit(shared.TestHandler):
     def test_basic_get_unit_1(self, mock_ask_solr):
         '''
         - with no resource_id and Solr response has three things
-        - self.page is None
-        - self.sort is None
+        - self.hparams['page'] is None
+        - self.hparams['sort'] is None
         '''
         resource_id = None
         mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
@@ -215,16 +215,16 @@ class TestBasicGetUnit(shared.TestHandler):
     def test_basic_get_unit_3(self, mock_ask_solr):
         '''
         - with resource_id not ending with '/' and Solr response has one thing
-        - self.page is defined but self.per_page isn't
-        - self.sort is defined
+        - self.hparams['page'] is defined but self.handler.hparams['per_page'] isn't
+        - self.hparams['sort'] is defined
         '''
         resource_id = '888'  # such good luck
         mock_solr_response = shared.make_results([{'id': '888'}])
         expected = {'888': {'id': '888', 'type': 'century'},
                     'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
-        self.handler.page = 4
-        self.handler.sort = 'incipit asc'
+        self.handler.hparams['page'] = 4
+        self.handler.hparams['sort'] = 'incipit asc'
 
         actual = yield self.handler.basic_get(resource_id)
 
@@ -235,18 +235,18 @@ class TestBasicGetUnit(shared.TestHandler):
     @testing.gen_test
     def test_basic_get_unit_4(self, mock_ask_solr):
         '''
-        - test_basic_get_unit_1() with self.include_resources set to False
-        - self.page and self.per_page are both set
+        - test_basic_get_unit_1() with self.hparams['include_resources'] set to False
+        - self.hparams['page'] and self.handler.hparams['per_page'] are both set
         '''
         resource_id = None
         mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
-        self.handler.page = 4
-        self.handler.per_page = 12
+        self.handler.hparams['page'] = 4
+        self.handler.hparams['per_page'] = 12
 
-        self.handler.include_resources = False
+        self.handler.hparams['include_resources'] = False
         actual = yield self.handler.basic_get(resource_id)
 
         # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
@@ -259,13 +259,13 @@ class TestBasicGetUnit(shared.TestHandler):
     @testing.gen_test
     def test_basic_get_unit_5(self, mock_ask_solr):
         '''
-        - when the Solr response is empty and self.page is too high (returns 400)
+        - when the Solr response is empty and self.hparams['page'] is too high (returns 400)
         '''
         resource_id = '123'
         mock_solr_response = shared.make_results([])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
-        self.handler.page = 6000
+        self.handler.hparams['page'] = 6000
         exp_reason = SimpleHandler._TOO_LARGE_PAGE
 
         actual = yield self.handler.basic_get(resource_id)
@@ -291,7 +291,7 @@ class TestGetUnit(shared.TestHandler):
         '''
         Preconditions:
         - resource_id is None
-        - self.include_resources is True
+        - self.hparams['include_resources'] is True
         - self.verify_request_headers() returns True
         - self.get_handler() returns Future with three-item list
         - self.head_request is False
@@ -304,7 +304,7 @@ class TestGetUnit(shared.TestHandler):
         - self.write() is called
         '''
         resource_id = None
-        self.handler.include_resources = True
+        self.handler.hparams['include_resources'] = True
         self.handler.head_request = False
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
@@ -327,7 +327,7 @@ class TestGetUnit(shared.TestHandler):
         '''
         Preconditions:
         - resource_id is '123'
-        - self.include_resources is False
+        - self.hparams['include_resources'] is False
         - self.verify_request_headers() returns True
         - self.get_handler() returns Future with one-item list
         - self.head_request is True
@@ -340,7 +340,7 @@ class TestGetUnit(shared.TestHandler):
         - self.write() is not called
         '''
         resource_id = '123'
-        self.handler.include_resources = False
+        self.handler.hparams['include_resources'] = False
         self.handler.head_request = True
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
@@ -375,7 +375,7 @@ class TestGetUnit(shared.TestHandler):
         - self.write() is not called
         '''
         resource_id = None
-        self.handler.include_resources = True
+        self.handler.hparams['include_resources'] = True
         self.handler.head_request = False
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
@@ -409,7 +409,7 @@ class TestGetUnit(shared.TestHandler):
         - self.write() is not called
         '''
         resource_id = None
-        self.handler.include_resources = True
+        self.handler.hparams['include_resources'] = True
         self.handler.head_request = False
         mock_vrh = mock.Mock(return_value=False)
         self.handler.verify_request_headers = mock_vrh
@@ -445,7 +445,7 @@ class TestGetUnit(shared.TestHandler):
         - self.send_error() is called with (502, reason=SimpleHandler._SOLR_502_ERROR)
         '''
         resource_id = None
-        self.handler.include_resources = True
+        self.handler.hparams['include_resources'] = True
         self.handler.head_request = False
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
@@ -775,19 +775,19 @@ class TestVerifyRequestHeaders(shared.TestHandler):
             self.handler.send_error = mock_send_error
         elif kwargs['mock_send_error']:
             self.handler.send_error = kwargs['mock_send_error']
-        self.handler.fields = kwargs['fields']
-        self.handler.per_page = kwargs['per_page']
-        self.handler.page = kwargs['page']
-        self.handler.sort = kwargs['sort']
+        self.handler.hparams['fields'] = kwargs['fields']
+        self.handler.hparams['per_page'] = kwargs['per_page']
+        self.handler.hparams['page'] = kwargs['page']
+        self.handler.hparams['sort'] = kwargs['sort']
 
         actual = self.handler.verify_request_headers(kwargs['is_browse_request'])
 
         self.assertEqual(kwargs['expected'], actual)
         if kwargs['expected'] is True:
             self.assertEqual(kwargs['exp_fields'], self.handler.returned_fields)
-            self.assertEqual(kwargs['exp_per_page'], self.handler.per_page)
-            self.assertEqual(kwargs['exp_page'], self.handler.page)
-            self.assertEqual(kwargs['exp_sort'], self.handler.sort)
+            self.assertEqual(kwargs['exp_per_page'], self.handler.hparams['per_page'])
+            self.assertEqual(kwargs['exp_page'], self.handler.hparams['page'])
+            self.assertEqual(kwargs['exp_sort'], self.handler.hparams['sort'])
         if isinstance(self.handler.send_error, mock.Mock):
             self.assertEqual(kwargs['send_error_count'], self.handler.send_error.call_count)
 
@@ -796,7 +796,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         Preconditions:
         - is_browse_request = False
-        - self.fields is None (its default)
+        - self.hparams['fields'] is None (its default)
         - other fields have invalid canary values
 
         Postconditions:
@@ -810,7 +810,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
     def test_not_browse_request_2(self, mock_pfh):
         '''
         Preconditions:
-        - self.fields is some value
+        - self.hparams['fields'] is some value
         - parse_fields_header mock returns fine
 
         Postconditions:
@@ -832,7 +832,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
     def test_not_browse_request_3(self, mock_pfh):
         '''
         Preconditions:
-        - self.fields is some value
+        - self.hparams['fields'] is some value
         - parse_fields_header mock raises ValueError
 
         Postconditions:
@@ -1064,8 +1064,8 @@ class TestMakeResponseHeaders(shared.TestHandler):
         - is_browse_request is False
         - num_records is 0
         - self.field_counts is {}
-        - self.include_resources is True
-        - self.no_xref is False
+        - self.hparams['include_resources'] is True
+        - self.hparams['no_xref'] is False
 
         Postconditions:
         - X-Cantus-Fields called with 'type' (which is applied by the method-under-test)
@@ -1079,9 +1079,9 @@ class TestMakeResponseHeaders(shared.TestHandler):
 
         Additional Preconditions if "is_browse_request" is True:
         - self.total_results is 400
-        - self.per_page is None
-        - self.page is None
-        - self.sort is None
+        - self.handler.hparams['per_page'] is None
+        - self.hparams['page'] is None
+        - self.hparams['sort'] is None
 
         Additional Postconditions if "is_browse_request" is True:
         - X-Cantus-Total-Results called with 400
@@ -1117,13 +1117,13 @@ class TestMakeResponseHeaders(shared.TestHandler):
 
         # prepare the pre-conditions
         self.handler.field_counts = kwargs['field_counts']
-        self.handler.include_resources = kwargs['include_resources']
-        self.handler.no_xref = kwargs['no_xref']
+        self.handler.hparams['include_resources'] = kwargs['include_resources']
+        self.handler.hparams['no_xref'] = kwargs['no_xref']
         if kwargs['is_browse_request']:
             self.handler.total_results = kwargs['total_results']
-            self.handler.per_page = kwargs['per_page']
-            self.handler.page = kwargs['page']
-            self.handler.sort = kwargs['sort']
+            self.handler.hparams['per_page'] = kwargs['per_page']
+            self.handler.hparams['page'] = kwargs['page']
+            self.handler.hparams['sort'] = kwargs['sort']
 
         # run the test
         mock_add_header = mock.Mock()
@@ -1204,7 +1204,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
     def test_resources(self):
         '''
         Preconditions:
-        - self.include_resources is False
+        - self.hparams['include_resources'] is False
 
         Postconditions:
         - self.add_header('X-Cantus-Include-Resources', 'false')
@@ -1215,7 +1215,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
     def test_xref_1(self):
         '''
         Preconditions:
-        - self.no_xref is True
+        - self.hparams['no_xref'] is True
 
         Postconditions:
         - X-Cantus-No-Xref with 'true'
@@ -1237,7 +1237,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         '''
         Preconditions:
         - is_browse_request is True
-        - self.per_page is 14
+        - self.handler.hparams['per_page'] is 14
 
         Postconditions:
         - X-Cantus-Per-Page with 14
@@ -1248,7 +1248,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         '''
         Preconditions:
         - is_browse_request is True
-        - self.page is 8
+        - self.hparams['page'] is 8
 
         Postconditions:
         - X-Cantus-Page with 8
@@ -1260,7 +1260,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         '''
         Preconditions:
         - is_browse_request is True
-        - self.sort is 'testing sort'
+        - self.hparams['sort'] is 'testing sort'
 
         Postconditions:
         - postpare_formatted_sort() called with 'testing sort' (mock returns 'sorted')
