@@ -1,6 +1,6 @@
 __all__ = ['complex_handler', 'handlers', 'simple_handler', 'util']
-__version__ = '0.1.7'
-__cantus_version__ = '0.1.99'
+__version__ = '0.2.0'
+__cantus_version__ = '0.2.0'
 
 
 from tornado.options import define
