@@ -704,6 +704,8 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         settings, as far as that's posssible. Here are the default values for the kwargs:
 
         - is_browse_request = True
+        - include_resources = True
+            - exp_include_resources = True
         - fields = None
             - exp_fields = ['id', 'type', 'name', 'description']
                 - NOTE: exp_fields is compared against self.required_fields
@@ -749,6 +751,8 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         set_default('mock_send_error', True)
         set_default('is_browse_request', True)
         set_default('expected', True)
+        set_default('include_resources', True)
+        set_default('exp_include_resources', True)
         set_default('fields', None)
         set_default('exp_fields', ['id', 'type', 'name', 'description'])
         if kwargs['is_browse_request']:
@@ -779,6 +783,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         self.handler.hparams['per_page'] = kwargs['per_page']
         self.handler.hparams['page'] = kwargs['page']
         self.handler.hparams['sort'] = kwargs['sort']
+        self.handler.hparams['include_resources'] = kwargs['include_resources']
 
         actual = self.handler.verify_request_headers(kwargs['is_browse_request'])
 
@@ -788,6 +793,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
             self.assertEqual(kwargs['exp_per_page'], self.handler.hparams['per_page'])
             self.assertEqual(kwargs['exp_page'], self.handler.hparams['page'])
             self.assertEqual(kwargs['exp_sort'], self.handler.hparams['sort'])
+            self.assertEqual(kwargs['exp_include_resources'], self.handler.hparams['include_resources'])
         if isinstance(self.handler.send_error, mock.Mock):
             self.assertEqual(kwargs['send_error_count'], self.handler.send_error.call_count)
 
@@ -797,6 +803,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         Preconditions:
         - is_browse_request = False
         - self.hparams['fields'] is None (its default)
+        - self.hparams['include_resources'] is True (its default)
         - other fields have invalid canary values
 
         Postconditions:
@@ -804,7 +811,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - all the other fields still have canary values
         - method returns True
         '''
-        self.test_vrh_template( is_browse_request=False)
+        self.test_vrh_template(is_browse_request=False)
 
     @mock.patch('abbott.util.parse_fields_header')
     def test_not_browse_request_2(self, mock_pfh):
@@ -850,6 +857,53 @@ class TestVerifyRequestHeaders(shared.TestHandler):
 
         mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
         mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_FIELDS)
+
+    def test_not_browse_request_4(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.hparams['include_resources'] is '  faLSe  '
+        - other fields have invalid canary values
+
+        Postconditions:
+        - self.hparams['include_resources'] becomes False
+        - method returns True
+        '''
+        self.test_vrh_template(is_browse_request=False,
+                               include_resources='  faLSe  ',
+                               exp_include_resources=False)
+
+    def test_not_browse_request_5(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.hparams['include_resources'] is '  TRue  '
+        - other fields have invalid canary values
+
+        Postconditions:
+        - self.hparams['include_resources'] becomes True
+        - method returns True
+        '''
+        self.test_vrh_template(is_browse_request=False,
+                               include_resources='  TRue  ',
+                               exp_include_resources=True)
+
+    def test_not_browse_request_6(self):
+        '''
+        Preconditions:
+        - is_browse_request = False
+        - self.hparams['include_resources'] is 'wristwatch'
+        - other fields have invalid canary values
+
+        Postconditions:
+        - method returns False
+        '''
+        mock_send_error = mock.Mock()
+        self.test_vrh_template(is_browse_request=False,
+                               include_resources='wristwatch',
+                               expected=False,
+                               mock_send_error=mock_send_error)
+        mock_send_error.assert_called_with(400, reason=SimpleHandler._BAD_INCLUDE_RESOURCES)
 
     def test_browse_request_1(self):
         '''

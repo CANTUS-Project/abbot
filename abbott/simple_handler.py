@@ -61,6 +61,9 @@ class SimpleHandler(web.RequestHandler):
     _MANY_BAD_HEADERS = 'Multiple Invalid Headers'
     # as advertised
 
+    _BAD_INCLUDE_RESOURCES = 'Include-Resources header was not "true" or "false"'
+    # whe X-Cantus-Include-Resources can't be determined to be True or False
+
     _INVALID_PER_PAGE = 'Invalid "X-Cantus-Per-Page" header'
     # when the X-Cantus-Per-Page value doesn't work in a call to int()
 
@@ -400,6 +403,18 @@ class SimpleHandler(web.RequestHandler):
                 except KeyError:
                     error_messages.append(SimpleHandler._UNKNOWN_FIELD)
                     all_is_well = False
+
+        if self.hparams['include_resources'] is not True:
+            # This looks a little weird; True is the defalt value, and if it's been changed, then
+            # we need to find "true" or "false" in the string that it's been set to from the request
+            self.hparams['include_resources'] = self.hparams['include_resources'].strip().lower()
+            if 'true' in self.hparams['include_resources']:
+                self.hparams['include_resources'] = True
+            elif 'false' in self.hparams['include_resources']:
+                self.hparams['include_resources'] = False
+            else:
+                error_messages.append(SimpleHandler._BAD_INCLUDE_RESOURCES)
+                all_is_well = False
 
         if self.hparams['fields']:
             # X-Cantus-Fields
