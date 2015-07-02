@@ -97,6 +97,9 @@ class SimpleHandler(web.RequestHandler):
     _INVALID_FIELDS = 'X-Cantus-Fields header has field name(s) invalid for this resource type'
     # X-Cantus-Fields has fields that don't exist in this resource type
 
+    _MISSING_SEARCH_BODY = 'Request body was malformed or missing'
+    # when the SEARCH reqest body is missing or can't be parsed from JSON
+
     _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
     # when the Solr server has an error
 
@@ -133,7 +136,7 @@ class SimpleHandler(web.RequestHandler):
         # through the running time of the program.
         self.returned_fields = copy.deepcopy(SimpleHandler._DEFAULT_RETURNED_FIELDS)
 
-        # request headers (these will hold the parsed and verified values)
+        # request headers/body params (these will hold the parsed and verified values)
         self.hparams = {  # "hparams" means "header parameters"
             'per_page': None,           # X-Cantus-Per-Page
             'page': None,               # X-Cantus-Page
@@ -141,7 +144,11 @@ class SimpleHandler(web.RequestHandler):
             'sort': None,               # X-Cantus-Sort
             'no_xref': False,           # X-Cantus-No-Xrefs
             'fields': None,             # X-Cantus-Fields
+            'search_query': None,        # "query" parameter from SEARCH request body
             }
+
+        # for the "query" member of the request body in a SEARCH reqeust
+        self.search_query = None
 
         super(SimpleHandler, self).__init__(*args, **kwargs)
 
@@ -151,6 +158,15 @@ class SimpleHandler(web.RequestHandler):
             in singular form.
         :param additional_fields: Optional list of fields to append to ``self.returned_fields``.
         :type additional_fields: list of str
+
+        **Side Effect**
+
+        If this is a SEARCH request and the request body is not present, or there is no "query"
+        member in the request body, :meth:`send_error` will be called and
+        ``self.hparams['search_query']`` will stay ``None``. Therefore, if
+        ``self.hparams['search_query']`` is ``None`` after this method, and this is a SEARCH request,
+        then you must stop processing, and in particular not call :meth:`write` or
+        :meth:`send_error`, which will overwrite the existing error values set by this method.
         '''
         self.type_name = type_name
         self.type_name_plural = util.singular_resource_to_plural(type_name)
@@ -167,6 +183,27 @@ class SimpleHandler(web.RequestHandler):
                              ('X-Cantus-Fields', 'fields')
                             )
         self.hparams.update(util.do_dict_transfer(self.request.headers, header_to_setting))
+
+        # set values from request body
+        # NOTE: it's important to do this after the header-setting part; the API says header values
+        #       in the request body must take precedence over those in headers
+        if 'SEARCH' == self.request.method:
+            # prepare "body" as JSON-parsed-to-dict
+            try:
+                body = escape.json_decode(self.request.body)
+            except ValueError as val_err:
+                self.send_error(400, reason=SimpleHandler._MISSING_SEARCH_BODY)
+            else:
+                # take settings from members in the request body
+                member_to_setting = (('query', 'search_query'),
+                                     ('per_page', 'per_page'),
+                                     ('page', 'page'),
+                                     ('include_resources', 'include_resources'),
+                                     ('sort', 'sort'),
+                                     ('no_xref', 'no_xref'),
+                                     ('fields', 'fields')
+                                    )
+                self.hparams.update(util.do_dict_transfer(body, member_to_setting))
 
     def set_default_headers(self):
         '''
@@ -612,23 +649,9 @@ class SimpleHandler(web.RequestHandler):
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
-        print('search_handler() has this request body: {}'.format(self.request.body))
+        print('search_handler() has this search query: "{}"'.format(self.hparams['search_query']))
 
-        body = self.request.body
-        if len(body) > 1:
-            try:
-                body = escape.json_decode(self.request.body)
-            except ValueError:
-                # TODO: return error
-                body = {}
-        else:
-            body = {}
-
-        if 'query' in body:
-            query = body['query']
-        else:
-            query = ''
-        return (yield self.basic_get(query='+type:{} {}'.format(self.type_name, query)))
+        return (yield self.basic_get(query='+type:{} {}'.format(self.type_name, self.hparams['search_query'])))
 
     @gen.coroutine
     def search(self, resource_id=None):
@@ -645,6 +668,12 @@ class SimpleHandler(web.RequestHandler):
 
         Does the same header things as get()
         '''
+
+        # If there was no "query" member in the request body, we'll still get called, even though
+        # send_error() will already have been called from initialize(). We have to quit now or
+        # we'll end up overwriting the error.
+        if self.hparams['search_query'] is None:
+            return
 
         # every SEARCH query is a sub-type of browse
         is_browse_request = True

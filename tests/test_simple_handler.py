@@ -49,20 +49,16 @@ class TestInitialize(shared.TestHandler):
     unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
     '''
 
-    def setUp(self):
-        "Make a SimpleHandler instance for testing."
-        super(TestInitialize, self).setUp()
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
-
     def test_initialize_1(self):
         "initialize() works with no extra fields"
-        self.assertEqual('century', self.handler.type_name)
-        self.assertEqual('centuries', self.handler.type_name_plural)
-        self.assertEqual(4, len(self.handler.returned_fields))
-        self.assertIsNone(self.handler.hparams['per_page'])
-        self.assertIsNone(self.handler.hparams['page'])
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        actual = SimpleHandler(self.get_app(), request, type_name='century')
+        self.assertEqual('century', actual.type_name)
+        self.assertEqual('centuries', actual.type_name_plural)
+        self.assertEqual(4, len(actual.returned_fields))
+        self.assertIsNone(actual.hparams['per_page'])
+        self.assertIsNone(actual.hparams['page'])
 
     def test_initialize_2(self):
         "initialize() works with extra fields"
@@ -80,15 +76,81 @@ class TestInitialize(shared.TestHandler):
     def test_initialize_3(self):
         "initialize() works with extra fields (different values)"
         request = httpclient.HTTPRequest(url='/zool/', method='GET',
-                                         headers={'X-Cantus-Include-Resources': 'fALSe',
-                                                  'X-Cantus-Per-Page': '9001',
-                                                  'X-Cantus-Page': '3'})
+                                         headers={'X-Cantus-Include-Resources': 'code red',
+                                                  'X-Cantus-Per-Page': 'code blue',
+                                                  'X-Cantus-Page': 'code green',
+                                                  'X-Cantus-Sort': 'code white',
+                                                  'X-Cantus-No-Xref': 'code yellow',
+                                                  'X-Cantus-Fields': 'code black'})
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = SimpleHandler(self.get_app(), request, type_name='twist')
-        self.assertEqual('fALSe', actual.hparams['include_resources'])
-        self.assertEqual('9001', actual.hparams['per_page'])
-        self.assertEqual('3', actual.hparams['page'])
+        self.assertEqual('code red', actual.hparams['include_resources'])
+        self.assertEqual('code blue', actual.hparams['per_page'])
+        self.assertEqual('code green', actual.hparams['page'])
+        self.assertEqual('code white', actual.hparams['sort'])
+        self.assertEqual('code yellow', actual.hparams['no_xref'])
+        self.assertEqual('code black', actual.hparams['fields'])
 
+    def test_initialize_4(self):
+        "initialize() works with SEARCH request (no values set in request body)"
+        request = httpclient.HTTPRequest(url='/zool/', method='SEARCH',
+                                         headers={'X-Cantus-Include-Resources': 'code red',
+                                                  'X-Cantus-Per-Page': 'code blue',
+                                                  'X-Cantus-Page': 'code green',
+                                                  'X-Cantus-Sort': 'code white',
+                                                  'X-Cantus-No-Xref': 'code yellow',
+                                                  'X-Cantus-Fields': 'code black'},
+                                         body='{}')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        self.assertEqual('code red', actual.hparams['include_resources'])
+        self.assertEqual('code blue', actual.hparams['per_page'])
+        self.assertEqual('code green', actual.hparams['page'])
+        self.assertEqual('code white', actual.hparams['sort'])
+        self.assertEqual('code yellow', actual.hparams['no_xref'])
+        self.assertEqual('code black', actual.hparams['fields'])
+
+    def test_initialize_5(self):
+        "initialize() works with SEARCH request (all values set in request body)"
+        request = httpclient.HTTPRequest(url='/zool/', method='SEARCH',
+                                         headers={'X-Cantus-Include-Resources': 'code red',
+                                                  'X-Cantus-Per-Page': 'code blue',
+                                                  'X-Cantus-Page': 'code green',
+                                                  'X-Cantus-Sort': 'code white',
+                                                  'X-Cantus-No-Xref': 'code yellow',
+                                                  'X-Cantus-Fields': 'code black'},
+                                         body='{"include_resources": "red code",'
+                                               '"per_page": "blue code",'
+                                               '"page": "green code",'
+                                               '"sort": "white code",'
+                                               '"no_xref": "yellow code",'
+                                               '"fields": "black code",'
+                                               '"query": "whatever"}')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        self.assertEqual('red code', actual.hparams['include_resources'])
+        self.assertEqual('blue code', actual.hparams['per_page'])
+        self.assertEqual('green code', actual.hparams['page'])
+        self.assertEqual('white code', actual.hparams['sort'])
+        self.assertEqual('yellow code', actual.hparams['no_xref'])
+        self.assertEqual('black code', actual.hparams['fields'])
+        self.assertEqual('whatever', actual.hparams['search_query'])
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.send_error')
+    def test_initialize_6(self, mock_send_error):
+        "initialize() works with SEARCH request (JSON is faulty)"
+        request = httpclient.HTTPRequest(url='/zool/', method='SEARCH',
+                                         headers={'X-Cantus-Include-Resources': 'code red',
+                                                  'X-Cantus-Per-Page': 'code blue',
+                                                  'X-Cantus-Page': 'code green',
+                                                  'X-Cantus-Sort': 'code white',
+                                                  'X-Cantus-No-Xref': 'code yellow',
+                                                  'X-Cantus-Fields': 'code black'},
+                                         body='{include_resources: "red code"}')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        self.assertIsNone(actual.hparams['search_query'])
+        mock_send_error.assert_called_once_with(400, reason=SimpleHandler._MISSING_SEARCH_BODY)
 
 class TestFormatRecord(shared.TestHandler):
     '''
