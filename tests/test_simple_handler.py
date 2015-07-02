@@ -336,6 +336,24 @@ class TestBasicGetUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=exp_reason)
 
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_basic_get_unit_6(self, mock_search_solr):
+        '''
+        - when a SEARCH query yields no results (returns 404)
+        '''
+        query = 'find me this'
+        mock_solr_response = shared.make_results([])
+        mock_search_solr.return_value = shared.make_future(mock_solr_response)
+        self.handler.send_error = mock.Mock()
+        expected_reason = SimpleHandler._NO_SEARCH_RESULTS
+
+        actual = yield self.handler.basic_get(query=query)
+
+        mock_search_solr.assert_called_once_with(query, sort=None, start=None, rows=None)
+        self.assertIsNone(actual)
+        self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
+
 
 class TestGetUnit(shared.TestHandler):
     '''

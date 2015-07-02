@@ -103,6 +103,9 @@ class SimpleHandler(web.RequestHandler):
     _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
     # when the Solr server has an error
 
+    _NO_SEARCH_RESULTS = 'SEARCH query returned no results'
+    # when there's a SEARCH request with a query that returns no results, and we've decided to give up
+
     _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
     # deepcopied anyway, so we'll just do this!
@@ -334,6 +337,8 @@ class SimpleHandler(web.RequestHandler):
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
                 self.send_error(400, reason=SimpleHandler._TOO_LARGE_PAGE)
+            elif query:  # assume this is a SEARCH request
+                self.send_error(404, reason=SimpleHandler._NO_SEARCH_RESULTS)
             else:
                 self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
             return
