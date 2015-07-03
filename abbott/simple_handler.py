@@ -651,9 +651,7 @@ class SimpleHandler(web.RequestHandler):
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
-        print('search_handler() has this search query: "{}"'.format(self.hparams['search_query']))
-
-        return (yield self.basic_get(query='+type:{} {}'.format(self.type_name, self.hparams['search_query'])))
+        return (yield self.basic_get(query='type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])))
 
     @gen.coroutine
     def search(self, resource_id=None):
