@@ -150,9 +150,6 @@ class SimpleHandler(web.RequestHandler):
             'search_query': None,        # "query" parameter from SEARCH request body
             }
 
-        # for the "query" member of the request body in a SEARCH reqeust
-        self.search_query = None
-
         super(SimpleHandler, self).__init__(*args, **kwargs)
 
     def initialize(self, type_name, additional_fields=None):  # pylint: disable=arguments-differ
