@@ -27,6 +27,12 @@ hostname = 'localhost'
 # "port" is the port on which Abbott should operate
 port = 8888
 
+# "drupal_url" is an optional, specially-formatted path to a Drupal installation of the Cantus
+# database. The URL should have "{id}" in it where the "id" of a record should be substituted.
+# Abbott assumes that the "id" stored in Solr was exported from that Drupal installation. Example:
+#    drupal_url = 'http://cantus2.uwaterloo.ca/node/{id}'
+drupal_url = None
+
 
 ## Logging ----------------------------------------------------------------------------------------
 

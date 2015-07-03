@@ -38,6 +38,9 @@ import abbott
 from abbott import util
 
 
+options.define('drupal_url', type=str, help='see config file for details.')
+
+
 class SimpleHandler(web.RequestHandler):
     '''
     For the resource types that were represented in Drupal with its "taxonomy" feature. This class
