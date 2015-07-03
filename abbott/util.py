@@ -297,4 +297,4 @@ def search_solr(query, start=None, rows=None, sort=None):
         extra_params['rows'] = rows
     if sort is not None:
         extra_params['sort'] = sort
-    return (yield SOLR.search(query, **extra_params))
+    return (yield SOLR.search(query, df='default_search', **extra_params))
