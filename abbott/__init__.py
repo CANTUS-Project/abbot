@@ -10,6 +10,7 @@ define('version', default=False, type=bool, help='print Abbott\'s version and of
 define('licence', default=False, type=bool, help='show licence information')
 define('license', default=False, type=bool, help='show license information')
 define('copyright', default=False, type=bool, help='show copyright information')
+define('options_file', default='', type=str, help='optional path to the server configuration file')
 
 from abbott import *
 # we must retain this import statement to ensure that all modules will be imported with

@@ -97,10 +97,18 @@ def main():
     '''
 
     try:
-        options.parse_command_line()
+        options.parse_command_line(final=False)
     except OptionsError as opt_err:
         print(str(opt_err))
         return
+
+    # see if there's a configuration file for us
+    if len(options.options_file) > 1:
+        try:
+            options.parse_config_file(options.options_file, final=True)
+        except FileNotFoundError:
+            print('Could not find the options file "{}"\nQuitting.'.format(options.options_file))
+            return
 
     # to allow --copyright, --license, and --licence to work identically
     if options.license or options.copyright:
@@ -145,6 +153,7 @@ def main():
     if options.debug:
         print('Listening on {}'.format(options.server_name))
 
+    # prepare settings for the HTTPServer
     settings = {'debug': options.debug,
                 'compress_response': not options.debug,
                }
