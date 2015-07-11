@@ -55,12 +55,35 @@ To run a test instance of *Abbott*, run this command from the "abbott" root dire
 
     $ python abbott
 
-Install for Deployment
-----------------------
+Install for Deployment: Preferred Way
+-------------------------------------
 
-As for development, but use the ``requirements-deploy.txt`` file. There isn't yet a good way to
-deploy *Abbott*, but rest assured it will happen.
+If your deployment system uses *systemd*, this is the preferred method of deployment. If not, you
+may use the alternative described below, but it isn't great.
+
+Install as for development, but use the ``requirements-deploy.txt`` file.
 
 After you install *Abbott*, you may wish to test its functionality:
 
     $ python setup.py test
+
+Now do the stuff to install the unit files and whatever...
+
+Install for Deployment: Alternative Way
+---------------------------------------
+
+Please note that THIS IS NOT THE RECOMMENDED WAY TO DEPLOY *ABBOTT*. If your deployment system uses
+*systemd*, we strongly recommend deploying *Abbott* with *systemd* as described above.
+
+Install as for development, but use the ``requirements-deploy.txt`` file.
+
+After you install *Abbott*, you may wish to test its functionality:
+
+    $ python setup.py test
+
+Now customize the included ``start_abbott`` script from the ``packaging`` directory.
+
+Now start the Solr server.
+
+Now run the included ``start_abbott`` script from the ``packaging`` directory---no need to activate
+the virtualenv beforehand.
