@@ -30,6 +30,7 @@ import copy
 from collections import defaultdict
 import importlib
 
+from tornado.log import app_log as log
 from tornado import escape, gen, web
 from tornado.options import options
 import pysolrtornado
@@ -654,6 +655,7 @@ class SimpleHandler(web.RequestHandler):
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
         '''
+        log.debug("SEARCH request includes this query: '{}'".format(self.hparams['search_query']))
         return (yield self.basic_get(query='type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])))
 
     @gen.coroutine

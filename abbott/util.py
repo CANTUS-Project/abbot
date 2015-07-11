@@ -27,6 +27,7 @@ Utility functions for the Abbott server.
 '''
 
 from tornado import gen
+from tornado.log import app_log as log
 import pysolrtornado
 
 
@@ -268,7 +269,10 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
         extra_params['rows'] = rows
     if sort is not None:
         extra_params['sort'] = sort
-    return (yield SOLR.search('+type:{} +id:{}'.format(q_type, q_id), **extra_params))
+
+    query = '+type:{} +id:{}'.format(q_type, q_id)
+    log.debug("ask_solr_by_id(): '{}'".format(query))
+    return (yield SOLR.search(query, **extra_params))
 
 
 @gen.coroutine
@@ -290,6 +294,7 @@ def search_solr(query, start=None, rows=None, sort=None):
     :raises: :exc:`pysolrtornado.SolrError` when there's an error while connecting to Solr.
     '''
     # TODO: finalize then test this function
+    # TODO: make ask_solr_by_id use this as a helper function
     extra_params = {}
     if start is not None:
         extra_params['start'] = start
@@ -297,4 +302,6 @@ def search_solr(query, start=None, rows=None, sort=None):
         extra_params['rows'] = rows
     if sort is not None:
         extra_params['sort'] = sort
+
+    log.info("search_solr() submits '{}'".format(query))
     return (yield SOLR.search(query, df='default_search', **extra_params))
