@@ -9,6 +9,22 @@ License
 *Abbott* is copyrighted according to the terms of the GNU AGPLv3+. A copy of the license is held in
 the file called "LICENSE."
 
+Repository Layout
+-----------------
+
+The ``abbott`` directory contains program code. The simplest way to run *Abbott* is to execute this
+directory as a Python module.
+
+The ``scripts`` directory contains scripts used to convert between various formats, and tests for
+those scripts. These are primarily for moving data from the Drupal to the Solr servers.
+
+The ``tests`` directory contains unit and integration tests for the program code.
+
+The ``test_client`` directory contains a simple HTML Web page to use when testing *Abbott*.
+
+The ``packaging`` directory contains files relevant to deploying *Abbott*, such as a sample
+configuration file, *systemd* unit files, and an alternative startup script.
+
 Install for Development
 -----------------------
 
