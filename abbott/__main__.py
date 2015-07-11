@@ -26,9 +26,14 @@
 Main file for the Abbott server reference implementation of the Cantus API.
 '''
 
-from tornado import httpserver, ioloop, options, web
+import logging
+
+from tornado import httpserver, log, ioloop, options, web
 from tornado.options import define, options
 from tornado.options import Error as OptionsError
+
+from systemdream.journal import handler as journalctl
+
 import abbott
 from abbott.handlers import RootHandler
 from abbott.simple_handler import SimpleHandler
@@ -96,11 +101,15 @@ def main():
     an event loop and blocks until the event loop finishes.
     '''
 
+    # Job #1: logging. It's not "quality," contrary to what Ford says.
+    logging.root.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='abbott'))
+
+    # parse commandline options
     try:
         options.parse_command_line(final=False)
     except OptionsError as opt_err:
         print(str(opt_err))
-        return
+        raise SystemExit(1)
 
     # see if there's a configuration file for us
     if len(options.options_file) > 1:
@@ -115,8 +124,11 @@ def main():
         options.licence = True
 
     # print the standard header
+    starting_msg = 'Abbott Server {} for Cantus API {} is starting up!'.format(abbott.__version__,
+                                                                               abbott.__cantus_version__)
+    log.app_log.warn(starting_msg)
     if options.debug or options.about or options.licence or options.version:
-        print('Abbott Server {} for Cantus API {}'.format(abbott.__version__, abbott.__cantus_version__))
+        print(starting_msg)
 
     # simple, early-end options
     if options.about:
@@ -136,6 +148,21 @@ def main():
               'repository at https://github.com/CANTUS-Project/abbott/\n')
     if options.about or options.licence or options.version:
         return
+
+    # Job #1.5: because Tornado doesn't seem to do its job, we need to set the logging level
+    log_level = str(options.logging).lower()
+    if 'debug' == log_level:
+        log.access_log.setLevel(logging.DEBUG)
+        log.app_log.setLevel(logging.DEBUG)
+        log.gen_log.setLevel(logging.DEBUG)
+    elif 'info' == log_level:
+        log.access_log.setLevel(logging.INFO)
+        log.app_log.setLevel(logging.INFO)
+        log.gen_log.setLevel(logging.INFO)
+    else:
+        log.access_log.setLevel(logging.WARN)
+        log.app_log.setLevel(logging.WARN)
+        log.gen_log.setLevel(logging.WARN)
 
     # check port is okay
     if not isinstance(options.port, int) or options.port < 1024 or options.port > 32768:

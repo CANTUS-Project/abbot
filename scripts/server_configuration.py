@@ -46,12 +46,5 @@ else:
 # not configured.
 #log_to_stderr = True
 
-# path prefix for log files. Note that if you are running multiple Tornado processes, this must be
-# different for each of them (e.g., include the port number)
-log_file_prefix = '/var/log/abbott/server.log'
-
-# number of log files to keep
-#log_file_num_backups = 10
-
-# "max size of log files before rollover
-#log_file_max_size = 100000000
+# Note that Abbott replaces Tornado's default log "handler" with a connection to systemd-journal
+# via the "systemdream" library. This means the other default Tornado log options are ignored.
