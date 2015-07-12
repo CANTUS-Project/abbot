@@ -37,8 +37,8 @@ VENV_PATH = '/usr/local/abbott-venv'
 # path to the Abbott code
 ABBOTT_PATH = '/usr/local/abbott'
 
-# path to the Abbott log directory
-ABBOTT_LOG_DIR = '/var/log/abbott'
+# path to the "PID file" that records the started server's process ID
+PID_PATH = '/run/abbott.pid'
 
 # Script
 # ------
@@ -47,10 +47,6 @@ os.environ['PYTHONPATH'] = ABBOTT_PATH
 python = os.path.join(VENV_PATH, 'bin/python')
 main_file = os.path.join(ABBOTT_PATH, 'abbott/__main__.py')
 
-# prepare log files
-stdout_path = os.path.join(ABBOTT_LOG_DIR, 'abbott-std.log')
-stderr_path = os.path.join(ABBOTT_LOG_DIR, 'abbott-err.log')
-if not os.path.exists(ABBOTT_LOG_DIR):
-    os.mkdir(ABBOTT_LOG_DIR)
-
-subprocess.Popen([python, main_file], stdout=None, stderr=None)
+abbott = subprocess.Popen([python, main_file], stdout=None, stderr=None)
+with open(PID_PATH, 'w') as pid_file:
+    pid_file.write(str(abbott.pid))
