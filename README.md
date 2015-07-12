@@ -69,6 +69,12 @@ After you install *Abbott*, you may wish to test its functionality:
 
 Now do the stuff to install the unit files and whatever...
 
+- unit files (abbott.service, solr.service) must be installed to /usr/lib/systemd/system directory
+- then # systemctl daemon-reload
+- then # systemctl start abbott
+- and  # systemctl enable abbott
+- and Solr will be taken care of automatically
+
 Install for Deployment: Alternative Way
 ---------------------------------------
 

@@ -1,0 +1,14 @@
+[Unit]
+Description="Abbott HTTP Server"
+Documentation=https://github.com/CANTUS-Project/abbott/
+Wants=solr.service
+
+[Install]
+Also=solr.service
+WantedBy=multi-user.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/abbott/packaging/start_abbott
+PIDFile=/run/abbott.pid
+Restart=on-failure

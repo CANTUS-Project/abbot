@@ -1,0 +1,11 @@
+[Unit]
+Description="Solr Search Server"
+StopWhenUnneeded=true
+
+[Install]
+WantedBy=abbott.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/solr-4.10.4/bin/solr start -s /var/abbott/solr/solr.home -f
+Restart=on-failure
