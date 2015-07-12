@@ -53,7 +53,7 @@ setup(
     install_requires = ['tornado>=4', 'pysolr-tornado'],
     tests_require = ['pytest'],
 
-    scripts = ['scripts/start_abbott', 'runtests.py'],
+    scripts = ['packaging/start_abbott', 'runtests.py'],
     cmdclass = {'test': PyTest},
 
     # metadata for upload to PyPI
