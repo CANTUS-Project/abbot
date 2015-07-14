@@ -252,7 +252,7 @@ class SimpleHandler(web.RequestHandler):
         :param str resource_id: The "id" of the resource in its URL.
         :param str resource_type: An optional resource type for the URL, in either singular or
             plural form. Plural will be slightly faster.
-        :returns: A dynamically created URL to the specified resource, without hostname, with a
+        :returns: A dynamically created URL to the specified resource, including hostname, with a
             terminating slash.
         :rtype: str
         '''
