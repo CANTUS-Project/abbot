@@ -231,7 +231,7 @@
                     if ('search' == action)
                         action = 'browse';
                     var specificPath = urlDirectory['resources'][action][inputType.val()]
-                    requestUrl = SERVER_URL + specificPath;
+                    requestUrl = specificPath;
                     inputRequestUrl.html(requestUrl);
                     // also update the "ID" input box
                     if ('view' == action)
