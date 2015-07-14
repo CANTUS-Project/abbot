@@ -10,5 +10,6 @@ WantedBy=multi-user.target
 [Service]
 Type=forking
 ExecStart=/usr/local/abbott/packaging/start_abbott
-PIDFile=/run/abbott.pid
+PIDFile=/run/abbott/abbott.pid
 Restart=on-failure
+User=abbott
