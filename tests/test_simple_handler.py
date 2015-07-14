@@ -33,7 +33,7 @@ Tests for the Abbott server's SimpleHandler.
 # That's an important part of testing! For me, at least.
 
 from unittest import mock
-from tornado import escape, httpclient, testing
+from tornado import escape, httpclient, options, testing
 import pysolrtornado
 from abbott import __main__ as main
 from abbott.complex_handler import ComplexHandler
@@ -184,7 +184,7 @@ class TestFormatRecord(shared.TestHandler):
 
 class TestMakeResourceUrl(shared.TestHandler):
     '''
-    Tests for the SimpleHandler.make_resource_url().
+    Tests for the SimpleHandler.make_resource_url() and SimpleHandler.make_drupal_url().
 
     NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
     unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
@@ -213,6 +213,51 @@ class TestMakeResourceUrl(shared.TestHandler):
         "with plural resource_type"
         expected = 'https://cantus.org/sources/3.14159/'
         actual = self.handler.make_resource_url('3.14159', 'sources')
+        self.assertEqual(expected, actual)
+
+    def test_make_drupal_url_1(self):
+        "not making type part; starts with /"
+        expected = 'asdf/century/id'
+        partial = '/century/id'
+        lookup_type = False
+        options.options.drupal_url = 'asdf'
+        actual = self.handler.make_drupal_url(partial, lookup_type)
+        self.assertEqual(expected, actual)
+
+    def test_make_drupal_url_2(self):
+        "not making type part; doesn't start with /"
+        expected = 'asdf/century/id'
+        partial = 'century/id'
+        lookup_type = False
+        options.options.drupal_url = 'asdf/'
+        actual = self.handler.make_drupal_url(partial, lookup_type)
+        self.assertEqual(expected, actual)
+
+    def test_make_drupal_url_3(self):
+        "making type part; starts with /"
+        expected = 'asdf/century/id'
+        partial = '/id'
+        lookup_type = True
+        options.options.drupal_url = 'asdf/'
+        actual = self.handler.make_drupal_url(partial, lookup_type)
+        self.assertEqual(expected, actual)
+
+    def test_make_drupal_url_4(self):
+        "not making type part; doesn't start with /"
+        expected = 'asdf/century/id'
+        partial = 'id'
+        lookup_type = True
+        options.options.drupal_url = 'asdf'
+        actual = self.handler.make_drupal_url(partial, lookup_type)
+        self.assertEqual(expected, actual)
+
+    def test_make_drupal_url_5(self):
+        "drupal_url is None; returns ''"
+        expected = ''
+        partial = '/century/id'
+        lookup_type = False
+        options.options.drupal_url = None
+        actual = self.handler.make_drupal_url(partial, lookup_type)
         self.assertEqual(expected, actual)
 
 

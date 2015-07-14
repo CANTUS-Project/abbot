@@ -278,6 +278,51 @@ class SimpleHandler(web.RequestHandler):
         return '{server_name}{resource_path}'.format(server_name=options.server_name,
                                                      resource_path=resource_path)
 
+    def make_drupal_url(self, partial, lookup_type=False):
+        '''
+        Make a URL to a resource on the Drupal server for the "resources" section of the response,
+        with the provided partial URL, potentially adding a "type" part.
+
+        :param str partial: A partial URL, the part after the server name if possible. This may or
+            may start with a ``'/'`` character.
+        :param bool lookup_type: Whether to add a "type" part to the URL. Default is ``False``.
+        :returns: A dynamically created URL to the specified resource, including hostname, with a
+            terminating slash. If no "drupal_url" setting is specified, returns ``''``.
+        :rtype: str
+
+        Drupal URLs consist of three parts: host, node type, and node id. For example,
+        ``http://cantus2.uwaterloo.ca/source/123610`` refers to the resource with id ``123610`` on
+        the server ``http://cantus2.uwaterloo.ca``, which is a ``source`` type.
+
+        In Abbott, some resources have the node and type parts stored in a ``drupal_path`` member,
+        while others do not. The host part is always provided by this method, taken from the
+        "drupal_url" option. If instructed, this method adds the type part automatically, according
+        to the type of the attached :class:`SimpleHandler`.
+
+        **Examples**
+
+        >>> feasts = SimpleHandler('feast')
+        >>> feasts.make_drupal_url('/source/123610', False)
+        'http://cantus2.uwaterloo.ca/source/123610'
+        >>> feasts.make_drupal_url('2360', True)
+        'http://cantus2.uwaterloo.ca/feast/2360'
+        '''
+
+        drupal_path = options.drupal_url
+        if drupal_path is None:
+            return ''
+
+        if drupal_path.endswith('/'):
+            drupal_path = drupal_path[:-1]
+
+        if partial.startswith('/'):
+            partial = partial[1:]
+
+        if lookup_type:
+            partial = '{}/{}'.format(self.type_name, partial)
+
+        return '{}/{}'.format(drupal_path, partial)
+
     @gen.coroutine
     def basic_get(self, resource_id=None, query=None):
         # TODO: tests for "query" functionality
@@ -356,6 +401,15 @@ class SimpleHandler(web.RequestHandler):
         post = {res['id']: res for res in post}
         if self.hparams['include_resources']:
             post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
+            # NOTE: the following "for" statement is untested because it will be temporary
+            for record in resp:
+                if 'drupal_url' in record:
+                    drupal_path = self.make_drupal_url(record['drupal_url'], False)
+                else:
+                    drupal_path = self.make_drupal_url(record['id'], True)
+                if '' != drupal_path:
+                    post['resources'][record['id']]['drupal_path'] = drupal_path
+            # NOTE: end of the untested "for" statement
 
         return post
 
