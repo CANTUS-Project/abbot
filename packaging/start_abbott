@@ -38,7 +38,7 @@ VENV_PATH = '/usr/local/abbott-venv'
 ABBOTT_PATH = '/usr/local/abbott'
 
 # path to the "PID file" that records the started server's process ID
-PID_PATH = '/run/abbott.pid'
+PID_PATH = '/run/abbott/abbott.pid'
 
 # Script
 # ------
