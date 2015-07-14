@@ -26,7 +26,7 @@
 Miscellaneous handlers for the Abbott server.
 '''
 
-from tornado import web
+from tornado import options, web
 from abbott.simple_handler import SimpleHandler
 
 
@@ -49,6 +49,9 @@ class RootHandler(web.RequestHandler):
         Does the actual work for a GET request at '/'. It's a different method for easier testing.
         '''
 
+        # this ends with a / so we'll have to remove that
+        server_name = options.options.server_name[:-1]
+
         all_plural_resources = [
             'cantusids',
             'centuries',
@@ -67,7 +70,8 @@ class RootHandler(web.RequestHandler):
             ]
         post = {'browse': {}, 'view': {}}
         for resource_type in all_plural_resources:
-            this_url = self.reverse_url('view_{}'.format(resource_type), 'id')
+            this_url = '{}{}'.format(server_name,
+                                        self.reverse_url('view_{}'.format(resource_type), 'id'))
             post['view'][resource_type] = this_url
             post['browse'][resource_type] = this_url[:-3]
         return {'resources': post}

@@ -33,7 +33,7 @@ Tests for the Abbott server's RootHandler.
 # That's an important part of testing! For me, at least.
 
 from unittest import mock
-from tornado import escape, httpclient, testing
+from tornado import escape, httpclient, options, testing
 from abbott import __main__ as main
 from abbott import handlers
 import shared
@@ -53,6 +53,7 @@ class TestRootHandler(shared.TestHandler):
 
     def test_root_1(self):
         "basic test"
+        server_name = options.options.server_name
         all_plural_resources = [
             'cantusids',
             'centuries',
@@ -71,10 +72,10 @@ class TestRootHandler(shared.TestHandler):
             ]
         expected = {'browse': {}, 'view': {}}
         for term in all_plural_resources:
-            expected['view'][term] = '/{}/id?'.format(term)
-            expected['browse'][term] = '/{}/'.format(term)
-        expected['view']['source_statii'] = '/statii/id?'
-        expected['browse']['source_statii'] = '/statii/'
+            expected['view'][term] = '{}{}/id?'.format(server_name, term)
+            expected['browse'][term] = '{}{}/'.format(server_name, term)
+        expected['view']['source_statii'] = '{}statii/id?'.format(server_name)
+        expected['browse']['source_statii'] = '{}statii/'.format(server_name)
         expected = {'resources': expected}
 
         actual = self.handler.prepare_get()
@@ -84,6 +85,7 @@ class TestRootHandler(shared.TestHandler):
     @testing.gen_test
     def test_root_2(self):
         "integration test for test_root_1()"
+        server_name = options.options.server_name
         all_plural_resources = [
             'cantusids',
             'centuries',
@@ -102,10 +104,10 @@ class TestRootHandler(shared.TestHandler):
             ]
         expected = {'browse': {}, 'view': {}}
         for term in all_plural_resources:
-            expected['view'][term] = '/{}/id?'.format(term)
-            expected['browse'][term] = '/{}/'.format(term)
-        expected['view']['source_statii'] = '/statii/id?'
-        expected['browse']['source_statii'] = '/statii/'
+            expected['view'][term] = '{}{}/id?'.format(server_name, term)
+            expected['browse'][term] = '{}{}/'.format(server_name, term)
+        expected['view']['source_statii'] = '{}statii/id?'.format(server_name)
+        expected['browse']['source_statii'] = '{}statii/'.format(server_name)
         expected = {'resources': expected}
 
         actual = yield self.http_client.fetch(self.get_url('/'), method='GET')
