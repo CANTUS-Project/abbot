@@ -281,10 +281,12 @@ class TestBasicGetUnit(shared.TestHandler):
     def test_basic_get_unit_1(self, mock_ask_solr):
         '''
         - with no resource_id and Solr response has three things
-        - self.hparams['page'] is None
+        - self.hparams['page'] is 1 (default)
         - self.hparams['sort'] is None
         '''
         resource_id = None
+        self.handler.hparams['page'] = 1
+        self.handler.hparams['per_page'] = 10
         mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
@@ -295,8 +297,8 @@ class TestBasicGetUnit(shared.TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
-                                              rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
+                                              rows=10, sort=None)
         self.assertEqual(expected, actual)
 
     @mock.patch('abbott.util.ask_solr_by_id')
@@ -304,8 +306,11 @@ class TestBasicGetUnit(shared.TestHandler):
     def test_basic_get_unit_2(self, mock_ask_solr):
         '''
         - when the id ends with '/' and the Solr response is empty (returns 404)
+        - it's a browse request, so "page" and "per_page" are None
         '''
         resource_id = '123/'
+        self.handler.hparams['page'] = None
+        self.handler.hparams['per_page'] = None
         mock_solr_response = shared.make_results([])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
@@ -322,7 +327,7 @@ class TestBasicGetUnit(shared.TestHandler):
     def test_basic_get_unit_3(self, mock_ask_solr):
         '''
         - with resource_id not ending with '/' and Solr response has one thing
-        - self.hparams['page'] is defined but self.handler.hparams['per_page'] isn't
+        - self.hparams['page'] is not default but self.handler.hparams['per_page'] is
         - self.hparams['sort'] is defined
         '''
         resource_id = '888'  # such good luck
@@ -330,7 +335,8 @@ class TestBasicGetUnit(shared.TestHandler):
         expected = {'888': {'id': '888', 'type': 'century'},
                     'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
-        self.handler.hparams['page'] = 4
+        self.handler.hparams['page'] = 42
+        self.handler.hparams['per_page'] = 10
         self.handler.hparams['sort'] = 'incipit asc'
 
         actual = yield self.handler.basic_get(resource_id)
@@ -369,6 +375,8 @@ class TestBasicGetUnit(shared.TestHandler):
         - when the Solr response is empty and self.hparams['page'] is too high (returns 400)
         '''
         resource_id = '123'
+        self.handler.hparams['page'] = 1
+        self.handler.hparams['per_page'] = 10
         mock_solr_response = shared.make_results([])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
@@ -388,6 +396,8 @@ class TestBasicGetUnit(shared.TestHandler):
         - when a SEARCH query yields no results (returns 404)
         '''
         query = 'find me this'
+        self.handler.hparams['page'] = 1
+        self.handler.hparams['per_page'] = 10
         mock_solr_response = shared.make_results([])
         mock_search_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
@@ -395,7 +405,7 @@ class TestBasicGetUnit(shared.TestHandler):
 
         actual = yield self.handler.basic_get(query=query)
 
-        mock_search_solr.assert_called_once_with(query, sort=None, start=None, rows=None)
+        mock_search_solr.assert_called_once_with(query, sort=None, start=0, rows=10)
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
 
@@ -661,7 +671,7 @@ class TestGetIntegration(shared.TestHandler):
                                               raise_error=False,
                                               headers={'X-Cantus-Page': '10'})
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100,
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=90,
                                               rows=10, sort=None)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)

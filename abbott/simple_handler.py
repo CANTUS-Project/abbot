@@ -361,10 +361,7 @@ class SimpleHandler(web.RequestHandler):
         # calculate the "start" argument for Solr
         start = None
         if self.hparams['page']:
-            if self.hparams['per_page']:
-                start = (self.hparams['page'] - 1) * self.hparams['per_page']
-            else:
-                start = self.hparams['page'] * 10
+            start = (self.hparams['page'] - 1) * self.hparams['per_page']
 
         # run the query -----------------------------------
         if query:
