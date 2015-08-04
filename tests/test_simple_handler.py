@@ -33,10 +33,11 @@ Tests for the Abbott server's SimpleHandler.
 # That's an important part of testing! For me, at least.
 
 from unittest import mock
-from tornado import escape, httpclient, options, testing
+from tornado import escape, httpclient, testing
 import pysolrtornado
 from abbott import __main__ as main
 from abbott.complex_handler import ComplexHandler
+from abbott import simple_handler
 from abbott.simple_handler import SimpleHandler
 import shared
 
@@ -216,48 +217,43 @@ class TestMakeResourceUrl(shared.TestHandler):
         self.assertEqual(expected, actual)
 
     def test_make_drupal_url_1(self):
-        "not making type part; starts with /"
-        expected = 'asdf/century/id'
-        partial = '/century/id'
-        lookup_type = False
-        options.options.drupal_url = 'asdf'
-        actual = self.handler.make_drupal_url(partial, lookup_type)
+        "options.drupal_path is None"
+        expected = ''
+        res_id = '123'
+        res_type = None
+        simple_handler.options.drupal_url = None
+        simple_handler.options.drupal_type_map = {}
+        actual = self.handler.make_drupal_url(res_id, res_type)
         self.assertEqual(expected, actual)
 
     def test_make_drupal_url_2(self):
-        "not making type part; doesn't start with /"
-        expected = 'asdf/century/id'
-        partial = 'century/id'
-        lookup_type = False
-        options.options.drupal_url = 'asdf/'
-        actual = self.handler.make_drupal_url(partial, lookup_type)
+        "res_type is None; it's also mapped to None"
+        expected = ''
+        res_id = '123'
+        res_type = None
+        simple_handler.options.drupal_url = 'asdf'
+        simple_handler.options.drupal_type_map = {'century': None}
+        actual = self.handler.make_drupal_url(res_id, res_type)
         self.assertEqual(expected, actual)
 
     def test_make_drupal_url_3(self):
-        "making type part; starts with /"
-        expected = 'asdf/century/id'
-        partial = '/id'
-        lookup_type = True
-        options.options.drupal_url = 'asdf/'
-        actual = self.handler.make_drupal_url(partial, lookup_type)
+        "res_type is something; it's mapped to something; drupal_url ends with a /"
+        expected = 'asdf/boop/123'
+        res_id = '123'
+        res_type = 'beep'
+        simple_handler.options.drupal_url = 'asdf/'
+        simple_handler.options.drupal_type_map = {'beep': 'boop'}
+        actual = self.handler.make_drupal_url(res_id, res_type)
         self.assertEqual(expected, actual)
 
     def test_make_drupal_url_4(self):
-        "not making type part; doesn't start with /"
-        expected = 'asdf/century/id'
-        partial = 'id'
-        lookup_type = True
-        options.options.drupal_url = 'asdf'
-        actual = self.handler.make_drupal_url(partial, lookup_type)
-        self.assertEqual(expected, actual)
-
-    def test_make_drupal_url_5(self):
-        "drupal_url is None; returns ''"
-        expected = ''
-        partial = '/century/id'
-        lookup_type = False
-        options.options.drupal_url = None
-        actual = self.handler.make_drupal_url(partial, lookup_type)
+        "res_type isn't in the mapping"
+        expected = 'asdf/century/123'
+        res_id = '123'
+        res_type = None
+        simple_handler.options.drupal_url = 'asdf'
+        simple_handler.options.drupal_type_map = {}
+        actual = self.handler.make_drupal_url(res_id, res_type)
         self.assertEqual(expected, actual)
 
 
@@ -329,6 +325,7 @@ class TestBasicGetUnit(shared.TestHandler):
         - with resource_id not ending with '/' and Solr response has one thing
         - self.hparams['page'] is not default but self.handler.hparams['per_page'] is
         - self.hparams['sort'] is defined
+        - options.drupal_url is defined
         '''
         resource_id = '888'  # such good luck
         mock_solr_response = shared.make_results([{'id': '888'}])

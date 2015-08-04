@@ -40,6 +40,7 @@ from abbott import util
 
 
 options.define('drupal_url', type=str, help='see config file for details.')
+options.define('drupal_type_map', type=dict, help='see config file for details.')
 
 
 class SimpleHandler(web.RequestHandler):
@@ -278,50 +279,56 @@ class SimpleHandler(web.RequestHandler):
         return '{server_name}{resource_path}'.format(server_name=options.server_name,
                                                      resource_path=resource_path)
 
-    def make_drupal_url(self, partial, lookup_type=False):
+    def make_drupal_url(self, res_id, res_type=None):
         '''
         Make a URL to a resource on the Drupal server for the "resources" section of the response,
         with the provided partial URL, potentially adding a "type" part.
 
-        :param str partial: A partial URL, the part after the server name if possible. This may or
-            may start with a ``'/'`` character.
-        :param bool lookup_type: Whether to add a "type" part to the URL. Default is ``False``.
+        :param str res_id: The "id" of the resource for which to create a Drupal URL.
+        :param str res_type: The type of the resource for which to make a URL. The default will be
+            the same type as ``self``.
         :returns: A dynamically created URL to the specified resource, including hostname, with a
-            terminating slash. If no "drupal_url" setting is specified, returns ``''``.
+            terminating slash. If no "drupal_url" setting is specified, or if the "drupal_type_map"
+            value is ``None``, returns an empty string.
         :rtype: str
 
         Drupal URLs consist of three parts: host, node type, and node id. For example,
         ``http://cantus2.uwaterloo.ca/source/123610`` refers to the resource with id ``123610`` on
         the server ``http://cantus2.uwaterloo.ca``, which is a ``source`` type.
 
-        In Abbott, some resources have the node and type parts stored in a ``drupal_path`` member,
-        while others do not. The host part is always provided by this method, taken from the
-        "drupal_url" option. If instructed, this method adds the type part automatically, according
-        to the type of the attached :class:`SimpleHandler`.
+        You can make a URL for a resource of the same type as ``self`` with only the ``res_id``
+        argument. You can make a URL for a resource of any type by providing the ``res_type``
+        argument.
 
         **Examples**
 
         >>> feasts = SimpleHandler('feast')
-        >>> feasts.make_drupal_url('/source/123610', False)
-        'http://cantus2.uwaterloo.ca/source/123610'
-        >>> feasts.make_drupal_url('2360', True)
+        >>> feasts.make_drupal_url('2360')
         'http://cantus2.uwaterloo.ca/feast/2360'
+        >>> feasts.make_drupal_url('123610', 'source')
+        'http://cantus2.uwaterloo.ca/source/123610'
+        >>> feasts.make_drupal_url('830303', 'cantusid')
+        ''
         '''
 
-        drupal_path = options.drupal_url
-        if drupal_path is None:
+        drupal_url = options.drupal_url
+        if drupal_url is None:
             return ''
+        elif options.drupal_url.endswith('/'):
+            drupal_url = drupal_url[:-1]
 
-        if drupal_path.endswith('/'):
-            drupal_path = drupal_path[:-1]
+        if res_type is None:
+            res_type = self.type_name
 
-        if partial.startswith('/'):
-            partial = partial[1:]
+        if res_type in options.drupal_type_map:
+            if options.drupal_type_map[res_type] is None:
+                return ''
+            else:
+                partial = '{}/{}'.format(options.drupal_type_map[res_type], res_id)
+        else:
+            partial = '{}/{}'.format(res_type, res_id)
 
-        if lookup_type:
-            partial = '{}/{}'.format(self.type_name, partial)
-
-        return '{}/{}'.format(drupal_path, partial)
+        return '{}/{}'.format(drupal_url, partial)
 
     @gen.coroutine
     def basic_get(self, resource_id=None, query=None):
