@@ -624,8 +624,8 @@ class TestGetIntegration(shared.TestHandler):
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
-                                              rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
+                                              rows=10, sort=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -662,7 +662,7 @@ class TestGetIntegration(shared.TestHandler):
                                               headers={'X-Cantus-Page': '10'})
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=100,
-                                              rows=None, sort=None)
+                                              rows=10, sort=None)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(SimpleHandler._TOO_LARGE_PAGE, actual.reason)
@@ -688,8 +688,8 @@ class TestGetIntegration(shared.TestHandler):
                                               method='GET',
                                               headers={'X-Cantus-Fields': request_header})
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
-                                              rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
+                                              rows=10, sort=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -792,8 +792,8 @@ class TestHeadIntegration(shared.TestHandler):
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='HEAD')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=None,
-                                              rows=None, sort=None)
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
+                                              rows=10, sort=None)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -882,9 +882,9 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         set_default('exp_fields', ['id', 'type', 'name', 'description'])
         if kwargs['is_browse_request']:
             set_default('per_page', None)
-            set_default('exp_per_page', None)
+            set_default('exp_per_page', 10)
             set_default('page', None)
-            set_default('exp_page', None)
+            set_default('exp_page', 1)
             set_default('sort', None)
             set_default('exp_sort', None)
         else:

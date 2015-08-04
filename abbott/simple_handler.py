@@ -475,6 +475,8 @@ class SimpleHandler(web.RequestHandler):
                         return False
                     elif 0 == self.hparams['per_page']:
                         self.hparams['per_page'] = SimpleHandler._MAX_PER_PAGE
+            else:
+                self.hparams['per_page'] = 10
 
             if self.hparams['page']:
                 # X-Cantus-Page
@@ -486,6 +488,8 @@ class SimpleHandler(web.RequestHandler):
                 if all_is_well and self.hparams['page'] < 1:
                     error_messages.append(SimpleHandler._TOO_SMALL_PAGE)
                     all_is_well = False
+            else:
+                self.hparams['page'] = 1
 
             if self.hparams['sort']:
                 # X-Cantus-Sort
