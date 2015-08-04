@@ -32,6 +32,7 @@ Shared classes and functions for Abbott's automated test suite.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
+from unittest import mock
 from tornado import concurrent, testing, web
 from tornado.options import options
 import pysolrtornado
@@ -63,6 +64,7 @@ def make_results(docs):
 
 class TestHandler(testing.AsyncHTTPTestCase):
     "Base class for classes that test a ___Handler."
+
     def get_app(self):
         return web.Application(main.HANDLERS)
 
@@ -91,3 +93,24 @@ class TestHandler(testing.AsyncHTTPTestCase):
         self.assertEqual(exp_expose_headers, on_this.headers['Access-Control-Expose-Headers'])
         if options.debug:
             self.assertEqual(exp_allow_origin, on_this.headers['Access-Control-Allow-Origin'])
+
+    def setUp(self):
+        '''
+        Install a mock on the global "options" modules. The following options are mocked in the
+        :mod:`simple_handler` module:
+
+        - drupal_url: None
+        - server_name: 'https://cantus.org/'
+        '''
+        super(TestHandler, self).setUp()
+        self._simple_options_patcher = mock.patch('abbott.simple_handler.options')
+        self._simple_options = self._simple_options_patcher.start()
+        self._simple_options.drupal_url = None
+        self._simple_options.server_name = 'https://cantus.org/'
+
+    def tearDown(self):
+        '''
+        Remove the mock from the global "options" modules.
+        '''
+        self._simple_options_patcher.stop()
+        super(TestHandler, self).tearDown()
