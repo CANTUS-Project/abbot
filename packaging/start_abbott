@@ -26,6 +26,7 @@
 import os
 import os.path
 import subprocess
+import sys
 
 # Configuration Variables
 # -----------------------
@@ -46,7 +47,12 @@ PID_PATH = '/run/abbott/abbott.pid'
 os.environ['PYTHONPATH'] = ABBOTT_PATH
 python = os.path.join(VENV_PATH, 'bin/python')
 main_file = os.path.join(ABBOTT_PATH, 'abbott/__main__.py')
+commandline = [python, main_file]
 
-abbott = subprocess.Popen([python, main_file], stdout=None, stderr=None)
+# append all the commandline arguments to this script into the next
+for each_arg in sys.argv[1:]:
+    commandline.append(each_arg)
+
+abbott = subprocess.Popen(commandline, stdout=None, stderr=None)
 with open(PID_PATH, 'w') as pid_file:
     pid_file.write(str(abbott.pid))
