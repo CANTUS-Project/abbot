@@ -27,11 +27,22 @@ hostname = 'localhost'
 # "port" is the port on which Abbott should operate
 port = 8888
 
-# "drupal_url" is an optional, specially-formatted path to a Drupal installation of the Cantus
-# database. The URL should have "{id}" in it where the "id" of a record should be substituted.
-# Abbott assumes that the "id" stored in Solr was exported from that Drupal installation. Example:
-#    drupal_url = 'http://cantus2.uwaterloo.ca/node/{id}'
+# "drupal_url" is an optional path to a Drupal installation of the Cantus database. Abbott assumes
+# that the "id" stored in Solr was exported from that Drupal installation.
+# Example:
+#    drupal_url = 'http://cantus2.uwaterloo.ca/'
 drupal_url = None
+
+# "drupal_type_map" is a mapping between a singular resource type name in Abbott, and the token to
+# use for that type in a "drupal_path" link. Resource types without an entry in this mapping will
+# use Abbott's singular resource type name. Resource types that map to ``None`` will not produce
+# a drupal_path link. This value is ignored if "drupal_url" is ``None``.
+drupal_type_map = {
+    'cantusid': None,
+    'portfolio': None,
+    'siglum': 'rism',
+    'source_status': 'source-status',
+}
 
 
 ## Logging ----------------------------------------------------------------------------------------
