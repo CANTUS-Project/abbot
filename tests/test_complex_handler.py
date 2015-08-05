@@ -35,6 +35,7 @@ Tests for the Abbott server's ComplexHandler.
 from unittest import mock
 from tornado import escape, httpclient, testing
 from abbott import __main__ as main
+from abbott import simple_handler
 from abbott.complex_handler import ComplexHandler
 import shared
 
@@ -313,12 +314,16 @@ class TestGetIntegration(shared.TestHandler):
     @mock.patch('abbott.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
-        "With many xreffed fields; feast_description to make up; and include 'resources'"
+        '''
+        With many xreffed fields; feast_description to make up; include 'resources'; and drupal_path.
+        '''
+        simple_handler.options.drupal_url = 'http://drp'
         record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
                   'mode': '2S'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
                                'cantus_id': '600482a', 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
+                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S',
+                               'drupal_path': 'http://drp/chant/357679'},
                     'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
                                              'genre': 'https://cantus.org/genres/161/',
                                              'feast': 'https://cantus.org/feasts/2378/'}}}

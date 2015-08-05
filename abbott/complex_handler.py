@@ -151,10 +151,12 @@ class ComplexHandler(simple_handler.SimpleHandler):
                         resource_url = self.make_resource_url(record[field], plural)
                     resources[replace_to] = resource_url
 
-            elif field in self.returned_fields:
+            elif field in self.returned_fields or 'drupal_path' == field:
                 # This is for non-cross-referenced fields. Because cross-referenced fields must
                 # also appear in self.returned_fields, this branch must appear after the cross-
-                # referencing branch, or else cross-references would never work correctly.
+                # referencing branch, or else cross-references would never work correctly. The one
+                # exception is "drupal_path," which won't appear in "returned_fields" because it's
+                # not stored in Solr.
                 post[field] = record[field]
 
         return post, resources
