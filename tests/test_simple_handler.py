@@ -279,13 +279,18 @@ class TestBasicGetUnit(shared.TestHandler):
         - with no resource_id and Solr response has three things
         - self.hparams['page'] is 1 (default)
         - self.hparams['sort'] is None
+        - options.drupal_url is 'http://drp'
         '''
+        simple_handler.options.drupal_url = 'http://drp'
         resource_id = None
         self.handler.hparams['page'] = 1
         self.handler.hparams['per_page'] = 10
-        mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
-        expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
-                    '3': {'id': '3', 'type': 'century'},
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
+                                                  {'id': '2', 'name': 'two'},
+                                                  {'id': '3', 'name': 'three'}])
+        expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
+                    '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
+                    '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
                     'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
                                   '2': {'self': 'https://cantus.org/centuries/2/'},
                                   '3': {'self': 'https://cantus.org/centuries/3/'}}}
@@ -617,12 +622,13 @@ class TestGetIntegration(shared.TestHandler):
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
         "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
+        simple_handler.options.drupal_url = 'http://drp'
         mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
                                                   {'id': '2', 'name': 'two'},
                                                   {'id': '3', 'name': 'three'}])
-        expected = {'1': {'id': '1', 'name': 'one', 'type': 'century'},
-                    '2': {'id': '2', 'name': 'two', 'type': 'century'},
-                    '3': {'id': '3', 'name': 'three', 'type': 'century'},
+        expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
+                    '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
+                    '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
                     'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
                                   '2': {'self': 'https://cantus.org/centuries/2/'},
                                   '3': {'self': 'https://cantus.org/centuries/3/'}}}

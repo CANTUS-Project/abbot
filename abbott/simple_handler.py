@@ -405,15 +405,10 @@ class SimpleHandler(web.RequestHandler):
         post = {res['id']: res for res in post}
         if self.hparams['include_resources']:
             post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
-            # NOTE: the following "for" statement is untested because it will be temporary
             for record in resp:
-                if 'drupal_url' in record:
-                    drupal_path = self.make_drupal_url(record['drupal_url'], False)
-                else:
-                    drupal_path = self.make_drupal_url(record['id'], True)
+                drupal_path = self.make_drupal_url(record['id'])
                 if '' != drupal_path:
-                    post['resources'][record['id']]['drupal_path'] = drupal_path
-            # NOTE: end of the untested "for" statement
+                    post[record['id']]['drupal_path'] = drupal_path
 
         return post
 
