@@ -403,9 +403,9 @@ class SimpleHandler(web.RequestHandler):
 
         post = {res['id']: res for res in post}
         if self.hparams['include_resources']:
-            post['resources'] = {i: {'self': self.make_resource_url(i)} for i in iter(post)}
+            post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in iter(post)}
             for record in resp:
-                drupal_path = self.make_drupal_url(record['id'])
+                drupal_path = self.make_drupal_url(record['id'], record['type'])
                 if '' != drupal_path:
                     post[record['id']]['drupal_path'] = drupal_path
 

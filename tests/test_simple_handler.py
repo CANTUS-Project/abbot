@@ -413,6 +413,40 @@ class TestBasicGetUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
 
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_basic_get_unit_7(self, mock_ask_solr):
+        '''
+        Inherited from test_basic_get_unit_1():
+        - with no resource_id and Solr response has three things
+        - self.hparams['page'] is 1 (default)
+        - self.hparams['sort'] is None
+        - options.drupal_url is 'http://drp'
+
+        New in this test:
+        - the things returned from Solr are supposedly three different types
+        '''
+        simple_handler.options.drupal_url = 'http://drp'
+        resource_id = None
+        self.handler.hparams['page'] = 1
+        self.handler.hparams['per_page'] = 10
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'feast'},
+                                                  {'id': '2', 'name': 'two', 'type': 'genre'},
+                                                  {'id': '3', 'name': 'three', 'type': 'source'}])
+        expected = {'1': {'id': '1', 'name': 'one', 'type': 'feast', 'drupal_path': 'http://drp/feast/1'},
+                    '2': {'id': '2', 'name': 'two', 'type': 'genre', 'drupal_path': 'http://drp/genre/2'},
+                    '3': {'id': '3', 'name': 'three', 'type': 'source', 'drupal_path': 'http://drp/source/3'},
+                    'resources': {'1': {'self': 'https://cantus.org/feasts/1/'},
+                                  '2': {'self': 'https://cantus.org/genres/2/'},
+                                  '3': {'self': 'https://cantus.org/sources/3/'}}}
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+
+        actual = yield self.handler.basic_get(resource_id)
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
+                                              rows=10, sort=None)
+        self.assertEqual(expected, actual)
+
 
 class TestGetUnit(shared.TestHandler):
     '''
