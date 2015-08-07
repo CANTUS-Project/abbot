@@ -1260,7 +1260,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         - self.hparams['no_xref'] is False
 
         Postconditions:
-        - X-Cantus-Fields called with 'type' (which is applied by the method-under-test)
+        - X-Cantus-Fields isn't called
         - X-Cantus-Extra-Fields isn't called called
         - X-Cantus-Include_Resources called with 'true'
         - X-Cantus-No-Xref isn't called
@@ -1293,7 +1293,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         set_default('field_counts', {})
         set_default('include_resources', True)
         set_default('no_xref', False)
-        set_default('h_fields', 'type')
+        set_default('h_fields', None)
         set_default('h_extra_fields', None)
         set_default('h_include_resources', 'true')
         set_default('h_no_xref', None)
@@ -1367,15 +1367,16 @@ class TestMakeResponseHeaders(shared.TestHandler):
             - 'name': 5
             - 'id': 5
             - 'feast_code': 3
+            - 'type': 3
 
         Postconditions:
         - X-Cantus-Fields called with something like 'id,name,type'
         - X-Cantus-Extra-Fields called with 'feast_code'
         '''
         self.test_mrh_template(num_records=5,
-                               field_counts={'name': 5, 'id': 5, 'feast_code': 3},
-                               h_fields='id,name,type',
-                               h_extra_fields='feast_code')
+                               field_counts={'name': 5, 'id': 5, 'feast_code': 3, 'type': 3},
+                               h_fields='id,name',
+                               h_extra_fields='feast_code,type')
 
     def test_fields_2(self):
         '''
@@ -1385,12 +1386,13 @@ class TestMakeResponseHeaders(shared.TestHandler):
             - 'name': 5
             - 'id': 5
             - 'feast_code': 5
+            - 'type': 5
 
         Postconditions:
         - X-Cantus-Fields called with something like 'id,name,source,type'
         '''
         self.test_mrh_template(num_records=5,
-                               field_counts={'name': 5, 'id': 5, 'feast_code': 5},
+                               field_counts={'name': 5, 'id': 5, 'feast_code': 5, 'type': 5},
                                h_fields='id,name,type,feast_code')
 
     def test_resources(self):

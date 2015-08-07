@@ -562,7 +562,7 @@ class SimpleHandler(web.RequestHandler):
         '''
 
         # figure out the X-Cantus-Fields and X-Cantus-Extra-Fields headers
-        fields = ['type']  # "type" is added by Abbott, so it wouldn't have been counted
+        fields = []
         extra_fields = []
 
         for field in self.field_counts:
