@@ -91,6 +91,8 @@ def singular_resource_to_plural(singular):
                    # for Source
                    'indexers': 'indexers',
                    'proofreaders': 'indexers',
+                   # for "all"
+                   '*': '*',
                   }
 
     if singular in conversions:
