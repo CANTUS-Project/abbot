@@ -76,6 +76,7 @@ class TestRootHandler(shared.TestHandler):
             expected['browse'][term] = '{}{}/'.format(server_name, term)
         expected['view']['source_statii'] = '{}statii/id?'.format(server_name)
         expected['browse']['source_statii'] = '{}statii/'.format(server_name)
+        expected['browse']['all'] = '{}browse/'.format(server_name)
         expected = {'resources': expected}
 
         actual = self.handler.prepare_get()
@@ -108,6 +109,7 @@ class TestRootHandler(shared.TestHandler):
             expected['browse'][term] = '{}{}/'.format(server_name, term)
         expected['view']['source_statii'] = '{}statii/id?'.format(server_name)
         expected['browse']['source_statii'] = '{}statii/'.format(server_name)
+        expected['browse']['all'] = '{}browse/'.format(server_name)
         expected = {'resources': expected}
 
         actual = yield self.http_client.fetch(self.get_url('/'), method='GET')
