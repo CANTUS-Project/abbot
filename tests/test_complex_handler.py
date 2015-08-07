@@ -319,11 +319,11 @@ class TestGetIntegration(shared.TestHandler):
         '''
         simple_handler.options.drupal_url = 'http://drp'
         record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                  'mode': '2S'}
+                  'mode': '2S', 'type': 'chant'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
                                'cantus_id': '600482a', 'feast': 'Jacobi',
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S',
-                               'drupal_path': 'http://drp/chant/357679'},
+                               'drupal_path': 'http://drp/chant/357679', 'type': 'chant'},
                     'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
                                              'genre': 'https://cantus.org/genres/161/',
                                              'feast': 'https://cantus.org/feasts/2378/'}}}
@@ -353,9 +353,9 @@ class TestGetIntegration(shared.TestHandler):
     def test_get_integration_2(self, mock_ask_solr):
         "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
         record_a = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                    'mode': '2S'}
+                    'mode': '2S', 'type': 'chant'}
         record_b = {'id': '111222', 'genre_id': '161', 'feast_id': '2378', 'mode': '2S',
-                    'sequence': 4}
+                    'sequence': 4, 'type': 'chant'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
                                'cantus_id': '600482a', 'feast': 'Jacobi',
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
@@ -391,7 +391,7 @@ class TestGetIntegration(shared.TestHandler):
     def test_get_integration_3(self, mock_ask_solr):
         "test_get_integration_1 but with X-Cantus-No-Xref; include 'resources'"
         record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                  'mode': '2S'}
+                  'mode': '2S', 'type': 'chant'}
         expected = {'357679': {'id': '357679', 'type': 'chant', 'genre_id': '161',
                                'cantus_id': '600482a', 'feast_id': '2378', 'mode': '2S'},
                     'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',

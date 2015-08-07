@@ -396,7 +396,6 @@ class SimpleHandler(web.RequestHandler):
             post = []
             for each_record in resp:
                 this_record = self.format_record(each_record)
-                this_record['type'] = self.type_name
                 post.append(this_record)
 
         # for the X-Cantus-Total-Results header

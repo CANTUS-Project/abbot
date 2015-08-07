@@ -285,9 +285,9 @@ class TestBasicGetUnit(shared.TestHandler):
         resource_id = None
         self.handler.hparams['page'] = 1
         self.handler.hparams['per_page'] = 10
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
-                                                  {'id': '2', 'name': 'two'},
-                                                  {'id': '3', 'name': 'three'}])
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'},
+                                                  {'id': '2', 'name': 'two', 'type': 'century'},
+                                                  {'id': '3', 'name': 'three', 'type': 'century'}])
         expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
                     '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
                     '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
@@ -333,7 +333,7 @@ class TestBasicGetUnit(shared.TestHandler):
         - options.drupal_url is defined
         '''
         resource_id = '888'  # such good luck
-        mock_solr_response = shared.make_results([{'id': '888'}])
+        mock_solr_response = shared.make_results([{'id': '888', 'type': 'century'}])
         expected = {'888': {'id': '888', 'type': 'century'},
                     'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
@@ -354,7 +354,9 @@ class TestBasicGetUnit(shared.TestHandler):
         - self.hparams['page'] and self.handler.hparams['per_page'] are both set
         '''
         resource_id = None
-        mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
+        mock_solr_response = shared.make_results([{'id': '1', 'type': 'century'},
+                                                  {'id': '2', 'type': 'century'},
+                                                  {'id': '3', 'type': 'century'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'}}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
@@ -623,9 +625,9 @@ class TestGetIntegration(shared.TestHandler):
     def test_get_integration_1(self, mock_ask_solr):
         "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
         simple_handler.options.drupal_url = 'http://drp'
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
-                                                  {'id': '2', 'name': 'two'},
-                                                  {'id': '3', 'name': 'three'}])
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'},
+                                                  {'id': '2', 'name': 'two', 'type': 'century'},
+                                                  {'id': '3', 'name': 'three', 'type': 'century'}])
         expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
                     '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
                     '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
@@ -684,9 +686,9 @@ class TestGetIntegration(shared.TestHandler):
     @testing.gen_test
     def test_get_integration_4(self, mock_ask_solr):
         "ensure the X-Cantus-Fields request header works"
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one'},
-                                                  {'id': '2', 'name': 'two'},
-                                                  {'id': '3', 'name': 'three'}])
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'},
+                                                  {'id': '2', 'name': 'two', 'type': 'century'},
+                                                  {'id': '3', 'name': 'three', 'type': 'century'}])
         expected = {'1': {'id': '1', 'type': 'century'},
                     '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
@@ -800,7 +802,9 @@ class TestHeadIntegration(shared.TestHandler):
     @testing.gen_test
     def test_head_integration_1a(self, mock_ask_solr):
         "test_get_integration_1() but with the HEAD method"
-        mock_solr_response = shared.make_results([{'id': '1'}, {'id': '2'}, {'id': '3'}])
+        mock_solr_response = shared.make_results([{'id': '1', 'type': 'century'},
+                                                  {'id': '2', 'type': 'century'},
+                                                  {'id': '3', 'type': 'century'}])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='HEAD')
