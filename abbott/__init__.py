@@ -26,9 +26,9 @@ other headers as applicable---this list determines the value of the
 '''
 
 CANTUS_RESPONSE_HEADERS = ('X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Include-Resources',
-                           'X-Cantus-Sort', 'X-Cantus-No-Xref', 'X-Cantus-Fields',
-                           'X-Cantus-Search-Help', 'X-Cantus-Version', 'X-Cantus-Total-Results',
-                           'Server')
+                           'X-Cantus-Sort', 'X-Cantus-No-Xref', 'X-Cantus-Fields', 'Server',
+                           'X-Cantus-Extra-Fields', 'X-Cantus-Search-Help', 'X-Cantus-Version',
+                           'X-Cantus-Total-Results')
 '''
 Iterable of the headers that Cantus clients are interested in reading. Needless to say, Cantus
 clients may be interested in other headers---this list determines the value of the
