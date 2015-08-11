@@ -41,6 +41,10 @@ from abbott import util
 
 options.define('drupal_url', type=str, help='see config file for details.')
 options.define('drupal_type_map', type=dict, help='see config file for details.')
+options.define('cors_allow_origin',
+               help='value for the Access-Control-Allow-Origin response header.',
+               type=str,
+               default=None)
 
 
 class SimpleHandler(web.RequestHandler):
@@ -223,10 +227,10 @@ class SimpleHandler(web.RequestHandler):
         '''
         self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
-        if options.debug:
-            self.add_header('Access-Control-Allow-Origin', 'http://localhost:8000')
-        self.add_header('Access-Control-Allow-Headers', ','.join(abbott.CANTUS_REQUEST_HEADERS))
-        self.add_header('Access-Control-Expose-Headers', ','.join(abbott.CANTUS_RESPONSE_HEADERS))
+        if options.cors_allow_origin:
+            self.add_header('Access-Control-Allow-Origin', options.cors_allow_origin)
+            self.add_header('Access-Control-Allow-Headers', ','.join(abbott.CANTUS_REQUEST_HEADERS))
+            self.add_header('Access-Control-Expose-Headers', ','.join(abbott.CANTUS_RESPONSE_HEADERS))
 
     def format_record(self, record):
         '''

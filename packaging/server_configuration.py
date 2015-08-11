@@ -27,6 +27,16 @@ hostname = 'localhost'
 # "port" is the port on which Abbott should operate
 port = 8888
 
+
+## Cross-Origin Resource Sharing (CORS) -----------------------------------------------------------
+
+# "cors_allow_origin" will be the value of the Access-Control-Allow-Origin response header. If this
+# is set to None, none of the CORS response headers will be used.
+cors_allow_origin = None
+
+
+## Drupal -----------------------------------------------------------------------------------------
+
 # "drupal_url" is an optional path to a Drupal installation of the Cantus database. Abbott assumes
 # that the "id" stored in Solr was exported from that Drupal installation.
 # Example:

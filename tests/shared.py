@@ -85,13 +85,13 @@ class TestHandler(testing.AsyncHTTPTestCase):
         exp_cantus_version = 'Cantus/{}'.format(abbott.__cantus_version__)
         exp_allow_headers = ','.join(abbott.CANTUS_REQUEST_HEADERS)
         exp_expose_headers = ','.join(abbott.CANTUS_RESPONSE_HEADERS)
-        exp_allow_origin = 'http://localhost:8000'
+        exp_allow_origin = self._simple_options.cors_allow_origin
 
         self.assertEqual(exp_server, on_this.headers['Server'])
         self.assertEqual(exp_cantus_version, on_this.headers['X-Cantus-Version'])
-        self.assertEqual(exp_allow_headers, on_this.headers['Access-Control-Allow-Headers'])
-        self.assertEqual(exp_expose_headers, on_this.headers['Access-Control-Expose-Headers'])
-        if options.debug:
+        if self._simple_options.cors_allow_origin:
+            self.assertEqual(exp_allow_headers, on_this.headers['Access-Control-Allow-Headers'])
+            self.assertEqual(exp_expose_headers, on_this.headers['Access-Control-Expose-Headers'])
             self.assertEqual(exp_allow_origin, on_this.headers['Access-Control-Allow-Origin'])
 
     def setUp(self):
@@ -101,12 +101,14 @@ class TestHandler(testing.AsyncHTTPTestCase):
 
         - drupal_url: None
         - server_name: 'https://cantus.org/'
+        - cors_allow_origin: 'https://cantus.org:5733/'
         '''
         super(TestHandler, self).setUp()
         self._simple_options_patcher = mock.patch('abbott.simple_handler.options')
         self._simple_options = self._simple_options_patcher.start()
         self._simple_options.drupal_url = None
         self._simple_options.server_name = 'https://cantus.org/'
+        self._simple_options.cors_allow_origin = 'https://cantus.org:5733/'
 
     def tearDown(self):
         '''
