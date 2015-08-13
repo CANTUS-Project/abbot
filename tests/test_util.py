@@ -92,7 +92,7 @@ class TestAskSolrById(shared.TestHandler):
         util.SOLR.search.assert_called_once_with('+type:genre +id:162', rows=42, sort='incipit asc')
 
 
-class TestFormattedSorts(shared.TestHandler):
+class TestFormattedSorts(TestCase):
     '''
     Tests for abbott.util.prepare_formatted_sort() and abbott.util.postpare_formatted_sort().
     '''
