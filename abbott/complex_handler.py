@@ -304,6 +304,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         else:
             return name
 
+    @util.request_wrapper
     @gen.coroutine
     def options(self, resource_id=None):  # pylint: disable=arguments-differ
         '''

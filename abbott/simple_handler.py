@@ -609,6 +609,7 @@ class SimpleHandler(web.RequestHandler):
             if self.hparams['sort']:
                 self.add_header('X-Cantus-Sort', util.postpare_formatted_sort(self.hparams['sort']))
 
+    @util.request_wrapper
     @gen.coroutine
     def get(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
@@ -647,6 +648,8 @@ class SimpleHandler(web.RequestHandler):
         if not self.head_request:
             self.write(response)
 
+
+    @util.request_wrapper
     @gen.coroutine
     def options(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
@@ -677,6 +680,7 @@ class SimpleHandler(web.RequestHandler):
             for each_header in SimpleHandler._HEADERS_FOR_BROWSE:
                 self.add_header(each_header, 'allow')
 
+    @util.request_wrapper
     @gen.coroutine
     def head(self, resource_id=None):  # pylint: disable=arguments-differ
         '''
@@ -718,6 +722,7 @@ class SimpleHandler(web.RequestHandler):
         log.debug("SEARCH request includes this query: '{}'".format(self.hparams['search_query']))
         return (yield self.basic_get(query='type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])))
 
+    @util.request_wrapper
     @gen.coroutine
     def search(self, resource_id=None):
         # TODO: tests
