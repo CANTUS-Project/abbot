@@ -3,6 +3,8 @@ Abbott
 
 *Abbott* is a Python 3.4 implementation of a server for the Cantus API.
 
+[![Build Status](https://api.travis-ci.org/CANTUS-Project/abbott.svg?branch=master)](https://travis-ci.org/CANTUS-Project/abbott)
+
 License
 -------
 
