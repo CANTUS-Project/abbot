@@ -28,6 +28,7 @@ Utility functions for the Abbott server.
 
 from tornado import gen
 from tornado.log import app_log as log
+from tornado.options import options
 import pysolrtornado
 
 
@@ -307,3 +308,45 @@ def search_solr(query, start=None, rows=None, sort=None):
 
     log.info("search_solr() submits '{}'".format(query))
     return (yield SOLR.search(query, df='default_search', **extra_params))
+
+
+def request_wrapper(func):
+    '''
+    Use this function as a decorator on subclasses of :class:`~abbott.simple_handler.SimpleHandler`
+    or subclasses to prevent mysterious failures when an exception happens. This function calls the
+    :meth:`SimpleHandler.send_error` and writes diagnostic information. If the "debug" setting is
+    ``True``, a traceback will be printed with :func:`print`. If "debug" is ``False``, a message
+    will be added to the log.
+
+    .. note:: That the method being decorated is assumed to be a Tornado coroutine. You must put
+        the ``@request_wrapper`` decorator *above* the coroutine decorator, like this:
+
+        @request_wrapper
+        @coroutine
+        def get(self):
+            pass
+    '''
+
+    @gen.coroutine
+    def decorated(self, *args, **kwargs):
+        '''
+        Wraps.
+        '''
+
+        try:
+            yield func(self, *args, **kwargs)
+        except (gen.BadYieldError, Exception) as exc:
+            import traceback
+            tback = ''.join(traceback.format_exception(type(exc), exc, None))
+            if isinstance(exc, gen.BadYieldError):
+                tback += 'IMPORTANT: write the @request_wrapper decorator above @gen.coroutine'
+            if options.debug:
+                # wonderful traceback so I can read it!
+                print(tback)
+            else:
+                # print a nice message to the journal
+                log.error(tback)
+
+            self.send_error(500, reason='Programmer Error')
+
+    return decorated

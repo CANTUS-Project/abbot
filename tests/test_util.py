@@ -34,7 +34,7 @@ Tests for abbott/util.py of the Abbott server.
 
 from unittest import mock, TestCase
 import pytest
-from tornado import testing
+from tornado import gen, testing, web
 import pysolrtornado
 
 from abbott import __main__ as main
@@ -281,3 +281,134 @@ class TestDoDictTransfer(TestCase):
         expected = {}
         actual = util.do_dict_transfer(from_here, translations)
         self.assertEqual(expected, actual)
+
+
+class TestRequestWrapper(testing.AsyncHTTPTestCase):
+    '''
+    Tests for the abbott.util.request_wrapper decorator.
+    '''
+
+    def get_app(self):
+        return web.Application(main.HANDLERS)
+
+    def setUp(self):
+        '''
+        Make some additional mocks: log.error(); print().
+        '''
+        super(TestRequestWrapper, self).setUp()
+        self._log_patcher = mock.patch('abbott.util.log')
+        self._log = self._log_patcher.start()
+        self._actual_print = __builtins__['print']
+        __builtins__['print'] = mock.MagicMock()
+        self._options_patcher = mock.patch('abbott.util.options')
+        self._options = self._options_patcher.start()
+        self._options.debug = False
+
+    def tearDown(self):
+        '''
+        Remove the mock from the global "options" modules.
+        '''
+        __builtins__['print'] = self._actual_print
+        self._log_patcher.stop()
+        self._options_patcher.stop()
+        super(TestRequestWrapper, self).tearDown()
+
+    @testing.gen_test
+    def test_success(self):
+        '''
+        - everything works fine
+        - none of those things called
+        '''
+
+        # set up a handler
+        class SomeHandler(web.RequestHandler):
+            def __init__(self):
+                pass
+
+            @util.request_wrapper
+            @gen.coroutine
+            def get(self):
+                self.write('five')
+
+            write = mock.MagicMock()
+            send_error = mock.MagicMock()
+
+        # run the test
+        some = SomeHandler()
+        actual = yield some.get()
+
+        # check
+        self.assertIsNone(actual)
+        some.write.assert_called_once_with('five')
+        self.assertEqual(0, print.call_count)
+        self.assertEqual(0, self._log.error.call_count)
+        self.assertEqual(0, some.send_error.call_count)
+
+    @testing.gen_test
+    def test_nodebug_failure(self):
+        '''
+        - func() raises IndexError; debug is True
+        - print() called with the message
+        - self.send_error(500, reason='Programmer Error')
+        '''
+
+        self._options.debug = True
+
+        # set up a handler
+        class SomeHandler(web.RequestHandler):
+            def __init__(self):
+                pass
+
+            @util.request_wrapper
+            @gen.coroutine
+            def get(self):
+                self.write('five')
+
+            write = mock.MagicMock(side_effect=IndexError)
+            send_error = mock.MagicMock()
+
+        # run the test
+        some = SomeHandler()
+        actual = yield some.get()
+
+        # check
+        self.assertIsNone(actual)
+        some.write.assert_called_once_with('five')
+        self.assertEqual(1, print.call_count)
+        self.assertEqual(0, self._log.error.call_count)
+        some.send_error.assert_called_once_with(500, reason='Programmer Error')
+
+    @testing.gen_test
+    def test_debug_wrong_order(self):
+        '''
+        - func() is wrapped in the wrong order; debug is False
+        - log.error() called with the message
+        - the message ends with 'IMPORTANT: write the @request_wrapper decorator above @gen.coroutine'
+        - self.send_error(500, reason='Programmer Error')
+        '''
+
+        # set up a handler
+        class SomeHandler(web.RequestHandler):
+            def __init__(self):
+                pass
+
+            @gen.coroutine
+            @util.request_wrapper
+            def get(self):
+                self.write('five')
+
+            write = mock.MagicMock()
+            send_error = mock.MagicMock()
+
+        # run the test
+        exp_log_ending = 'IMPORTANT: write the @request_wrapper decorator above @gen.coroutine'
+        some = SomeHandler()
+        actual = yield some.get()
+
+        # check
+        # self.assertIsNone(actual)
+        some.write.assert_called_once_with('five')
+        self.assertEqual(0, print.call_count)
+        self.assertEqual(1, self._log.error.call_count)
+        self.assertTrue(self._log.error.call_args[0][0].endswith(exp_log_ending))
+        some.send_error.assert_called_once_with(500, reason='Programmer Error')
