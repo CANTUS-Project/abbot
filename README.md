@@ -71,6 +71,8 @@ After you install *Abbott*, you may wish to test its functionality:
 
 Now do the stuff to install the unit files and whatever...
 
+- edit the ``Environment=PATH=`` and ``ExecStart=`` lines in abbott.service, so they agree with
+  the paths you used just above
 - unit files (abbott.service, solr.service) must be installed to /usr/lib/systemd/system directory
 - then # systemctl daemon-reload
 - then # systemctl start abbott

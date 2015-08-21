@@ -8,8 +8,7 @@ Also=solr.service
 WantedBy=multi-user.target
 
 [Service]
-Type=forking
-ExecStart=/usr/local/abbott/packaging/start_abbott
-PIDFile=/run/abbott/abbott.pid
+Environment=PATH="/usr/local/abbott-venv/bin:$PATH"
+ExecStart=/usr/local/abbott-venv/bin/python /usr/local/abbott/abbott --options_file=/usr/local/abbott/packaging/server_configuration.py
 Restart=on-failure
 User=abbott
