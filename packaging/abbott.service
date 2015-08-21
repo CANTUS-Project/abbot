@@ -2,6 +2,8 @@
 Description="Abbott HTTP Server"
 Documentation=https://github.com/CANTUS-Project/abbott/
 Wants=solr.service
+Requires=abbott.socket
+After=network.target
 
 [Install]
 Also=solr.service
