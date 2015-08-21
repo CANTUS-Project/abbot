@@ -38,6 +38,7 @@ import abbott
 from abbott.handlers import RootHandler
 from abbott.simple_handler import SimpleHandler
 from abbott.complex_handler import ComplexHandler
+from abbott.systemd_http_server import SystemdHTTPServer
 
 define('port', default=8888, type=int,
        help='port for Abbott to listen on, between 1024 and 32768')
@@ -201,9 +202,8 @@ def main():
                 'compress_response': not options.debug,
                }
 
-    server = httpserver.HTTPServer(web.Application(handlers=HANDLERS, settings=settings))
+    server = SystemdHTTPServer(web.Application(handlers=HANDLERS, settings=settings))
     server.listen(options.port)
-    # TODO: use multi-process? http://www.tornadoweb.org/en/stable/httpserver.html#tornado.httpserver.HTTPServer
 
     if options.debug:
         print('')
