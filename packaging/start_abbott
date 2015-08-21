@@ -54,5 +54,12 @@ for each_arg in sys.argv[1:]:
     commandline.append(each_arg)
 
 abbott = subprocess.Popen(commandline, stdout=None, stderr=None)
-with open(PID_PATH, 'w') as pid_file:
-    pid_file.write(str(abbott.pid))
+try:
+    with open(PID_PATH, 'w') as pid_file:
+        pid_file.write(str(abbott.pid))
+except IOError:
+    # probably couldn't write to the PID_PATH
+    # TODO: write to the systemd journal
+    print('Could not write PID file. Aborting startup.')
+    abbott.kill()
+    raise SystemExit(1)
