@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
 # Program Name:           abbott
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               scripts/start_abbott
-# Purpose:                Starts Abbott in a new proces (for deployment).
+# Purpose:                Starts Abbott in a new process (for deployment without systemd).
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -22,11 +22,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
+'''
+Starts Abbott in a new process (for deployment without systemd).
+
+Please note that this is not the recommended deployment mechanism. We recommend a production server
+with a Linux-based OS that uses systemd, which allows using the "abbott.service" and "abbott.socket"
+files stored in this directory.
+
+Unlike the rest of Abbott, this script works with both Python 2 and Python 3.
+'''
 
 import os
 import os.path
 import subprocess
 import sys
+
 
 # Configuration Variables
 # -----------------------
@@ -59,7 +69,6 @@ try:
         pid_file.write(str(abbott.pid))
 except IOError:
     # probably couldn't write to the PID_PATH
-    # TODO: write to the systemd journal
     print('Could not write PID file. Aborting startup.')
     abbott.kill()
     raise SystemExit(1)
