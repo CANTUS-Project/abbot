@@ -90,3 +90,35 @@ class RootHandler(web.RequestHandler):
         Response to OPTIONS requests. Sets the "Allow" header and returns.
         '''
         self.add_header('Allow', RootHandler._ALLOWED_METHODS)
+
+
+class CanonicalHandler(web.RequestHandler):
+    '''
+    For requests that don't end with a slash, this handler sends a redirect response to the same
+    URL with a trailing slash. In other words, this handler ensures user agents are requesting a
+    resource's canonical URL (the version with trailing slash).
+    '''
+
+    SUPPORTED_METHODS = ('GET', 'HEAD', 'OPTIONS', 'SEARCH')
+    # this registers the SEARCH method as something that Tornado can do
+
+    def set_default_headers(self):
+        '''
+        Use :meth:`SimpleHandler.set_default_headers` to set the default headers.
+        '''
+        SimpleHandler.set_default_headers(self)
+
+    def _do_the_redirect(self):
+        self.redirect('{}/'.format(self.request.uri), permanent=True)
+
+    def get(self):
+        self._do_the_redirect()
+
+    def head(self):
+        self._do_the_redirect()
+
+    def options(self):
+        self._do_the_redirect()
+
+    def search(self):
+        self._do_the_redirect()

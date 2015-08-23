@@ -765,6 +765,26 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(400, actual.code)
         self.assertEqual(SimpleHandler._INVALID_FIELDS, actual.reason)
 
+    @mock.patch('abbott.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_terminating_slash(self, mock_ask_solr):
+        '''
+        Check that the results returned from the root URL are the same when the URL ends with a
+        slash and when it doesn't. This test doesn't check whether the results are correct.
+
+        Ultimately this is a test of the __main__ module's URL configuration, but that's okay.
+        '''
+        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'}])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+
+        slash = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET', raise_error=False)
+        noslash = yield self.http_client.fetch(self.get_url('/centuries'), method='GET', raise_error=False)
+
+        self.assertEqual(slash.code, noslash.code)
+        self.assertEqual(slash.reason, noslash.reason)
+        self.assertEqual(slash.headers, noslash.headers)
+        self.assertEqual(slash.body, noslash.body)
+
 
 class TestOptionsIntegration(shared.TestHandler):
     '''

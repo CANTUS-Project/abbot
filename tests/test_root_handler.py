@@ -125,3 +125,62 @@ class TestRootHandler(shared.TestHandler):
         self.check_standard_header(actual)
         self.assertEqual(handlers.RootHandler._ALLOWED_METHODS, actual.headers['Allow'])
         self.assertEqual(0, len(actual.body))
+
+    @testing.gen_test
+    def test_terminating_slash(self):
+        '''
+        Check that the results returned from the root URL are the same when the URL ends with a
+        slash and when it doesn't. This test doesn't check whether the results are correct.
+        '''
+        slash = yield self.http_client.fetch(self.get_url('/'), method='GET', raise_error=False)
+        noslash = yield self.http_client.fetch(self.get_url(''), method='GET', raise_error=False)
+        self.assertEqual(slash.code, noslash.code)
+        self.assertEqual(slash.reason, noslash.reason)
+        self.assertEqual(slash.headers, noslash.headers)
+        self.assertEqual(slash.body, noslash.body)
+
+
+class TestCanonicalHandler(shared.TestHandler):
+    '''
+    Tests for the CanonicalHandler.
+    '''
+
+    @testing.gen_test
+    def test_get(self):
+        '''
+        Ensure the redirect works properly with a GET request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher'), method='GET',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(301, actual.code)
+        self.assertEqual('/christopher/', actual.headers['Location'])
+
+    @testing.gen_test
+    def test_head(self):
+        '''
+        Ensure the redirect works properly with a HEAD request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher'), method='HEAD',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(301, actual.code)
+        self.assertEqual('/christopher/', actual.headers['Location'])
+
+    @testing.gen_test
+    def test_options(self):
+        '''
+        Ensure the redirect works properly with a OPTIONS request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher'), method='OPTIONS',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(301, actual.code)
+        self.assertEqual('/christopher/', actual.headers['Location'])
+
+    @testing.gen_test
+    def test_search(self):
+        '''
+        Ensure the redirect works properly with a SEARCH request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher'), method='SEARCH',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(301, actual.code)
+        self.assertEqual('/christopher/', actual.headers['Location'])

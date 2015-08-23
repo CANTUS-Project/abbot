@@ -35,7 +35,7 @@ from tornado.options import Error as OptionsError
 from systemdream.journal import handler as journalctl
 
 import abbott
-from abbott.handlers import RootHandler
+from abbott.handlers import CanonicalHandler, RootHandler
 from abbott.simple_handler import SimpleHandler
 from abbott.complex_handler import ComplexHandler
 from abbott.systemd_http_server import SystemdHTTPServer
@@ -50,6 +50,7 @@ define('server_name', default='', type=str, help='automatically set with scheme,
 # NOTE: these URLs require a terminating /
 HANDLERS = [
     web.url(r'/', RootHandler),
+    web.URLSpec(r'.*(?<!/)', CanonicalHandler),  # match anything not ending with a /
     web.URLSpec(r'/browse/', handler=ComplexHandler, name='browse_all',
                 kwargs={'type_name': '*',
                         'additional_fields': ['incipit', 'folio', 'position', 'sequence', 'mode',
