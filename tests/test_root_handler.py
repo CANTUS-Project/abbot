@@ -181,6 +181,7 @@ class TestCanonicalHandler(shared.TestHandler):
         Ensure the redirect works properly with a SEARCH request.
         '''
         actual = yield self.http_client.fetch(self.get_url('/christopher'), method='SEARCH',
-                                              follow_redirects=False, raise_error=False)
+                                              follow_redirects=False, raise_error=False,
+                                              allow_nonstandard_methods=True)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
