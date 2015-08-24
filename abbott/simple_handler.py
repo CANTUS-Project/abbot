@@ -416,12 +416,16 @@ class SimpleHandler(web.RequestHandler):
         return post
 
     @gen.coroutine
-    def get_handler(self, resource_id=None):
+    def get_handler(self, resource_id=None, query=None):
         '''
         Abstraction layer between :meth:`get` and :meth:`basic_get`. In :class:`SimpleHandler` this
         simply returns the result of :meth:`basic_get`, but :class:`ComplexHandler` does many other
         things here. This abstraction layer allows both handlers to share common header functionality
         in :meth:`basic_get` and response body formatting functionality in :meth:`get`.
+
+        :param str resource_id: If provided, this is the resource ID requested by the user agent.
+        :param str query: If provided, this is the ``"query"`` string submitted by a user agent,
+            representing their search request.
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
@@ -429,7 +433,7 @@ class SimpleHandler(web.RequestHandler):
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
         '''
-        return (yield self.basic_get(resource_id=resource_id))
+        return (yield self.basic_get(resource_id=resource_id, query=None))
 
     def verify_request_headers(self, is_browse_request):
         '''

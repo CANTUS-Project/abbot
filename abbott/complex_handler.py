@@ -223,7 +223,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         return record
 
     @gen.coroutine
-    def get_handler(self, resource_id=None):  # pylint: disable=arguments-differ
+    def get_handler(self, resource_id=None, query=None):  # pylint: disable=arguments-differ
         '''
         Process GET requests for complex record types.
 
@@ -233,7 +233,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
         '''
-        results = yield self.basic_get(resource_id)
+        results = yield self.basic_get(resource_id=resource_id, query=query)
         if results is None:
             return
 
