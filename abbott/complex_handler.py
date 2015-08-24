@@ -28,6 +28,7 @@ ComplexHandler for the Abbott server.
 
 from collections import namedtuple
 
+from tornado.log import app_log as log
 from tornado import gen, web
 
 from abbott import util
@@ -312,3 +313,20 @@ class ComplexHandler(simple_handler.SimpleHandler):
         '''
         yield super(ComplexHandler, self).options(resource_id=resource_id)
         self.add_header('X-Cantus-No-Xref', 'allow')
+
+    @gen.coroutine
+    def search_handler(self):
+        # TODO: tests
+        '''
+        Process SEARCH requests for complex record types.
+
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+        .. note:: This method returns ``None`` in some situations when an error has been returned
+            to the client. In those situations, callers of this method must not call :meth:`write()`
+            or similar.
+        '''
+
+        log.debug("SEARCH request includes this query: '{}'".format(self.hparams['search_query']))
+        query = 'type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])
+        return (yield self.get_handler(query=query))

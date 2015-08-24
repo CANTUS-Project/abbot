@@ -722,9 +722,14 @@ class SimpleHandler(web.RequestHandler):
         if required, to modify the search behaviour.
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+        .. note:: This method returns ``None`` in some situations when an error has been returned
+            to the client. In those situations, callers of this method must not call :meth:`write()`
+            or similar.
         '''
         log.debug("SEARCH request includes this query: '{}'".format(self.hparams['search_query']))
-        return (yield self.basic_get(query='type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])))
+        query = 'type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])
+        return (yield self.get_handler(query=query))
 
     @util.request_wrapper
     @gen.coroutine
