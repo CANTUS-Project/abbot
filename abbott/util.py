@@ -26,6 +26,8 @@
 Utility functions for the Abbott server.
 '''
 
+import re
+
 from tornado import gen
 from tornado.log import app_log as log
 from tornado.options import options
@@ -40,11 +42,11 @@ _DISALLOWED_CHARACTER_IN_SORT = '"{}" is not allowed in the "sort" parameter'
 _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
 _UNKNOWN_FIELD = 'Unknown field for Abbott: "{}"'
 
-# error message for parse_fields_header()
+# error message for parse_fields_header() and _parse_query_components()
 _INVALID_FIELD_NAME = '{} is not a valid field name'
 
-# Used by prepare_formatted_sort(). Put here, they might be used by other methods to check whether
-# they have proper values for these things.
+# Used by prepare_formatted_sort() and _parse_query_components(). Put here, they might be used by
+# other methods to check whether they have proper values for these things.
 ALLOWED_CHARS = ',;_'
 DIRECTIONS = ('asc', 'desc')
 FIELDS = ['id', 'name', 'description', 'mass_or_office', 'date', 'feast_code', 'incipit', 'source',
@@ -54,9 +56,25 @@ FIELDS = ['id', 'name', 'description', 'mass_or_office', 'date', 'feast_code', '
           'rism', 'provenance', 'century', 'notation_style', 'editors', 'indexers', 'summary',
           'liturgical_occasion', 'indexing_notes', 'indexing_date', 'display_name', 'given_name',
           'family_name', 'institution', 'city', 'country']
+# maps fields that must be cross-referenced into the field name it will have after the cross-reference
 TRANSFORM_FIELDS = {'source': 'source_id', 'office': 'office_id', 'genre': 'genre_id',
                     'feast': 'feast_id', 'provenance': 'provenance_id', 'century': 'century_id',
                     'notation_style': 'notation_style_id'}
+# list of the field names after the cross-reference
+TRANSFORMED_FIELDS = [field for field in TRANSFORM_FIELDS.values()]
+
+# Used by _run_subqueries() to know whether a field should be searched with a subquery.
+XREFFED_FIELDS = ('feast', 'genre', 'office', 'source', 'provenance', 'century', 'notation',
+                  'segment', 'source_status', 'portfolio', 'siglum', 'indexers', 'proofreaders')
+
+
+class InvalidQueryError(ValueError):
+    '''
+    Raised by the SEARCH request query-parsing functions when an invalid query is detected.
+    '''
+
+    pass
+
 
 
 def singular_resource_to_plural(singular):
@@ -350,3 +368,161 @@ def request_wrapper(func):
             self.send_error(500, reason='Programmer Error')
 
     return decorated
+
+
+def _separate_query_components(query):
+    '''
+    From a user-submitted query string, parse a list of space-separated or double-quote-separated
+    query components, as relevant.
+
+    :param str query: The raw, user-submitted search query string.
+    :returns: A list of query components.
+    :rtype: list of str
+    :raises: :exc:`InvalidQueryError` if a double-quoted substring is missing an ending mark.
+    '''
+
+    num_dquos = query.count('"')
+
+    if (num_dquos % 2) != 0:
+        raise InvalidQueryError('A double-quote is missing its end double-quote.')
+
+    # i.e., components
+    comps = []
+
+    if num_dquos > 0:
+        # This regex acts like three regexes with "OR" (the pipe character):
+        # - The left regex matches non-whitespace followed by a colon and a double-quoted bit, like
+        #   this:  feast:"fun day"
+        # - The middle regex matches anything between double-quotes, non-greedily.
+        # - The right regex matches strings of non-whitespace.
+        dquos_re = re.compile(r'\S*:".*?"|".*?"|\S+')
+        startpos = 0
+        len_query = len(query)
+        while startpos < len_query:
+            match = dquos_re.search(query, startpos)
+            if match is None:
+                # stop on the next go-around
+                startpos = len_query + 1
+            else:
+                startpos = match.span()[1]
+                subquery = match.group()
+                if '"' == subquery[0]:
+                    subquery = '"{}"'.format(subquery[1:-1].strip())
+                comps.append(subquery)
+    else:
+        comps = query.split()
+
+    return comps
+
+
+def _parse_query_components(components):
+    '''
+    Parse the separated query components according to field name and contents.
+
+    :param components: The output of :func:`_separate_query_components`
+    :type components: list of str
+    :returns: A list of parsed query components (see below).
+    :rtype: list of 2-tuple of str
+    :raises: :exc:`InvalidQueryError` if one of the fields has an invalid name.
+
+    **Return Value**
+
+    This function calls :func:`_separate_query_components` internally, and enhances its return
+    value by verifying that any specified field names are valid, and by adding "default" if the
+    user did not specify a field for that query component. Note that fields are are checked for
+    their validity in general (i.e., to ensure they won't cause a Solr error) but not (at this
+    time) that they are sensible for the resource type requested.
+
+    **Examples**
+
+    >>> _parse_query_components(['antiphon'])
+    [('default', 'antiphon')]
+    >>> _parse_query_components(['genre:antiphon'])
+    [('genre', 'antiphon')]
+    >>> _parse_query_components(['"in taberna"', 'genre:antiphon'])
+    [('default', '"in taberna"'), ('genre', 'antiphon')]
+    >>> _parse_query_components(['"in taberna"', 'drink:Dunkelweiß'])
+    (raises InvalidQueryError)
+    '''
+
+    clean_comps = []
+
+    for component in components:
+        parts = component.split(':')
+        if 1 == len(parts):
+            clean_comps.append(('default', parts[0]))
+        else:
+            if parts[0] not in FIELDS and parts[0] not in TRANSFORMED_FIELDS:
+                raise InvalidQueryError(_INVALID_FIELD_NAME.format(parts[0]))
+            clean_comps.append(tuple(parts))
+
+    return clean_comps
+
+
+@gen.coroutine
+def _run_subqueries(components):
+    '''
+    From the output of :func:`_parse_query_components`, run cross-reference subqueries on the relevant
+    fields. Returns the query components with cross-referenced fields substituted with the subquery
+    result determined most relevant by Solr.
+
+    :param components: The output of :func:`_parse_query_components`.
+    :type components: list of 2-tuple of str
+    :returns: The cross-referenced. query components (see below).
+    :rtype: list of 2-tuple of str
+    :raises: :exc:`InvalidQueryError` if a cross-referenced field yields no results.
+
+    .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
+    .. note:: In the future, this function may be modified according to whether server-side search
+        help is requested, to modify cross-referenced fields with no results.
+
+    **Return Value**
+
+    This function enhances the result of :func:`_parse_query_components` by running subqueries and
+    substituting the result determined most relevant by Solr. For example, if there is a query for
+    a chant resource with the "feast" field, "feast" must be converted to "feast_id" before the full
+    query is run, since chant resources do not directly contain a "feast" field. That's what this
+    function does.
+
+    **Examples**
+    >>> _run_subqueries([('default', 'antiphon')])
+    [('default', 'antiphon')]
+    >>> _run_subqueries([('genre': 'antiphon')])
+    [('genre_id': '123')]
+    '''
+
+    reffed_comps = []
+
+    for comp in components:
+        if comp[0] not in TRANSFORM_FIELDS:
+            reffed_comps.append(comp)
+        else:
+            results = yield search_solr('type:{} AND ({})'.format(comp[0], comp[1]))
+            if 0 == len(results):
+                raise InvalidQueryError('No results for cross-referenced field "{}"'.format(comp[0]))
+            selected = results[0]
+            reffed_comps.append((TRANSFORM_FIELDS[comp[0]], selected['id']))
+
+    return reffed_comps
+
+
+def _assemble_query(components):
+    '''
+    From the output of :func:`_run_subqueries`, assemble the (sub)queries into a single string for
+    submission to Solr.
+
+    :param components: The output of :func:`_run_subqueries`.
+    :type components: list of 2-tuple of str
+    :returns: The query string to submit to Solr.
+    :rtype: str
+    '''
+    def helper(comp):
+        if 'default' == comp[0]:
+            return comp[1]
+        else:
+            return '{}:{}'.format(comp[0], comp[1])
+
+    components = [helper(component) for component in components]
+
+    return ' AND '.join(components)

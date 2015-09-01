@@ -412,3 +412,271 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         self.assertEqual(1, self._log.error.call_count)
         self.assertTrue(self._log.error.call_args[0][0].endswith(exp_log_ending))
         some.send_error.assert_called_once_with(500, reason='Programmer Error')
+
+
+class TestQueryParserSync(TestCase):
+    '''
+    Tests for the synchronous (non-coroutine) SEARCH request query-string parsing functions.
+    '''
+
+    def test_separate_query_components_1(self):
+        '''
+        The function raises InvalidQueryError if there are opening quotes without corresponding
+        closing quotes.
+        '''
+        test_strings = ('"', '"""', '"a', 'a"', 'feast:"swap genre:toast',
+                        'feast:"swap" genre:toast"', ' d "d ', '"  fa d', '  " soupy  twist  ')
+        for each_test in test_strings:
+            self.assertRaises(util.InvalidQueryError, util._separate_query_components, each_test)
+
+    def test_separate_query_components_2(self):
+        '''
+        Works with a space-separated single terms.
+        '''
+        ins_n_outs = [('Ne', ['Ne']),
+                      ('Ne suivons', ['Ne', 'suivons']),
+                      ('Ne suivons pas l\'exemple des États-Unis', ['Ne', 'suivons', 'pas',
+                                                                    'l\'exemple', 'des', 'États-Unis']),
+                      ('   donnons   une    voix    aux    travailleuses    ',
+                       ['donnons', 'une', 'voix', 'aux', 'travailleuses']),
+                      ('look for this field:middle term before:after',
+                       ['look', 'for', 'this', 'field:middle', 'term', 'before:after']),
+                     ]
+        for test_in, expected in ins_n_outs:
+            actual = util._separate_query_components(test_in)
+            self.assertEqual(expected, actual)
+
+    def test_separate_query_components_3(self):
+        '''
+        Works with a double-quote-delimited terms.
+        '''
+        ins_n_outs = [('"Ne"', ['"Ne"']),
+                      ('"Ne suivons"', ['"Ne suivons"']),
+                      ('"Ne""suivons"', ['"Ne"', '"suivons"']),
+                      ('   "Ne"    "suivons" ', ['"Ne"', '"suivons"']),
+                      ('   "  Ne "    "  suivons" ', ['"Ne"', '"suivons"']),
+                      ('"Ne suivons pas l\'exemple" "des États-Unis"',
+                       ['"Ne suivons pas l\'exemple"', '"des États-Unis"']),
+                      ('"look for this" field:"middle term" before:"after"',
+                       ['"look for this"', 'field:"middle term"', 'before:"after"']),
+                     ]
+        for test_in, expected in ins_n_outs:
+            actual = util._separate_query_components(test_in)
+            self.assertEqual(expected, actual)
+
+    def test_separate_query_components_4(self):
+        '''
+        Works when mixing double-quote-delimited and space-separated terms.
+        '''
+        ins_n_outs = [('"Ne" suivons', ['"Ne"', 'suivons']),
+                      ('"Ne suivons" pas', ['"Ne suivons"', 'pas']),
+                      ('   "Ne  suivons"   pas   ', ['"Ne  suivons"', 'pas']),
+                      ('Ne "suivons pas" l\'exemple des "États-Unis où" le mouvement',
+                       ['Ne', '"suivons pas"', 'l\'exemple', 'des', '"États-Unis où"',
+                        'le', 'mouvement']),
+                      ('"look for" this field:"middle term" before:after',
+                       ['"look for"', 'this', 'field:"middle term"', 'before:after']),
+                     ]
+        for test_in, expected in ins_n_outs:
+            actual = util._separate_query_components(test_in)
+            self.assertEqual(expected, actual)
+
+    def test_parse_query_components_1(self):
+        '''
+        Default field by itself.
+        '''
+        expected = [('default', 'antiphon')]
+        actual = util._parse_query_components(['antiphon'])
+        self.assertEqual(expected, actual)
+
+    def test_parse_query_components_2(self):
+        '''
+        Fielded field by itself.
+        '''
+        expected = [('genre', 'antiphon')]
+        actual = util._parse_query_components(['genre:antiphon'])
+        self.assertEqual(expected, actual)
+
+    def test_parse_query_components_3(self):
+        '''
+        Default and fielded.
+        '''
+        expected = [('default', '"in taberna"'), ('genre', 'antiphon')]
+        actual = util._parse_query_components(['"in taberna"', 'genre:antiphon'])
+        self.assertEqual(expected, actual)
+
+    def test_parse_query_components_4(self):
+        '''
+        Invalid fielded field.
+        '''
+        self.assertRaises(util.InvalidQueryError, util._parse_query_components,
+                          ['"in taberna"', 'drink:Dunkelweiß'])
+
+    def test_parse_query_components_5(self):
+        '''
+        Fielded field, pre-cross-referenced, by itself.
+        '''
+        expected = [('genre_id', '123')]
+        actual = util._parse_query_components(['genre_id:123'])
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_1(self):
+        '''
+        With a single query component.
+        '''
+        components = [('feast_id', '123')]
+        expected = 'feast_id:123'
+        actual = util._assemble_query(components)
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_2(self):
+        '''
+        With several query components.
+        '''
+        components = [('feast_id', '123'), ('name', '"Danceathon Smith"')]
+        expected = 'feast_id:123 AND name:"Danceathon Smith"'
+        actual = util._assemble_query(components)
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_3(self):
+        '''
+        With a single query component with the "default" field.
+        '''
+        components = [('default', '"Deus Rex"')]
+        expected = '"Deus Rex"'
+        actual = util._assemble_query(components)
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_4(self):
+        '''
+        With several query components, including some with the "default" field.
+        '''
+        components = [('feast_id', '123'), ('name', '"Danceathon Smith"'), ('default', '"Deus Rex"')]
+        expected = 'feast_id:123 AND name:"Danceathon Smith" AND "Deus Rex"'
+        actual = util._assemble_query(components)
+        self.assertEqual(expected, actual)
+
+
+class TestQueryParserAsync(shared.TestHandler):
+    '''
+    Tests for the asynchronous (coroutine) SEARCH request query-string parsing functions.
+    '''
+
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_1(self, mock_ask_solr):
+        '''
+        With a single cross-referenced field that has a single result.
+        '''
+
+        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        components = [('genre', 'antiphon')]
+        expected = [('genre_id', '123')]
+
+        actual = yield util._run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+        mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
+
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_2(self, mock_ask_solr):
+        '''
+        With a single cross-referenced field with three results.
+        '''
+
+        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'},
+                                                  {'id': '124', 'name': 'bantiphon', 'type': 'genre'},
+                                                  {'id': '125', 'name': 'cantiphon', 'type': 'genre'}
+        ])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        components = [('genre', 'antiphon')]
+        expected = [('genre_id', '123')]
+
+        actual = yield util._run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+        mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
+
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_3(self, mock_ask_solr):
+        '''
+        With a cross-referenced field (with a single result) and another field.
+        '''
+
+        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        components = [('name', 'Jeffrey'), ('genre', 'antiphon')]
+        expected = [('name', 'Jeffrey'), ('genre_id', '123')]
+
+        actual = yield util._run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+        mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
+
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_4(self, mock_ask_solr):
+        '''
+        With two cross-referenced fields and two other fields.
+        '''
+
+        # complex bit to have two different results returned
+        response_genre = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
+        response_genre = shared.make_future(response_genre)
+        response_feast = shared.make_results([{'id': '1474', 'name': 'Ad Magnificat', 'type': 'feast'}])
+        response_feast = shared.make_future(response_feast)
+        def returner(query):
+            if 'genre' in query:
+                return response_genre
+            else:
+                return response_feast
+        mock_ask_solr.side_effect = returner
+        #
+        components = [('genre', 'antiphon'), ('differentia', '3'), ('folio', '001r'),
+                      ('feast', 'magnificat')]
+        expected = [('genre_id', '123'), ('differentia', '3'), ('folio', '001r'), ('feast_id', '1474')]
+
+        actual = yield util._run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+        mock_ask_solr.assert_any_call('type:genre AND (antiphon)')
+        mock_ask_solr.assert_any_call('type:feast AND (magnificat)')
+
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_5(self, mock_ask_solr):
+        '''
+        With no cross-referenced fields.
+        '''
+
+        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        components = [('name', 'Jeffrey')]
+        expected = [('name', 'Jeffrey')]
+
+        actual = yield util._run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_ask_solr.call_count)
+
+    @mock.patch('abbott.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_6(self, mock_ask_solr):
+        '''
+        With a single cross-referenced field that has no results.
+        '''
+
+        mock_solr_response = shared.make_results([])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        components = [('genre', 'antiphon')]
+
+        # we have to do this a weird way, because you can't "yield" in assertRaises()
+        try:
+            yield util._run_subqueries(components)
+        except util.InvalidQueryError:
+            mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
+        else:
+            raise AssertionError('InvalidQueryError not raised')

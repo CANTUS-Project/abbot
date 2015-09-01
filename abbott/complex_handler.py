@@ -327,6 +327,8 @@ class ComplexHandler(simple_handler.SimpleHandler):
             or similar.
         '''
 
-        log.debug("SEARCH request includes this query: '{}'".format(self.hparams['search_query']))
-        query = 'type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])
+        query = self.hparams['search_query']
+        log.debug("SEARCH request starts with this query: '{}'".format(query))
+        query = util._assemble_query((yield util._run_subqueries(util._parse_query_components(util._separate_query_components(query)))))
+        log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))
