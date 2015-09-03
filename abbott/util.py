@@ -42,10 +42,10 @@ _DISALLOWED_CHARACTER_IN_SORT = '"{}" is not allowed in the "sort" parameter'
 _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
 _UNKNOWN_FIELD = 'Unknown field for Abbott: "{}"'
 
-# error message for parse_fields_header() and _parse_query_components()
+# error message for parse_fields_header() and parse_query_components()
 _INVALID_FIELD_NAME = '{} is not a valid field name'
 
-# Used by prepare_formatted_sort() and _parse_query_components(). Put here, they might be used by
+# Used by prepare_formatted_sort() and parse_query_components(). Put here, they might be used by
 # other methods to check whether they have proper values for these things.
 ALLOWED_CHARS = ',;_'
 DIRECTIONS = ('asc', 'desc')
@@ -63,7 +63,7 @@ TRANSFORM_FIELDS = {'source': 'source_id', 'office': 'office_id', 'genre': 'genr
 # list of the field names after the cross-reference
 TRANSFORMED_FIELDS = [field for field in TRANSFORM_FIELDS.values()]
 
-# Used by _run_subqueries() to know whether a field should be searched with a subquery.
+# Used by run_subqueries() to know whether a field should be searched with a subquery.
 XREFFED_FIELDS = ('feast', 'genre', 'office', 'source', 'provenance', 'century', 'notation',
                   'segment', 'source_status', 'portfolio', 'siglum', 'indexers', 'proofreaders')
 
@@ -370,7 +370,7 @@ def request_wrapper(func):
     return decorated
 
 
-def _separate_query_components(query):
+def separate_query_components(query):
     '''
     From a user-submitted query string, parse a list of space-separated or double-quote-separated
     query components, as relevant.
@@ -415,11 +415,11 @@ def _separate_query_components(query):
     return comps
 
 
-def _parse_query_components(components):
+def parse_query_components(components):
     '''
     Parse the separated query components according to field name and contents.
 
-    :param components: The output of :func:`_separate_query_components`
+    :param components: The output of :func:`separate_query_components`
     :type components: list of str
     :returns: A list of parsed query components (see below).
     :rtype: list of 2-tuple of str
@@ -427,7 +427,7 @@ def _parse_query_components(components):
 
     **Return Value**
 
-    This function calls :func:`_separate_query_components` internally, and enhances its return
+    This function calls :func:`separate_query_components` internally, and enhances its return
     value by verifying that any specified field names are valid, and by adding "default" if the
     user did not specify a field for that query component. Note that fields are are checked for
     their validity in general (i.e., to ensure they won't cause a Solr error) but not (at this
@@ -435,13 +435,13 @@ def _parse_query_components(components):
 
     **Examples**
 
-    >>> _parse_query_components(['antiphon'])
+    >>> parse_query_components(['antiphon'])
     [('default', 'antiphon')]
-    >>> _parse_query_components(['genre:antiphon'])
+    >>> parse_query_components(['genre:antiphon'])
     [('genre', 'antiphon')]
-    >>> _parse_query_components(['"in taberna"', 'genre:antiphon'])
+    >>> parse_query_components(['"in taberna"', 'genre:antiphon'])
     [('default', '"in taberna"'), ('genre', 'antiphon')]
-    >>> _parse_query_components(['"in taberna"', 'drink:Dunkelweiß'])
+    >>> parse_query_components(['"in taberna"', 'drink:Dunkelweiß'])
     (raises InvalidQueryError)
     '''
 
@@ -460,13 +460,13 @@ def _parse_query_components(components):
 
 
 @gen.coroutine
-def _run_subqueries(components):
+def run_subqueries(components):
     '''
-    From the output of :func:`_parse_query_components`, run cross-reference subqueries on the relevant
+    From the output of :func:`parse_query_components`, run cross-reference subqueries on the relevant
     fields. Returns the query components with cross-referenced fields substituted with the subquery
     result determined most relevant by Solr.
 
-    :param components: The output of :func:`_parse_query_components`.
+    :param components: The output of :func:`parse_query_components`.
     :type components: list of 2-tuple of str
     :returns: The cross-referenced. query components (see below).
     :rtype: list of 2-tuple of str
@@ -479,16 +479,16 @@ def _run_subqueries(components):
 
     **Return Value**
 
-    This function enhances the result of :func:`_parse_query_components` by running subqueries and
+    This function enhances the result of :func:`parse_query_components` by running subqueries and
     substituting the result determined most relevant by Solr. For example, if there is a query for
     a chant resource with the "feast" field, "feast" must be converted to "feast_id" before the full
     query is run, since chant resources do not directly contain a "feast" field. That's what this
     function does.
 
     **Examples**
-    >>> _run_subqueries([('default', 'antiphon')])
+    >>> run_subqueries([('default', 'antiphon')])
     [('default', 'antiphon')]
-    >>> _run_subqueries([('genre': 'antiphon')])
+    >>> run_subqueries([('genre': 'antiphon')])
     [('genre_id': '123')]
     '''
 
@@ -507,12 +507,12 @@ def _run_subqueries(components):
     return reffed_comps
 
 
-def _assemble_query(components):
+def assemble_query(components):
     '''
-    From the output of :func:`_run_subqueries`, assemble the (sub)queries into a single string for
+    From the output of :func:`run_subqueries`, assemble the (sub)queries into a single string for
     submission to Solr.
 
-    :param components: The output of :func:`_run_subqueries`.
+    :param components: The output of :func:`run_subqueries`.
     :type components: list of 2-tuple of str
     :returns: The query string to submit to Solr.
     :rtype: str
