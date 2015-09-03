@@ -520,6 +520,14 @@ class TestQueryParserSync(TestCase):
         actual = util._parse_query_components(['genre_id:123'])
         self.assertEqual(expected, actual)
 
+    def test_parse_query_components_6(self):
+        '''
+        Because "type" wasn't an accepted field at first, this is a regression test.
+        '''
+        expected = [('type', '"boston cream"')]
+        actual = util._parse_query_components(['type:"boston cream"'])
+        self.assertEqual(expected, actual)
+
     def test_assemble_query_1(self):
         '''
         With a single query component.
