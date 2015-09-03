@@ -450,7 +450,7 @@ class TestBasicGetUnit(shared.TestHandler):
 
 class TestGetUnit(shared.TestHandler):
     '''
-    Unit tests for the SimpleHandler.get().
+    Unit tests for the SimpleHandler.get() and SimpleHandler.get_handler().
     '''
 
     def setUp(self):
@@ -638,6 +638,20 @@ class TestGetUnit(shared.TestHandler):
         self.assertEqual(0, mock_mrh.call_count)
         self.assertEqual(0, mock_write.call_count)
         mock_send_error.assert_called_once_with(502, reason=SimpleHandler._SOLR_502_ERROR)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.basic_get')
+    @testing.gen_test
+    def test_get_handler_1(self, mock_basic_get):
+        '''
+        Ensure the kwargs are passed along properly.
+        '''
+        mock_basic_get.return_value = shared.make_future('five')
+        resource_id = '123'
+        query = 'i can haz cheezburger?'
+        actual = yield self.handler.get_handler(resource_id=resource_id, query=query)
+        self.assertEqual('five', actual)
+        mock_basic_get.assert_called_once_with(resource_id=resource_id, query=query)
+
 
 class TestGetIntegration(shared.TestHandler):
     '''

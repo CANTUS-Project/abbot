@@ -433,7 +433,7 @@ class SimpleHandler(web.RequestHandler):
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
         '''
-        return (yield self.basic_get(resource_id=resource_id, query=None))
+        return (yield self.basic_get(resource_id=resource_id, query=query))
 
     def verify_request_headers(self, is_browse_request):
         '''
