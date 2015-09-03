@@ -327,8 +327,13 @@ class ComplexHandler(simple_handler.SimpleHandler):
             or similar.
         '''
 
+        # NOTE: this method is very similar to SimpleHandler.search_handler() *except* that method
+        #       doesn't call util.run_subqueries() because they don't exist for simple resources.
+        #       However, they should be kept "in sync" whenever possible.
+
         query = self.hparams['search_query']
         log.debug("SEARCH request starts with this query: '{}'".format(query))
-        query = util._assemble_query((yield util._run_subqueries(util._parse_query_components(util._separate_query_components(query)))))
+        query = 'type:{} {}'.format(self.type_name, query)
+        query = util.assemble_query((yield util.run_subqueries(util.parse_query_components(util.separate_query_components(query)))))
         log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))

@@ -727,8 +727,16 @@ class SimpleHandler(web.RequestHandler):
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
         '''
-        log.debug("SEARCH request includes this query: '{}'".format(self.hparams['search_query']))
-        query = 'type:{} AND ({})'.format(self.type_name, self.hparams['search_query'])
+
+        # NOTE: this method is very similar to ComplexHandler.search_handler() *except* this method
+        #       doesn't call util.run_subqueries() because they don't exist for simple resources.
+        #       However, they should be kept "in sync" whenever possible.
+
+        query = self.hparams['search_query']
+        log.debug("SEARCH request starts with this query: '{}'".format(query))
+        query = 'type:{} {}'.format(self.type_name, query)
+        query = util.assemble_query(util.parse_query_components(util.separate_query_components(query)))
+        log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))
 
     @util.request_wrapper
