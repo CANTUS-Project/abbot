@@ -1,0 +1,51 @@
+# SSHD Configuration File
+#
+# {{ ansible_managed }}
+
+Protocol 2
+HostKey /etc/ssh/id_rsa_cantus
+HostKey /etc/ssh/id_ecdsa_cantus
+HostKey /etc/ssh/id_ed25519_cantus
+
+PermitEmptyPasswords no
+
+# Logging
+SyslogFacility AUTHPRIV
+
+# Authentication Methods
+HostbasedAuthentication no
+IgnoreRhosts yes
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+GSSAPIAuthentication no
+RhostsRSAAuthentication no
+KerberosAuthentication no
+
+# Other Login Settings
+AllowUsers compadmin
+PermitRootLogin no
+AuthorizedKeysFile      .ssh/authorized_keys
+LoginGraceTime 2m
+MaxAuthTries 6
+MaxSessions 10
+
+# Other stuff
+AllowAgentForwarding no
+X11Forwarding no
+AllowTcpForwarding no
+UsePrivilegeSeparation sandbox
+PermitUserEnvironment no
+StrictModes yes
+
+# Inactive clients are logged out after 1200 seconds (20 minutes)
+ClientAliveCountMax 0
+ClientAliveInterval 1200
+
+# Leave this as "yes"
+UsePAM yes
+
+# Leave this here...
+Subsystem       sftp    /usr/libexec/openssh/sftp-server
+# ... there's no reason we need it, and it seems like it just opens another possible attack vector,
+# but Ansible doens't seem to respect its own "scp_if_ssh" setting, so it's otherwise impossible to
+# use Ansible without this subsystem.
