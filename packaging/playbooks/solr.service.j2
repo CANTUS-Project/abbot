@@ -1,0 +1,11 @@
+[Unit]
+Description="Solr Search Server"
+
+[Install]
+WantedBy=abbott.service
+
+[Service]
+Type=simple
+ExecStart={{ solr_bin_dir }}/bin/solr start -s {{ solr_var_dir }} -f -p {{ solr_port }}
+Restart=on-failure
+User=solr
