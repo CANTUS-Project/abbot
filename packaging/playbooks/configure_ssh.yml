@@ -82,6 +82,10 @@
         - restart sshd
     - name: ensure SSHD is enabled
       service: name=sshd enabled=yes
+    - name: open SSH port in the firewall (permanent)
+      firewalld: permanent=yes service=ssh state=enabled zone=public
+    - name: open SSH port in the firewall (now)
+      firewalld: permanent=no service=ssh state=enabled zone=public
 
   handlers:
     - name: restart sshd
