@@ -60,35 +60,8 @@ To run a test instance of *Abbott*, run this command from the "abbott" root dire
 Install for Deployment: Preferred Way
 -------------------------------------
 
-If your deployment system uses *systemd*, this is the preferred method of deployment. If not, you
-may use the alternative described below, but it isn't great.
-
-Install as for development, but use the ``requirements-deploy.txt`` file.
-
-After you install *Abbott*, you may wish to test its functionality:
-
-    $ python setup.py test
-
-Now do the stuff to install the unit files and whatever...
-
-- edit the ``Environment=PATH=`` and ``ExecStart=`` lines in abbott.service, so they agree with
-  the paths you used just above
-- unit files (abbott.service, solr.service) must be installed to /usr/lib/systemd/system directory
-- then # systemctl daemon-reload
-- then # systemctl start abbott
-- and  # systemctl enable abbott
-- and Solr will be taken care of automatically
-- must have users named "abbott" and "solr" with their proper groups|
-- Solr must be installed to /usr/local/ as specified in the unit file
-- Solr's database must be installed to /var/db/solr/ as specified in the unit file
-- /var/db/solr/* must be set to "solr:solr" as owner
-- Abbott must be installed to /usr/local/ as specified in the unit file
-- Abbott's virtualenv must also be installed under /usr/local/
-- make the /run/abbott directory, and "chown" it to abbott:abbott
-- "chown solr:solr" on the Solr logs directory, /usr/local/solr-4.10.4/example/logs (or similar)
-    - and /usr/local/solr-4.10.4/example/solr-webapp
-    - NB: this is a sign I'm not deploying Solr correctly
-    - TODO: increase the wait-time during restart for Solr
+Use the [Ansible](http://www.ansible.com/) playbooks, according to the instructions in the
+``packaging/deployment_instructions.rst`` document.
 
 Install for Deployment: Alternative Way
 ---------------------------------------
