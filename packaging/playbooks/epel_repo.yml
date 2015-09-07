@@ -1,0 +1,23 @@
+---
+- hosts: abbott
+  name: install Extra Packages for Enterprise Linux repository
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  vars:
+    epel_key_path: https://getfedora.org/static/352C64E5.txt
+    epel_rpm_path: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    epel_repo_path: /etc/yum.repos.d/epel.repo
+
+  tasks:
+    - name: install EPEL GPGkey
+      ## TODO: figure out why the cert is failing, then remove "validate_certs=False"
+      rpm_key: state=present key={{ epel_key_path }} validate_certs=False
+    - name: check whether EPEL is installed
+      stat: path={{ epel_repo_path }}
+      register: epel_stat
+    - name: install EPEL
+      when: not epel_stat.stat.exists
+      yum: name={{ epel_rpm_path }} state=present
+    - name: ensure EPEL is at latest version
+      yum: name=epel-release state=latest
