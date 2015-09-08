@@ -21,7 +21,7 @@
     abbott_scheme: http
     abbott_hostname: abbott.adjectivenoun.ca
     abbott_cors_origin: "*"
-    abbott_drupal_url: http://cantus2.uwaterloo.ca/
+    abbott_drupal_url: http://cantus.uwaterloo.ca/
 
   tasks:
     # download Abbott repository and checkout the proper commit
