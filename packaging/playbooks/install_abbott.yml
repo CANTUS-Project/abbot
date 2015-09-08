@@ -22,6 +22,7 @@
     abbott_hostname: abbott.adjectivenoun.ca
     abbott_cors_origin: "*"
     abbott_drupal_url: http://cantus.uwaterloo.ca/
+    abbott_solr_url: http://localhost:8983/solr/collection1/
 
   tasks:
     # download Abbott repository and checkout the proper commit
