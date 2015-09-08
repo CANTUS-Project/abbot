@@ -10,7 +10,7 @@
     epel_repo_path: /etc/yum.repos.d/epel.repo
 
   tasks:
-    - name: install EPEL GPGkey
+    - name: install EPEL GPG key
       ## TODO: figure out why the cert is failing, then remove "validate_certs=False"
       rpm_key: state=present key={{ epel_key_path }} validate_certs=False
     - name: check whether EPEL is installed
