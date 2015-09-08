@@ -34,7 +34,11 @@ from tornado.options import options
 import pysolrtornado
 
 
-SOLR = pysolrtornado.Solr('http://localhost:8983/solr/', timeout=10)
+options.define('solr_url', type=str, help='Full URL path to the Solr instance and collection.',
+               default='http://localhost:8983/solr/collection1/')
+
+
+SOLR = pysolrtornado.Solr(options.solr_url, timeout=10)
 
 
 # error messages for prepare_formatted_sort()

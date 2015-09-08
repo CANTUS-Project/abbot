@@ -27,6 +27,9 @@ hostname = 'localhost'
 # "port" is the port on which Abbott should operate
 port = 8888
 
+# The URL where Solr will be found. This must include the full path to the collection to query.
+# solr_url = 'http://localhost:8983/solr/collection1/'
+
 
 ## Cross-Origin Resource Sharing (CORS) -----------------------------------------------------------
 
