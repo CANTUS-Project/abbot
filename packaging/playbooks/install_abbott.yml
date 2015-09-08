@@ -27,9 +27,15 @@
   tasks:
     # download Abbott repository and checkout the proper commit
     - name: check that git is installed
-      yum: name=git state=latest
+      yum: name=git state=present
     - name: clone the "abbott" repository
-      git: clone=yes update=yes dest={{ abbott_bin_dir }} repo={{ abbott_repo }} version={{ abbott_version }}
+      git:
+        clone: yes
+        update: yes
+        force: yes  # meaning to overwrite local changes
+        dest: "{{ abbott_bin_dir }}"
+        repo: "{{ abbott_repo }}"
+        version: "{{ abbott_version }}"
       notify:
         - restart abbott
     - name: set permissions on the abbott directory
