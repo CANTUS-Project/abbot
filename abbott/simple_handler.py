@@ -716,7 +716,6 @@ class SimpleHandler(web.RequestHandler):
 
     @gen.coroutine
     def search_handler(self):
-        # TODO: tests
         '''
         Prepare a basic response to a search query. This method should be overridden in subclasses,
         if required, to modify the search behaviour.

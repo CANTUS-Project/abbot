@@ -1550,6 +1550,33 @@ class TestSearchUnit(shared.TestHandler):
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
         self.handler.hparams['search_query'] = 'some query'
 
+    @mock.patch('abbott.util.assemble_query')
+    @mock.patch('abbott.util.parse_query_components')
+    @mock.patch('abbott.util.separate_query_components')
+    @mock.patch('abbott.util.run_subqueries')
+    @mock.patch('abbott.simple_handler.SimpleHandler.get_handler')
+    @testing.gen_test
+    def test_search_handler_1(self, mock_get_handler, mock_rs, mock_sqc, mock_pqc, mock_aq):
+        '''
+        Ensure the kwargs are passed along properly.
+        '''
+        # TODO: this is the type of test that someone won't bother to keep up-to-date...
+        mock_get_handler.return_value = shared.make_future('five')
+        query = 'i can haz cheezburger?'
+        self.handler.hparams['search_query'] = query
+        mock_sqc.return_value = 'mock_sqc'
+        mock_pqc.return_value = 'mock_pqc'
+        mock_aq.return_value = 'mock_aq'
+
+        actual = yield self.handler.search_handler()
+
+        mock_sqc.assert_called_once_with('type:century {}'.format(query))
+        mock_pqc.assert_called_once_with('mock_sqc')
+        mock_aq.assert_called_once_with('mock_pqc')
+        self.assertEqual('five', actual)
+        mock_get_handler.assert_called_once_with(query='mock_aq')
+        self.assertEqual(0, mock_rs.call_count)
+
     @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_1(self, mock_search_handler):
