@@ -336,7 +336,6 @@ class SimpleHandler(web.RequestHandler):
 
     @gen.coroutine
     def basic_get(self, resource_id=None, query=None):
-        # TODO: tests for "query" functionality
         '''
         Prepare a basic response for the relevant records. This method queries for the specified
         resources and filters out unwanted fields (those not specified in ``returned_fields``).
