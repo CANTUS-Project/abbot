@@ -742,7 +742,6 @@ class SimpleHandler(web.RequestHandler):
     @util.request_wrapper
     @gen.coroutine
     def search(self, resource_id=None):
-        # TODO: tests
         '''
         Response to SEARCH requests. Returns the result of :meth:`search_handler` without modification.
 

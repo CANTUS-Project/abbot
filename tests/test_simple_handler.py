@@ -1535,3 +1535,106 @@ class TestMakeResponseHeaders(shared.TestHandler):
         mock_pfs.return_value = 'sorted'
         self.test_mrh_template(is_browse_request=True, sort='testing sort', h_sort='sorted')
         mock_pfs.assert_called_once_with('testing sort')
+
+
+class TestSearchUnit(shared.TestHandler):
+    '''
+    Tests for SimpleHandler.search_handler() and search().
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestSearchUnit, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+        self.handler.hparams['search_query'] = 'some query'
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @testing.gen_test
+    def test_search_1(self, mock_search_handler):
+        '''
+        self.hparam['search_query'] is None: return None, don't call search_handler()
+        '''
+        self.handler.hparams['search_query'] = None
+        actual = yield self.handler.search()
+        self.assertIsNone(actual)
+        self.assertEqual(0, mock_search_handler.call_count)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @testing.gen_test
+    def test_search_2(self, mock_search_handler, mock_vrh):
+        '''
+        verify_request_headers() returns False: return None, don't call search_handler()
+        '''
+        mock_vrh.return_value = False
+        actual = yield self.handler.search()
+        self.assertIsNone(actual)
+        self.assertEqual(0, mock_search_handler.call_count)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @testing.gen_test
+    def test_search_3(self, mock_search_handler, mock_vrh):
+        '''
+        search_handler() raises SolrError; return None, call send_error()
+        '''
+        mock_vrh.return_value = True
+        mock_search_handler.side_effect = pysolrtornado.SolrError
+        actual = yield self.handler.search()
+        self.assertIsNone(actual)
+        mock_search_handler.assert_called_once_with()
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @testing.gen_test
+    def test_search_4(self, mock_search_handler, mock_vrh):
+        '''
+        search_handler() returns None; return None
+        '''
+        mock_vrh.return_value = True
+        mock_search_handler.return_value = shared.make_future(None)
+        actual = yield self.handler.search()
+        self.assertIsNone(actual)
+        mock_search_handler.assert_called_once_with()
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.make_response_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.write')
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @testing.gen_test
+    def test_search_5(self, mock_search_handler, mock_vrh, mock_write, mock_mrh):
+        '''
+        search_handler() returns 3 things, "include_resources" is False, is a HEAD request;
+        don't call write(), call make_response_headers() with proper arguments
+        '''
+        self.handler.hparams['include_resources'] = False
+        self.handler.head_request = True
+        mock_vrh.return_value = True
+        mock_search_handler.return_value = shared.make_future([1, 2, 3])
+        actual = yield self.handler.search()
+        self.assertIsNone(actual)
+        mock_search_handler.assert_called_once_with()
+        self.assertEqual(0, mock_write.call_count)
+        mock_mrh.assert_called_once_with(True, 3)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.make_response_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.write')
+    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @testing.gen_test
+    def test_search_6(self, mock_search_handler, mock_vrh, mock_write, mock_mrh):
+        '''
+        search_handler() returns 3 things, "include_resources" is True, is not a HEAD request;
+        call write(), call make_response_headers() with proper arguments
+        '''
+        self.handler.hparams['include_resources'] = True
+        self.handler.head_request = False
+        mock_vrh.return_value = True
+        mock_search_handler.return_value = shared.make_future([1, 2, 3, 'resources'])
+        actual = yield self.handler.search()
+        self.assertIsNone(actual)
+        mock_search_handler.assert_called_once_with()
+        mock_write.assert_called_once_with([1, 2, 3, 'resources'])
+        mock_mrh.assert_called_once_with(True, 3)
