@@ -560,3 +560,45 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                            expected=False,
                            exp_send_error_count=1)
         self.handler.send_error.assert_called_once_with(400, reason=ComplexHandler._INVALID_NO_XREF)
+
+
+class TestSearchUnit(shared.TestHandler):
+    '''
+    Tests for ComplexHandler.search_handler().
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestSearchUnit, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source')
+        self.handler.hparams['search_query'] = 'some query'
+
+    @mock.patch('abbott.util.assemble_query')
+    @mock.patch('abbott.util.parse_query_components')
+    @mock.patch('abbott.util.separate_query_components')
+    @mock.patch('abbott.util.run_subqueries')
+    @mock.patch('abbott.complex_handler.ComplexHandler.get_handler')
+    @testing.gen_test
+    def test_search_handler_1(self, mock_get_handler, mock_rs, mock_sqc, mock_pqc, mock_aq):
+        '''
+        Ensure the kwargs are passed along properly.
+        '''
+        # TODO: this is the type of test that someone won't bother to keep up-to-date...
+        mock_get_handler.return_value = shared.make_future('five')
+        query = 'i can haz cheezburger?'
+        self.handler.hparams['search_query'] = query
+        mock_sqc.return_value = 'mock_sqc'
+        mock_pqc.return_value = 'mock_pqc'
+        mock_aq.return_value = 'mock_aq'
+        mock_rs.return_value = shared.make_future('mock_rs')
+
+        actual = yield self.handler.search_handler()
+
+        mock_sqc.assert_called_once_with('type:source {}'.format(query))
+        mock_pqc.assert_called_once_with('mock_sqc')
+        mock_rs.assert_called_once_with('mock_pqc')
+        mock_aq.assert_called_once_with('mock_rs')
+        self.assertEqual('five', actual)
+        mock_get_handler.assert_called_once_with(query='mock_aq')

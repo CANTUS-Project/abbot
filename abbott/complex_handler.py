@@ -316,7 +316,6 @@ class ComplexHandler(simple_handler.SimpleHandler):
 
     @gen.coroutine
     def search_handler(self):
-        # TODO: tests
         '''
         Process SEARCH requests for complex record types.
 
