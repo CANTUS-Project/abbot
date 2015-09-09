@@ -699,18 +699,27 @@ class SimpleHandler(web.RequestHandler):
         :param int code: The response code to use.
         :param str reason: The "reason" for the response code.
         :param int per_page: Optional value to send as the ``X-Cantus-Per-Page`` header.
+        :param response: An object to return as the response body. This should either be a string
+            or a dict to serialize as a JSON object.
+        :type response: str or dict
         '''
-        # TODO: test this, after fully rewriting it, as per issue #15
-        # TODO: add a "body" argument that takes a list of error messages and does something with it
+
         self.clear()
+
         if 'per_page' in kwargs:
             self.add_header('X-Cantus-Per-Page', kwargs['per_page'])
+
         if 'reason' in kwargs:
             self.set_status(code, kwargs['reason'])
-            response = '{}: {}'.format(code, kwargs['reason'])
         else:
             self.set_status(code)
-            response = str(code)
+            kwargs['reason'] = '(no reason given)'
+
+        if 'response' in kwargs:
+            response = kwargs['response']
+        else:
+            response = '{}: {}'.format(code, kwargs['reason'])
+
         self.write(response)
 
     @gen.coroutine

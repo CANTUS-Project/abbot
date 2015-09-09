@@ -1665,3 +1665,65 @@ class TestSearchUnit(shared.TestHandler):
         mock_search_handler.assert_called_once_with()
         mock_write.assert_called_once_with([1, 2, 3, 'resources'])
         mock_mrh.assert_called_once_with(True, 3)
+
+
+class TestSendError(shared.TestHandler):
+    '''
+    Tests for SimpleHandler.send_error().
+    '''
+
+    def setUp(self):
+        "Make a SimpleHandler instance for testing."
+        super(TestSendError, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.clear')
+    @mock.patch('abbott.simple_handler.SimpleHandler.add_header')
+    @mock.patch('abbott.simple_handler.SimpleHandler.set_status')
+    @mock.patch('abbott.simple_handler.SimpleHandler.write')
+    def test_send_error_1(self, mock_write, mock_set_status, mock_add_header, mock_clear):
+        '''
+        per_page, reason, and response kwargs are all provided.
+
+        Ensure:
+        - clear() is called
+        - add_header() called with appropriate args
+        - set_status() called with appropriate args
+        - write() called with appropriate args
+        '''
+        code = 418
+        reason = 'This is a test.'
+        per_page = 42
+        response = 'Please avoid panicking about this test error.'
+
+        self.handler.send_error(code, reason=reason, per_page=per_page, response=response)
+
+        mock_clear.assert_called_once_with()
+        mock_add_header.assert_called_once_with('X-Cantus-Per-Page', per_page)
+        mock_set_status.assert_called_once_with(code, reason)
+        mock_write.assert_called_once_with(response)
+
+    @mock.patch('abbott.simple_handler.SimpleHandler.clear')
+    @mock.patch('abbott.simple_handler.SimpleHandler.add_header')
+    @mock.patch('abbott.simple_handler.SimpleHandler.set_status')
+    @mock.patch('abbott.simple_handler.SimpleHandler.write')
+    def test_send_error_2(self, mock_write, mock_set_status, mock_add_header, mock_clear):
+        '''
+        per_page, reason, and response kwargs are all omitted.
+
+        Ensure:
+        - clear() is called
+        - add_header() not called
+        - set_status() called with appropriate args            code)
+        - write() called with appropriate args                 'code: (no reason given)')
+        '''
+        code = 418
+
+        self.handler.send_error(code)
+
+        mock_clear.assert_called_once_with()
+        self.assertEqual(0, mock_add_header.call_count)
+        mock_set_status.assert_called_once_with(code)
+        mock_write.assert_called_once_with('{}: (no reason given)'.format(code))
