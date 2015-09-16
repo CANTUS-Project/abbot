@@ -5,14 +5,13 @@
   become: yes
   become_method: sudo
   vars:
-    epel_key_path: https://getfedora.org/static/352C64E5.txt
+    epel_key_path: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
     epel_rpm_path: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
     epel_repo_path: /etc/yum.repos.d/epel.repo
 
   tasks:
     - name: install EPEL GPG key
-      ## TODO: figure out why the cert is failing, then remove "validate_certs=False"
-      rpm_key: state=present key={{ epel_key_path }} validate_certs=False
+      rpm_key: state=present key={{ epel_key_path }}
     - name: check whether EPEL is installed
       stat: path={{ epel_repo_path }}
       register: epel_stat
