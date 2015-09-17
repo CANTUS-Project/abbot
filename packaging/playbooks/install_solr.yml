@@ -1,7 +1,7 @@
 ---
 - include: install_java.yml
 
-- hosts: abbott
+- hosts: abbot
   name: install Solr
   gather_facts: no
   become: yes
@@ -15,7 +15,7 @@
     solr_user: solr
     solr_group: "{{ solr_user }}"
     solr_port: 8983
-    solr_homedir_repo: https://github.com/CANTUS-Project/abbott_solr_home.git
+    solr_homedir_repo: https://github.com/CANTUS-Project/abbot_solr_home.git
     unit_files_dir: /usr/lib/systemd/system
 
   tasks:

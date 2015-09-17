@@ -1,80 +1,80 @@
 ---
 - include: install_py3.yml
 
-- hosts: abbott
-  name: install Abbott
+- hosts: abbot
+  name: install Abbot
   gather_facts: no
   become: yes
   become_method: sudo
   vars:
-    abbott_version: master
-    abbott_repo: https://github.com/CANTUS-Project/abbott.git
-    abbott_bin_dir: /usr/local/abbott
-    abbott_venv_dir: /usr/local/abbott-venv
-    abbott_py_exec: "{{ abbott_venv_dir }}/bin/python"
-    abbott_user: abbott
-    abbott_group: "{{ abbott_user }}"
-    abbott_conf_file: /etc/abbott.conf
+    abbot_version: master
+    abbot_repo: https://github.com/CANTUS-Project/abbot.git
+    abbot_bin_dir: /usr/local/abbot
+    abbot_venv_dir: /usr/local/abbot-venv
+    abbot_py_exec: "{{ abbot_venv_dir }}/bin/python"
+    abbot_user: abbot
+    abbot_group: "{{ abbot_user }}"
+    abbot_conf_file: /etc/abbot.conf
     unit_files_dir: /usr/lib/systemd/system
     # for the configuration file
-    abbott_port: 8888
-    abbott_scheme: http
-    abbott_hostname: abbott.adjectivenoun.ca
-    abbott_cors_origin: "*"
-    abbott_drupal_url: http://cantus.uwaterloo.ca/
-    abbott_solr_url: http://localhost:8983/solr/collection1/
+    abbot_port: 8888
+    abbot_scheme: http
+    abbot_hostname: abbot.adjectivenoun.ca
+    abbot_cors_origin: "*"
+    abbot_drupal_url: http://cantus.uwaterloo.ca/
+    abbot_solr_url: http://localhost:8983/solr/collection1/
 
   tasks:
-    # download Abbott repository and checkout the proper commit
+    # download Abbot repository and checkout the proper commit
     - name: check that git is installed
       yum: name=git state=present
-    - name: clone the "abbott" repository
+    - name: clone the "abbot" repository
       git:
         clone: yes
         update: yes
         force: yes  # meaning to overwrite local changes
-        dest: "{{ abbott_bin_dir }}"
-        repo: "{{ abbott_repo }}"
-        version: "{{ abbott_version }}"
+        dest: "{{ abbot_bin_dir }}"
+        repo: "{{ abbot_repo }}"
+        version: "{{ abbot_version }}"
       notify:
-        - restart abbott
-    - name: set permissions on the abbott directory
+        - restart abbot
+    - name: set permissions on the abbot directory
       file:
-        path: "{{ abbott_bin_dir }}"
+        path: "{{ abbot_bin_dir }}"
         state: directory
         owner: root
         group: root
         mode: "u=rwX,g=rX,o=rX"
         seuser: system_u
         setype: usr_t
-    - name: set SELinux type on the abbott Python files
+    - name: set SELinux type on the abbot Python files
       file: path={{ item }} state=directory recurse=yes setype=usr_t
       with_items:
-        - "{{ abbott_bin_dir }}/packaging"
-        - "{{ abbott_bin_dir }}/scripts"
-        - "{{ abbott_bin_dir }}/tests"
-        - "{{ abbott_bin_dir }}/test_client"
-    - name: set SELinux type on the abbott Python lib files
-      file: path={{ abbott_bin_dir }}/abbott state=directory setype=lib_t
+        - "{{ abbot_bin_dir }}/packaging"
+        - "{{ abbot_bin_dir }}/scripts"
+        - "{{ abbot_bin_dir }}/tests"
+        - "{{ abbot_bin_dir }}/test_client"
+    - name: set SELinux type on the abbot Python lib files
+      file: path={{ abbot_bin_dir }}/abbot state=directory setype=lib_t
 
     # setup the virtualenv
     - name: check whether the virtualenv exists
-      stat: path={{ abbott_venv_dir }}/bin/python
+      stat: path={{ abbot_venv_dir }}/bin/python
       register: venv_exists
     - name: make the virtualenv
       when: not venv_exists.stat.exists
-      shell: /usr/bin/pyvenv-3.4 {{ abbott_venv_dir }}
+      shell: /usr/bin/pyvenv-3.4 {{ abbot_venv_dir }}
     - name: install/update all requirements with pip
       pip:
-        virtualenv: "{{ abbott_venv_dir }}"
-        requirements: "{{ abbott_bin_dir }}/requirements-deploy.txt"
+        virtualenv: "{{ abbot_venv_dir }}"
+        requirements: "{{ abbot_bin_dir }}/requirements-deploy.txt"
       notify:
-        - restart abbott
-    - name: install abbott to the virtualenv
-      pip: virtualenv={{ abbott_venv_dir }} name={{ abbott_bin_dir }}
+        - restart abbot
+    - name: install abbot to the virtualenv
+      pip: virtualenv={{ abbot_venv_dir }} name={{ abbot_bin_dir }}
     - name: set permissions on the virtualenv
       file:
-        path: "{{ abbott_venv_dir }}"
+        path: "{{ abbot_venv_dir }}"
         state: directory
         owner: root
         group: root
@@ -83,7 +83,7 @@
         setype: usr_t
     - name: set permissions on the virtualenv/lib
       file:
-        path: "{{ abbott_venv_dir }}/lib"
+        path: "{{ abbot_venv_dir }}/lib"
         state: directory
         owner: root
         group: root
@@ -93,7 +93,7 @@
         setype: lib_t
     - name: set permissions on the virtualenv/bin
       file:
-        path: "{{ abbott_venv_dir }}/bin"
+        path: "{{ abbot_venv_dir }}/bin"
         state: directory
         owner: root
         group: root
@@ -102,49 +102,49 @@
         seuser: system_u
         setype: bin_t
 
-    # make the Abbott configuration
-    - name: make the "abbott" user
-      user: name={{ abbott_user }} state=present system=yes shell=/usr/sbin/nologin createhome=no
-    - name: generate the Abbott configuration file
+    # make the Abbot configuration
+    - name: make the "abbot" user
+      user: name={{ abbot_user }} state=present system=yes shell=/usr/sbin/nologin createhome=no
+    - name: generate the Abbot configuration file
       template:
-        src: abbott_config.py.j2
-        dest: "{{ abbott_conf_file }}"
+        src: abbot_config.py.j2
+        dest: "{{ abbot_conf_file }}"
         owner: root
         group: root
         mode: "u=rw,g=r,o=r"
         seuser: system_u
         setype: etc_t
       notify:
-        - restart abbott
-    - name: install systemd unit file for Abbott
+        - restart abbot
+    - name: install systemd unit file for Abbot
       template:
-        src: abbott.service.j2
-        dest: "{{ unit_files_dir }}/abbott.service"
+        src: abbot.service.j2
+        dest: "{{ unit_files_dir }}/abbot.service"
         owner: root
         group: root
         seuser: system_u
         setype: systemd_unit_file_t
       notify:
         - daemon-reload
-        - restart abbott
-    - name: install systemd socket file for Abbott
+        - restart abbot
+    - name: install systemd socket file for Abbot
       template:
-        src: abbott.socket.j2
-        dest: "{{ unit_files_dir }}/abbott.socket"
+        src: abbot.socket.j2
+        dest: "{{ unit_files_dir }}/abbot.socket"
         owner: root
         group: root
         seuser: system_u
         setype: systemd_unit_file_t
       notify:
         - daemon-reload
-        - restart abbott
-    - name: open Abbott's port in the firewall (permanent)
-      firewalld: permanent=yes port={{ abbott_port }}/tcp state=enabled zone=public
-    - name: open Abbott's port in the firewall (now)
-      firewalld: permanent=no port={{ abbott_port }}/tcp state=enabled zone=public
+        - restart abbot
+    - name: open Abbot's port in the firewall (permanent)
+      firewalld: permanent=yes port={{ abbot_port }}/tcp state=enabled zone=public
+    - name: open Abbot's port in the firewall (now)
+      firewalld: permanent=no port={{ abbot_port }}/tcp state=enabled zone=public
 
   handlers:
     - name: daemon-reload
       shell: systemctl daemon-reload
-    - name: restart abbott
-      service: name=abbott state=restarted
+    - name: restart abbot
+      service: name=abbot state=restarted

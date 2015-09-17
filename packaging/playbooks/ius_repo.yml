@@ -1,7 +1,7 @@
 ---
 - include: epel_repo.yml
 
-- hosts: abbott
+- hosts: abbot
   name: install IUS Community repository
   gather_facts: no
   become: yes

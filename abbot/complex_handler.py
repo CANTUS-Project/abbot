@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
-# Filename:               abbott/complex_handler.py
-# Purpose:                ComplexHandler for the Abbott server.
+# Filename:               abbot/complex_handler.py
+# Purpose:                ComplexHandler for the Abbot server.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-ComplexHandler for the Abbott server.
+ComplexHandler for the Abbot server.
 '''
 
 from collections import namedtuple
@@ -31,8 +31,8 @@ from collections import namedtuple
 from tornado.log import app_log as log
 from tornado import gen, web
 
-from abbott import util
-from abbott import simple_handler
+from abbot import util
+from abbot import simple_handler
 
 
 XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])

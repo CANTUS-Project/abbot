@@ -1,7 +1,7 @@
 #
 # NOTE: I copied this file verbatim from the link given below. The original file has no copyright
 #       information, but the "setup.py" file in the same repository says "GPLv3," so I'm quite sure
-#       it's compatible with Abbott in that regard. However, any modifications should be published
+#       it's compatible with Abbot in that regard. However, any modifications should be published
 #       separately from this repository, just in case.
 #       -- Christopher Antila
 #

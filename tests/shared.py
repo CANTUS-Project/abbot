@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               tests/shared.py
-# Purpose:                Shared classes and functions for Abbott's automated test suite.
+# Purpose:                Shared classes and functions for Abbot's automated test suite.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Shared classes and functions for Abbott's automated test suite.
+Shared classes and functions for Abbot's automated test suite.
 '''
 # NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
@@ -36,8 +36,8 @@ from unittest import mock
 from tornado import concurrent, testing, web
 from tornado.options import options
 import pysolrtornado
-import abbott
-from abbott import __main__ as main
+import abbot
+from abbot import __main__ as main
 
 # ensure we have a consistent "server_name" for all the tests
 options.server_name = 'https://cantus.org/'
@@ -81,10 +81,10 @@ class TestHandler(testing.AsyncHTTPTestCase):
         :param on_this: The :class:`Response` object to verify.
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
         '''
-        exp_server = 'Abbott/{}'.format(abbott.__version__)
-        exp_cantus_version = 'Cantus/{}'.format(abbott.__cantus_version__)
-        exp_allow_headers = ','.join(abbott.CANTUS_REQUEST_HEADERS)
-        exp_expose_headers = ','.join(abbott.CANTUS_RESPONSE_HEADERS)
+        exp_server = 'Abbot/{}'.format(abbot.__version__)
+        exp_cantus_version = 'Cantus/{}'.format(abbot.__cantus_version__)
+        exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
+        exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
         exp_allow_origin = self._simple_options.cors_allow_origin
 
         self.assertEqual(exp_server, on_this.headers['Server'])
@@ -104,7 +104,7 @@ class TestHandler(testing.AsyncHTTPTestCase):
         - cors_allow_origin: 'https://cantus.org:5733/'
         '''
         super(TestHandler, self).setUp()
-        self._simple_options_patcher = mock.patch('abbott.simple_handler.options')
+        self._simple_options_patcher = mock.patch('abbot.simple_handler.options')
         self._simple_options = self._simple_options_patcher.start()
         self._simple_options.drupal_url = None
         self._simple_options.server_name = 'https://cantus.org/'

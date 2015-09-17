@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               tests/test_root_handler.py
-# Purpose:                Tests for the Abbott server's RootHandler.
+# Purpose:                Tests for the Abbot server's RootHandler.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Tests for the Abbott server's RootHandler.
+Tests for the Abbot server's RootHandler.
 '''
 # NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
@@ -34,8 +34,8 @@ Tests for the Abbott server's RootHandler.
 
 from unittest import mock
 from tornado import escape, httpclient, options, testing
-from abbott import __main__ as main
-from abbott import handlers
+from abbot import __main__ as main
+from abbot import handlers
 import shared
 
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
-# Filename:               abbott/__main__.py
-# Purpose:                Main file for the Abbott server.
+# Filename:               abbot/__main__.py
+# Purpose:                Main file for the Abbot server.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Main file for the Abbott server reference implementation of the Cantus API.
+Main file for the Abbot server reference implementation of the Cantus API.
 '''
 
 import logging
@@ -34,14 +34,14 @@ from tornado.options import Error as OptionsError
 
 from systemdream.journal import handler as journalctl
 
-import abbott
-from abbott.handlers import CanonicalHandler, RootHandler
-from abbott.simple_handler import SimpleHandler
-from abbott.complex_handler import ComplexHandler
-from abbott.systemd_http_server import SystemdHTTPServer
+import abbot
+from abbot.handlers import CanonicalHandler, RootHandler
+from abbot.simple_handler import SimpleHandler
+from abbot.complex_handler import ComplexHandler
+from abbot.systemd_http_server import SystemdHTTPServer
 
 define('port', default=8888, type=int,
-       help='port for Abbott to listen on, between 1024 and 32768')
+       help='port for Abbot to listen on, between 1024 and 32768')
 define('hostname', default='localhost', type=str, help='hostname for FQDN in "resources" links')
 define('scheme', default='http', type=str, help='http or https')
 define('server_name', default='', type=str, help='automatically set with scheme, hostname, and port; no need to override')
@@ -120,7 +120,7 @@ def main():
     '''
 
     # Job #1: logging. It's not "quality," contrary to what Ford says.
-    logging.root.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='abbott'))
+    logging.root.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='abbot'))
 
     # parse commandline options
     try:
@@ -142,28 +142,28 @@ def main():
         options.licence = True
 
     # print the standard header
-    starting_msg = 'Abbott Server {} for Cantus API {} is starting up!'.format(abbott.__version__,
-                                                                               abbott.__cantus_version__)
+    starting_msg = 'Abbot Server {} for Cantus API {} is starting up!'.format(abbot.__version__,
+                                                                               abbot.__cantus_version__)
     log.app_log.warn(starting_msg)
     if options.debug or options.about or options.licence or options.version:
         print(starting_msg)
 
     # simple, early-end options
     if options.about:
-        # thing about Abbott
-        print('\nAbbott is a server implementation of the Cantus API, allowing access to a\n'
+        # thing about Abbot
+        print('\nAbbot is a server implementation of the Cantus API, allowing access to a\n'
               'database of Mediaeval chant manuscripts (hand-written books with religious\n'
               'music). You can learn more about the CANTUS Project, which is responsible for\n'
-              'Abbott, the Cantus API, and the Cantus Database, at http://cantusdatabase.org/.')
+              'Abbot, the Cantus API, and the Cantus Database, at http://cantusdatabase.org/.')
     if options.licence or options.about:
         # thing about the licence
-        print('\nAbbott Copyright (C) 2015 Christopher Antila\n'
+        print('\nAbbot Copyright (C) 2015 Christopher Antila\n'
               'This program comes with ABSOLUTELY NO WARRANTY\n'
               'This is free software, and you are welcome to redistribute it under\n'
               'certaion conditions (Affero General Public Licence, version 3 or later).\n'
               'For details, refer to the LICENSE file or https://gnu.org/licenses/agpl-3.0.html\n'
-              'Although the source code is included with Abbott, you may access our source code\n'
-              'repository at https://github.com/CANTUS-Project/abbott/\n')
+              'Although the source code is included with Abbot, you may access our source code\n'
+              'repository at https://github.com/CANTUS-Project/abbot/\n')
     if options.about or options.licence or options.version:
         return
 

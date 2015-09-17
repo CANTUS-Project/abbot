@@ -1,4 +1,4 @@
 ---
 - include: configure_ssh.yml
 - include: install_solr.yml
-- include: install_abbott.yml
+- include: install_abbot.yml

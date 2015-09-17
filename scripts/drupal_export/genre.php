@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbott_export_genres';
+$view->name = 'abbot_export_genres';
 $view->description = '';
 $view->tag = 'default';
 $view->base_table = 'taxonomy_term_data';
-$view->human_name = 'Abbott: Export Genres';
+$view->human_name = 'Abbot: Export Genres';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */

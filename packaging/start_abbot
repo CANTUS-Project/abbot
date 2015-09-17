@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
-# Filename:               scripts/start_abbott
-# Purpose:                Starts Abbott in a new process (for deployment without systemd).
+# Filename:               scripts/start_abbot
+# Purpose:                Starts Abbot in a new process (for deployment without systemd).
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,13 +23,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Starts Abbott in a new process (for deployment without systemd).
+Starts Abbot in a new process (for deployment without systemd).
 
 Please note that this is not the recommended deployment mechanism. We recommend a production server
-with a Linux-based OS that uses systemd, which allows using the "abbott.service" and "abbott.socket"
+with a Linux-based OS that uses systemd, which allows using the "abbot.service" and "abbot.socket"
 files stored in this directory.
 
-Unlike the rest of Abbott, this script works with both Python 2 and Python 3.
+Unlike the rest of Abbot, this script works with both Python 2 and Python 3.
 '''
 
 import os
@@ -43,32 +43,32 @@ import sys
 # NOTE: you must customize these variables for every deployment
 
 # path to the virtualenv directory
-VENV_PATH = '/usr/local/abbott-venv'
+VENV_PATH = '/usr/local/abbot-venv'
 
-# path to the Abbott code
-ABBOTT_PATH = '/usr/local/abbott'
+# path to the Abbot code
+Abbot_PATH = '/usr/local/abbot'
 
 # path to the "PID file" that records the started server's process ID
-PID_PATH = '/run/abbott/abbott.pid'
+PID_PATH = '/run/abbot/abbot.pid'
 
 # Script
 # ------
 # NOTE: don't customize this part
-os.environ['PYTHONPATH'] = ABBOTT_PATH
+os.environ['PYTHONPATH'] = Abbot_PATH
 python = os.path.join(VENV_PATH, 'bin/python')
-main_file = os.path.join(ABBOTT_PATH, 'abbott/__main__.py')
+main_file = os.path.join(Abbot_PATH, 'abbot/__main__.py')
 commandline = [python, main_file]
 
 # append all the commandline arguments to this script into the next
 for each_arg in sys.argv[1:]:
     commandline.append(each_arg)
 
-abbott = subprocess.Popen(commandline, stdout=None, stderr=None)
+abbot = subprocess.Popen(commandline, stdout=None, stderr=None)
 try:
     with open(PID_PATH, 'w') as pid_file:
-        pid_file.write(str(abbott.pid))
+        pid_file.write(str(abbot.pid))
 except IOError:
     # probably couldn't write to the PID_PATH
     print('Could not write PID file. Aborting startup.')
-    abbott.kill()
+    abbot.kill()
     raise SystemExit(1)

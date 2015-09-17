@@ -1,8 +1,8 @@
 [Unit]
-Description="Abbott HTTP Server"
-Documentation=https://github.com/CANTUS-Project/abbott/
+Description="Abbot HTTP Server"
+Documentation=https://github.com/CANTUS-Project/abbot/
 Wants=solr.service
-Requires=abbott.socket
+Requires=abbot.socket
 After=network.target
 
 [Install]
@@ -10,7 +10,7 @@ Also=solr.service
 WantedBy=multi-user.target
 
 [Service]
-Environment=PATH="/usr/local/abbott-venv/bin:$PATH"
-ExecStart=/usr/local/abbott-venv/bin/python /usr/local/abbott/abbott --options_file=/usr/local/abbott/packaging/server_configuration.py
+Environment=PATH="/usr/local/abbot-venv/bin:$PATH"
+ExecStart=/usr/local/abbot-venv/bin/python /usr/local/abbot/abbot --options_file=/usr/local/abbot/packaging/server_configuration.py
 Restart=on-failure
-User=abbott
+User=abbot

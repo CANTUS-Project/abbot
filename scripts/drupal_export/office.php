@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbott_export_offices';
+$view->name = 'abbot_export_offices';
 $view->description = '';
 $view->tag = 'default';
 $view->base_table = 'taxonomy_term_data';
-$view->human_name = 'Abbott: Export Offices';
+$view->human_name = 'Abbot: Export Offices';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
-# Filename:               abbott/complex_handler.py
-# Purpose:                Miscellaneous handlers for the Abbott server.
+# Filename:               abbot/complex_handler.py
+# Purpose:                Miscellaneous handlers for the Abbot server.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,11 +23,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Miscellaneous handlers for the Abbott server.
+Miscellaneous handlers for the Abbot server.
 '''
 
 from tornado import options, web
-from abbott.simple_handler import SimpleHandler
+from abbot.simple_handler import SimpleHandler
 
 
 class RootHandler(web.RequestHandler):

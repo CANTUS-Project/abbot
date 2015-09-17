@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbott_export_indexers';
+$view->name = 'abbot_export_indexers';
 $view->description = '';
 $view->tag = 'default';
 $view->base_table = 'node';
-$view->human_name = 'Abbott: Export Indexers';
+$view->human_name = 'Abbot: Export Indexers';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */

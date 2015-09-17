@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               tests/test_complex_handler.py
-# Purpose:                Tests for the Abbott server's ComplexHandler.
+# Purpose:                Tests for the Abbot server's ComplexHandler.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Tests for the Abbott server's ComplexHandler.
+Tests for the Abbot server's ComplexHandler.
 '''
 # NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
@@ -34,9 +34,9 @@ Tests for the Abbott server's ComplexHandler.
 
 from unittest import mock
 from tornado import escape, httpclient, testing
-from abbott import __main__ as main
-from abbott import simple_handler
-from abbott.complex_handler import ComplexHandler
+from abbot import __main__ as main
+from abbot import simple_handler
+from abbot.complex_handler import ComplexHandler
 import shared
 
 
@@ -60,7 +60,7 @@ class TestLookUpXrefs(shared.TestHandler):
                                                          'indexers', 'editors', 'proofreaders',
                                                          'provenance_detail'])
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_field_is_string_with_id(self, mock_ask_solr):
         "when the xreffed field is a string with an id"
@@ -76,7 +76,7 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_field_is_list_of_string(self, mock_ask_solr):
         "when the xreffed field is a list of strings"
@@ -92,7 +92,7 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_field_not_found_1(self, mock_ask_solr):
         "when the xreffed field is a string, but it's not found in Solr"
@@ -108,7 +108,7 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_field_not_found_2(self, mock_ask_solr):
         "when the xreffed field is a list of strings, but nothing is ever found in Solr"
@@ -124,7 +124,7 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_many_xreffed_fields(self, mock_ask_solr):
         "with many xreffed fields"
@@ -161,7 +161,7 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_no_xref_is_true(self, mock_ask_solr):
         "when self.hparams['no_xref'] is True"
@@ -224,7 +224,7 @@ class TestMakeExtraFields(shared.TestHandler):
                                                          'indexing_notes', 'indexing_date',
                                                          'indexers', 'editors', 'proofreaders',
                                                          'provenance_detail'])
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_both_things_to_lookup(self, mock_ask_solr):
         "with both a feast_id and source_status_id to look up"
@@ -248,7 +248,7 @@ class TestMakeExtraFields(shared.TestHandler):
         # etc.
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_both_things_but_return_nothing(self, mock_ask_solr):
         "with both a feast_id and source_status_id to look up, but they both return nothing"
@@ -269,7 +269,7 @@ class TestMakeExtraFields(shared.TestHandler):
         # etc.
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_nothing_to_lookup(self, mock_ask_solr):
         "with neither a feast_id nor a source_status_id to look up"
@@ -289,7 +289,7 @@ class TestMakeExtraFields(shared.TestHandler):
         # etc.
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_no_xref_is_true(self, mock_ask_solr):
         "when self.hparams['no_xref'] is True"
@@ -311,7 +311,7 @@ class TestGetIntegration(shared.TestHandler):
     Unit tests for the ComplexHandler.get().
     '''
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
         '''
@@ -348,7 +348,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(expected, escape.json_decode(actual.body))
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_2(self, mock_ask_solr):
         "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
@@ -386,7 +386,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual('false', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual(expected, escape.json_decode(actual.body))
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_3(self, mock_ask_solr):
         "test_get_integration_1 but with X-Cantus-No-Xref; include 'resources'"
@@ -451,7 +451,7 @@ class TestOptionsIntegration(shared.TestHandler):
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_options_integration_2(self, mock_ask_solr):
         "ensure the OPTIONS method works as expected ('view' URL)"
@@ -482,7 +482,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         self.handler = ComplexHandler(self.get_app(), request, type_name='source')
         # the full "additional_fields" aren't important here
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     def test_template(self, mock_super_meth, **kwargs):
         '''
         Template for tests against SimpleHandler.verify_request_headers().
@@ -522,7 +522,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
         self.assertEqual(exp_no_xref, self.handler.hparams['no_xref'])
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     def test_when_other_header_invalid(self, mock_super_meth):
         '''
         When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
@@ -534,21 +534,21 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                            exp_no_xref='switchboard',
                            expected=False)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_true(self, mock_super_meth):
         '''
         When self.hparams['no_xref'] comes out as True
         '''
         self.test_template(no_xref='  trUE   ', exp_no_xref=True)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_false(self, mock_super_meth):
         '''
         When self.hparams['no_xref'] comes out as False
         '''
         self.test_template(no_xref='FALSE ', exp_no_xref=False)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     def test_no_xref_invalid(self, mock_super_meth):
         '''
         When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
@@ -575,11 +575,11 @@ class TestSearchUnit(shared.TestHandler):
         self.handler = ComplexHandler(self.get_app(), request, type_name='source')
         self.handler.hparams['search_query'] = 'some query'
 
-    @mock.patch('abbott.util.assemble_query')
-    @mock.patch('abbott.util.parse_query_components')
-    @mock.patch('abbott.util.separate_query_components')
-    @mock.patch('abbott.util.run_subqueries')
-    @mock.patch('abbott.complex_handler.ComplexHandler.get_handler')
+    @mock.patch('abbot.util.assemble_query')
+    @mock.patch('abbot.util.parse_query_components')
+    @mock.patch('abbot.util.separate_query_components')
+    @mock.patch('abbot.util.run_subqueries')
+    @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
     @testing.gen_test
     def test_search_handler_1(self, mock_get_handler, mock_rs, mock_sqc, mock_pqc, mock_aq):
         '''

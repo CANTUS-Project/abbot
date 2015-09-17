@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               tests/test_util.py
-# Purpose:                Tests for abbott/util.py of the Abbott server.
+# Purpose:                Tests for abbot/util.py of the Abbot server.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Tests for abbott/util.py of the Abbott server.
+Tests for abbot/util.py of the Abbot server.
 '''
 # NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
@@ -37,14 +37,14 @@ import pytest
 from tornado import gen, testing, web
 import pysolrtornado
 
-from abbott import __main__ as main
-from abbott import util
+from abbot import __main__ as main
+from abbot import util
 import shared
 
 
 class TestSingularResourceToPlural(TestCase):
     '''
-    Tests for abbott.util.singular_resource_to_plural().
+    Tests for abbot.util.singular_resource_to_plural().
     '''
 
     def test_singular_resource_to_plural_1(self):
@@ -58,10 +58,10 @@ class TestSingularResourceToPlural(TestCase):
 
 class TestAskSolrById(shared.TestHandler):
     '''
-    Tests for abbott.util.ask_solr_by_id().
+    Tests for abbot.util.ask_solr_by_id().
     '''
 
-    @mock.patch('abbott.util.SOLR', spec_set=pysolrtornado.Solr)
+    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
     @testing.gen_test
     def test_ask_solr_by_id_1(self, mock_solr):
         "Basic test."
@@ -71,7 +71,7 @@ class TestAskSolrById(shared.TestHandler):
         self.assertEqual(expected, actual)
         util.SOLR.search.assert_called_once_with('+type:genre +id:162')
 
-    @mock.patch('abbott.util.SOLR', spec_set=pysolrtornado.Solr)
+    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
     @testing.gen_test
     def test_ask_solr_by_id_2(self, mock_solr):
         "with 'start' and 'rows' kwargs"
@@ -81,7 +81,7 @@ class TestAskSolrById(shared.TestHandler):
         self.assertEqual(expected, actual)
         util.SOLR.search.assert_called_once_with('+type:genre +id:162', start=5, rows=50)
 
-    @mock.patch('abbott.util.SOLR', spec_set=pysolrtornado.Solr)
+    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
     @testing.gen_test
     def test_ask_solr_by_id_3(self, mock_solr):
         "with 'rows' and 'sort' kwargs"
@@ -94,7 +94,7 @@ class TestAskSolrById(shared.TestHandler):
 
 class TestFormattedSorts(TestCase):
     '''
-    Tests for abbott.util.prepare_formatted_sort() and abbott.util.postpare_formatted_sort().
+    Tests for abbot.util.prepare_formatted_sort() and abbot.util.postpare_formatted_sort().
     '''
 
     def test_prepare_sort_1(self):
@@ -173,7 +173,7 @@ class TestFormattedSorts(TestCase):
 
 class TestParseFieldsHeader(TestCase):
     '''
-    Tests for abbott.util.parse_fields_header().
+    Tests for abbot.util.parse_fields_header().
     '''
     # TODO: make these parameterized
 
@@ -285,7 +285,7 @@ class TestDoDictTransfer(TestCase):
 
 class TestRequestWrapper(testing.AsyncHTTPTestCase):
     '''
-    Tests for the abbott.util.request_wrapper decorator.
+    Tests for the abbot.util.request_wrapper decorator.
     '''
 
     def get_app(self):
@@ -296,11 +296,11 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         Make some additional mocks: log.error(); print().
         '''
         super(TestRequestWrapper, self).setUp()
-        self._log_patcher = mock.patch('abbott.util.log')
+        self._log_patcher = mock.patch('abbot.util.log')
         self._log = self._log_patcher.start()
         self._actual_print = __builtins__['print']
         __builtins__['print'] = mock.MagicMock()
-        self._options_patcher = mock.patch('abbott.util.options')
+        self._options_patcher = mock.patch('abbot.util.options')
         self._options = self._options_patcher.start()
         self._options.debug = False
 
@@ -570,7 +570,7 @@ class TestQueryParserAsync(shared.TestHandler):
     Tests for the asynchronous (coroutine) SEARCH request query-string parsing functions.
     '''
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def testrun_subqueries_1(self, mock_ask_solr):
         '''
@@ -587,7 +587,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
         mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def testrun_subqueries_2(self, mock_ask_solr):
         '''
@@ -607,7 +607,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
         mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def testrun_subqueries_3(self, mock_ask_solr):
         '''
@@ -624,7 +624,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
         mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def testrun_subqueries_4(self, mock_ask_solr):
         '''
@@ -653,7 +653,7 @@ class TestQueryParserAsync(shared.TestHandler):
         mock_ask_solr.assert_any_call('type:genre AND (antiphon)')
         mock_ask_solr.assert_any_call('type:feast AND (magnificat)')
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def testrun_subqueries_5(self, mock_ask_solr):
         '''
@@ -670,7 +670,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
         self.assertEqual(0, mock_ask_solr.call_count)
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def testrun_subqueries_6(self, mock_ask_solr):
         '''

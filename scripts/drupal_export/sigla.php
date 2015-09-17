@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbott_export_sigla';
+$view->name = 'abbot_export_sigla';
 $view->description = '';
 $view->tag = 'default';
 $view->base_table = 'node';
-$view->human_name = 'Abbott: Export Sigla';
+$view->human_name = 'Abbot: Export Sigla';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */

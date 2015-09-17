@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbott_export_centuries';
+$view->name = 'abbot_export_centuries';
 $view->description = '';
 $view->tag = 'default';
 $view->base_table = 'taxonomy_term_data';
-$view->human_name = 'Abbott: Export Centuries';
+$view->human_name = 'Abbot: Export Centuries';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */

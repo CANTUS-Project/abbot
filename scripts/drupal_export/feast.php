@@ -3,14 +3,14 @@ $view->name = 'abbot_export_feasts';
 $view->description = '';
 $view->tag = '';
 $view->base_table = 'taxonomy_term_data';
-$view->human_name = 'Abbott: Export Feasts';
+$view->human_name = 'Abbot: Export Feasts';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
 
 /* Display: Defaults */
 $handler = $view->new_display('default', 'Defaults', 'default');
-$handler->display->display_options['title'] = 'Abbott: Export Feasts';
+$handler->display->display_options['title'] = 'Abbot: Export Feasts';
 $handler->display->display_options['use_ajax'] = TRUE;
 $handler->display->display_options['use_more_always'] = FALSE;
 $handler->display->display_options['access']['type'] = 'perm';

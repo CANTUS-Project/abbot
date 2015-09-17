@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbott_export_source_statii';
+$view->name = 'abbot_export_source_statii';
 $view->description = '';
 $view->tag = 'default';
 $view->base_table = 'taxonomy_term_data';
-$view->human_name = 'Abbott: Export Source Statii';
+$view->human_name = 'Abbot: Export Source Statii';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */

@@ -3,7 +3,7 @@ Description="Solr Search Server"
 StopWhenUnneeded=true
 
 [Install]
-WantedBy=abbott.service
+WantedBy=abbot.service
 
 [Service]
 Type=simple

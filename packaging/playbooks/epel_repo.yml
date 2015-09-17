@@ -1,5 +1,5 @@
 ---
-- hosts: abbott
+- hosts: abbot
   name: install Extra Packages for Enterprise Linux repository
   gather_facts: no
   become: yes

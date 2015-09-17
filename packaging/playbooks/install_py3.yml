@@ -1,7 +1,7 @@
 ---
 - include: ius_repo.yml
 
-- hosts: abbott
+- hosts: abbot
   name: install Python 3
   gather_facts: no
   become: yes

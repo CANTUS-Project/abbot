@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               tests/test_simple_handler.py
-# Purpose:                Tests for the Abbott server's SimpleHandler.
+# Purpose:                Tests for the Abbot server's SimpleHandler.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Tests for the Abbott server's SimpleHandler.
+Tests for the Abbot server's SimpleHandler.
 '''
 # NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
 #       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
@@ -35,10 +35,10 @@ Tests for the Abbott server's SimpleHandler.
 from unittest import mock
 from tornado import escape, httpclient, testing
 import pysolrtornado
-from abbott import __main__ as main
-from abbott.complex_handler import ComplexHandler
-from abbott import simple_handler
-from abbott.simple_handler import SimpleHandler
+from abbot import __main__ as main
+from abbot.complex_handler import ComplexHandler
+from abbot import simple_handler
+from abbot.simple_handler import SimpleHandler
 import shared
 
 
@@ -137,7 +137,7 @@ class TestInitialize(shared.TestHandler):
         self.assertEqual('black code', actual.hparams['fields'])
         self.assertEqual('whatever', actual.hparams['search_query'])
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.send_error')
+    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
     def test_initialize_6(self, mock_send_error):
         "initialize() works with SEARCH request (JSON is faulty)"
         request = httpclient.HTTPRequest(url='/zool/', method='SEARCH',
@@ -272,7 +272,7 @@ class TestBasicGetUnit(shared.TestHandler):
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_1(self, mock_ask_solr):
         '''
@@ -302,7 +302,7 @@ class TestBasicGetUnit(shared.TestHandler):
                                               rows=10, sort=None)
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_2(self, mock_ask_solr):
         '''
@@ -323,7 +323,7 @@ class TestBasicGetUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_3(self, mock_ask_solr):
         '''
@@ -346,7 +346,7 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_4(self, mock_ask_solr):
         '''
@@ -372,7 +372,7 @@ class TestBasicGetUnit(shared.TestHandler):
                                               rows=12, sort=None)
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_5(self, mock_ask_solr):
         '''
@@ -393,7 +393,7 @@ class TestBasicGetUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(400, reason=exp_reason)
 
-    @mock.patch('abbott.util.search_solr')
+    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
     def test_basic_get_unit_6(self, mock_search_solr):
         '''
@@ -413,7 +413,7 @@ class TestBasicGetUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_basic_get_unit_7(self, mock_ask_solr):
         '''
@@ -639,7 +639,7 @@ class TestGetUnit(shared.TestHandler):
         self.assertEqual(0, mock_write.call_count)
         mock_send_error.assert_called_once_with(502, reason=SimpleHandler._SOLR_502_ERROR)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.basic_get')
+    @mock.patch('abbot.simple_handler.SimpleHandler.basic_get')
     @testing.gen_test
     def test_get_handler_1(self, mock_basic_get):
         '''
@@ -668,7 +668,7 @@ class TestGetIntegration(shared.TestHandler):
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_1(self, mock_ask_solr):
         "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
@@ -698,7 +698,7 @@ class TestGetIntegration(shared.TestHandler):
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_2(self, mock_ask_solr):
         "returns 400 when X-Cantus-Per-Page is set improperly"
@@ -712,7 +712,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(400, actual.code)
         self.assertEqual(SimpleHandler._INVALID_PER_PAGE, actual.reason)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_3(self, mock_ask_solr):
         "returns 400 when X-Cantus-Page is set too high"
@@ -730,7 +730,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(400, actual.code)
         self.assertEqual(SimpleHandler._TOO_LARGE_PAGE, actual.reason)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_4(self, mock_ask_solr):
         "ensure the X-Cantus-Fields request header works"
@@ -762,7 +762,7 @@ class TestGetIntegration(shared.TestHandler):
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_get_integration_5(self, mock_ask_solr):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
@@ -779,7 +779,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(400, actual.code)
         self.assertEqual(SimpleHandler._INVALID_FIELDS, actual.reason)
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_terminating_slash(self, mock_ask_solr):
         '''
@@ -821,7 +821,7 @@ class TestOptionsIntegration(shared.TestHandler):
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_options_integration_2a(self, mock_ask_solr):
         "OPTIONS request for non-existent resource gives 404"
@@ -834,7 +834,7 @@ class TestOptionsIntegration(shared.TestHandler):
         self.assertEqual(404, actual.code)
         mock_ask_solr.assert_called_once_with('genre', 'nogenre')
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_options_integration_2b(self, mock_ask_solr):
         "OPTIONS request for existing resource returns properly ('view' URL)"
@@ -866,7 +866,7 @@ class TestHeadIntegration(shared.TestHandler):
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
-    @mock.patch('abbott.util.ask_solr_by_id')
+    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
     def test_head_integration_1a(self, mock_ask_solr):
         "test_get_integration_1() but with the HEAD method"
@@ -1023,7 +1023,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         self.test_vrh_template(is_browse_request=False)
 
-    @mock.patch('abbott.util.parse_fields_header')
+    @mock.patch('abbot.util.parse_fields_header')
     def test_not_browse_request_2(self, mock_pfh):
         '''
         Preconditions:
@@ -1045,7 +1045,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
 
         mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
 
-    @mock.patch('abbott.util.parse_fields_header')
+    @mock.patch('abbot.util.parse_fields_header')
     def test_not_browse_request_3(self, mock_pfh):
         '''
         Preconditions:
@@ -1521,7 +1521,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         '''
         self.test_mrh_template(is_browse_request=True, page=8, h_page=8)
 
-    @mock.patch('abbott.util.postpare_formatted_sort')
+    @mock.patch('abbot.util.postpare_formatted_sort')
     def test_sort(self, mock_pfs):
         '''
         Preconditions:
@@ -1550,11 +1550,11 @@ class TestSearchUnit(shared.TestHandler):
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
         self.handler.hparams['search_query'] = 'some query'
 
-    @mock.patch('abbott.util.assemble_query')
-    @mock.patch('abbott.util.parse_query_components')
-    @mock.patch('abbott.util.separate_query_components')
-    @mock.patch('abbott.util.run_subqueries')
-    @mock.patch('abbott.simple_handler.SimpleHandler.get_handler')
+    @mock.patch('abbot.util.assemble_query')
+    @mock.patch('abbot.util.parse_query_components')
+    @mock.patch('abbot.util.separate_query_components')
+    @mock.patch('abbot.util.run_subqueries')
+    @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
     @testing.gen_test
     def test_search_handler_1(self, mock_get_handler, mock_rs, mock_sqc, mock_pqc, mock_aq):
         '''
@@ -1577,7 +1577,7 @@ class TestSearchUnit(shared.TestHandler):
         mock_get_handler.assert_called_once_with(query='mock_aq')
         self.assertEqual(0, mock_rs.call_count)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_1(self, mock_search_handler):
         '''
@@ -1588,8 +1588,8 @@ class TestSearchUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.assertEqual(0, mock_search_handler.call_count)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_2(self, mock_search_handler, mock_vrh):
         '''
@@ -1600,8 +1600,8 @@ class TestSearchUnit(shared.TestHandler):
         self.assertIsNone(actual)
         self.assertEqual(0, mock_search_handler.call_count)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_3(self, mock_search_handler, mock_vrh):
         '''
@@ -1613,8 +1613,8 @@ class TestSearchUnit(shared.TestHandler):
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_4(self, mock_search_handler, mock_vrh):
         '''
@@ -1626,10 +1626,10 @@ class TestSearchUnit(shared.TestHandler):
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.make_response_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.write')
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.make_response_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.write')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_5(self, mock_search_handler, mock_vrh, mock_write, mock_mrh):
         '''
@@ -1646,10 +1646,10 @@ class TestSearchUnit(shared.TestHandler):
         self.assertEqual(0, mock_write.call_count)
         mock_mrh.assert_called_once_with(True, 3)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.make_response_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.write')
-    @mock.patch('abbott.simple_handler.SimpleHandler.verify_request_headers')
-    @mock.patch('abbott.simple_handler.SimpleHandler.search_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.make_response_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.write')
+    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
+    @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_6(self, mock_search_handler, mock_vrh, mock_write, mock_mrh):
         '''
@@ -1679,10 +1679,10 @@ class TestSendError(shared.TestHandler):
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.clear')
-    @mock.patch('abbott.simple_handler.SimpleHandler.add_header')
-    @mock.patch('abbott.simple_handler.SimpleHandler.set_status')
-    @mock.patch('abbott.simple_handler.SimpleHandler.write')
+    @mock.patch('abbot.simple_handler.SimpleHandler.clear')
+    @mock.patch('abbot.simple_handler.SimpleHandler.add_header')
+    @mock.patch('abbot.simple_handler.SimpleHandler.set_status')
+    @mock.patch('abbot.simple_handler.SimpleHandler.write')
     def test_send_error_1(self, mock_write, mock_set_status, mock_add_header, mock_clear):
         '''
         per_page, reason, and response kwargs are all provided.
@@ -1705,10 +1705,10 @@ class TestSendError(shared.TestHandler):
         mock_set_status.assert_called_once_with(code, reason)
         mock_write.assert_called_once_with(response)
 
-    @mock.patch('abbott.simple_handler.SimpleHandler.clear')
-    @mock.patch('abbott.simple_handler.SimpleHandler.add_header')
-    @mock.patch('abbott.simple_handler.SimpleHandler.set_status')
-    @mock.patch('abbott.simple_handler.SimpleHandler.write')
+    @mock.patch('abbot.simple_handler.SimpleHandler.clear')
+    @mock.patch('abbot.simple_handler.SimpleHandler.add_header')
+    @mock.patch('abbot.simple_handler.SimpleHandler.set_status')
+    @mock.patch('abbot.simple_handler.SimpleHandler.write')
     def test_send_error_2(self, mock_write, mock_set_status, mock_add_header, mock_clear):
         '''
         per_page, reason, and response kwargs are all omitted.

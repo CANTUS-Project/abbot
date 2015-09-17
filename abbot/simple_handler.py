@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
-# Filename:               abbott/simple_handler.py
-# Purpose:                SimpleHandler for the Abbott server.
+# Filename:               abbot/simple_handler.py
+# Purpose:                SimpleHandler for the Abbot server.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-SimpleHandler for the Abbott server.
+SimpleHandler for the Abbot server.
 '''
 
 import copy
@@ -35,8 +35,8 @@ from tornado import escape, gen, web
 from tornado.options import options
 import pysolrtornado
 
-import abbott
-from abbott import util
+import abbot
+from abbot import util
 
 
 options.define('drupal_url', type=str, help='see config file for details.')
@@ -225,12 +225,12 @@ class SimpleHandler(web.RequestHandler):
 
         .. note:: This method is also used by :meth:`RootHandler.set_default_headers`.
         '''
-        self.set_header('Server', 'Abbott/{}'.format(abbott.__version__))
-        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbott.__cantus_version__))
+        self.set_header('Server', 'Abbot/{}'.format(abbot.__version__))
+        self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbot.__cantus_version__))
         if options.cors_allow_origin:
             self.add_header('Access-Control-Allow-Origin', options.cors_allow_origin)
-            self.add_header('Access-Control-Allow-Headers', ','.join(abbott.CANTUS_REQUEST_HEADERS))
-            self.add_header('Access-Control-Expose-Headers', ','.join(abbott.CANTUS_RESPONSE_HEADERS))
+            self.add_header('Access-Control-Allow-Headers', ','.join(abbot.CANTUS_REQUEST_HEADERS))
+            self.add_header('Access-Control-Expose-Headers', ','.join(abbot.CANTUS_RESPONSE_HEADERS))
 
     def format_record(self, record):
         '''

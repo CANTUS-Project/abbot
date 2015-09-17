@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
 # Filename:               setup.py
@@ -27,7 +27,7 @@ Configuration for installation with setuptools.
 '''
 
 from setuptools import setup, Command
-import abbott  # for __version__
+import abbot  # for __version__
 
 
 class PyTest(Command):
@@ -46,14 +46,14 @@ class PyTest(Command):
 
 
 setup(
-    name = 'Abbott',
-    version = abbott.__version__,
-    packages = ['abbott', 'tests'],
+    name = 'Abbot',
+    version = abbot.__version__,
+    packages = ['abbot', 'tests'],
 
     install_requires = ['tornado>=4', 'pysolr-tornado'],
     tests_require = ['pytest'],
 
-    scripts = ['packaging/start_abbott', 'runtests.py'],
+    scripts = ['packaging/start_abbot', 'runtests.py'],
     cmdclass = {'test': PyTest},
 
     # metadata for upload to PyPI

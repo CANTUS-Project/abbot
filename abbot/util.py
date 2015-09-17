@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Program Name:           abbott
+# Program Name:           abbot
 # Program Description:    HTTP Server for the CANTUS Database
 #
-# Filename:               abbott/util.py
-# Purpose:                Utility functions for the Abbott server.
+# Filename:               abbot/util.py
+# Purpose:                Utility functions for the Abbot server.
 #
 # Copyright (C) 2015 Christopher Antila
 #
@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #--------------------------------------------------------------------------------------------------
 '''
-Utility functions for the Abbott server.
+Utility functions for the Abbot server.
 '''
 
 import re
@@ -44,7 +44,7 @@ SOLR = pysolrtornado.Solr(options.solr_url, timeout=10)
 # error messages for prepare_formatted_sort()
 _DISALLOWED_CHARACTER_IN_SORT = '"{}" is not allowed in the "sort" parameter'
 _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
-_UNKNOWN_FIELD = 'Unknown field for Abbott: "{}"'
+_UNKNOWN_FIELD = 'Unknown field for Abbot: "{}"'
 
 # error message for parse_fields_header() and parse_query_components()
 _INVALID_FIELD_NAME = '{} is not a valid field name'
@@ -135,7 +135,7 @@ def prepare_formatted_sort(sort):
     :returns: The sort parameter, formatted for Solr's consumption.
     :rtype: str
     :raises: :exc:`KeyError` when one of the fields in ``sort`` is not a valid field for any of the
-        Abbott resource types.
+        Abbot resource types.
     :raises: :exc:`ValueError` when a disallowed character is found in ``sort``.
     :raises: :exc:`ValueError` when a direction is not specified for a field.
     '''
@@ -278,7 +278,7 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
 
     **Example**
 
-    >>> from abbott import ask_solr_by_id
+    >>> from abbot import ask_solr_by_id
     >>> from tornado import gen
     >>> @gen.coroutine
     ... def func():
@@ -334,7 +334,7 @@ def search_solr(query, start=None, rows=None, sort=None):
 
 def request_wrapper(func):
     '''
-    Use this function as a decorator on subclasses of :class:`~abbott.simple_handler.SimpleHandler`
+    Use this function as a decorator on subclasses of :class:`~abbot.simple_handler.SimpleHandler`
     or subclasses to prevent mysterious failures when an exception happens. This function calls the
     :meth:`SimpleHandler.send_error` and writes diagnostic information. If the "debug" setting is
     ``True``, a traceback will be printed with :func:`print`. If "debug" is ``False``, a message

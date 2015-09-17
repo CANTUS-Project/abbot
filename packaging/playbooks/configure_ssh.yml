@@ -1,5 +1,5 @@
 ---
-- hosts: abbott
+- hosts: abbot
   name: ensure proper SSHD configuration
   gather_facts: no
   become: yes
