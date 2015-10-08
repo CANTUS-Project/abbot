@@ -1,0 +1,52 @@
+{
+    "resource_types": ["siglum", "office", "indexer", "century", "source_status", "chant", "source",
+                       "portfolio", "segment", "feast", "notation", "genre", "provenance"],
+    "solr_url": "http://localhost:8983/solr/collection1",
+    "drupal_to_solr_script": "/home/crantila/Documents/CANTUS/repos/abbot/scripts/drupal_xml_to_solr_xml.py",
+    "update_frequency": {
+        "chant": "3h",
+        "source": "1d",
+        "indexer": "3d",
+        "siglum": "14d",
+        "genre": "15d",
+        "feast": "13d",
+        "office": "28d",
+        "century": "29d",
+        "source_status": "30d",
+        "portfolio": "31d",
+        "segment": "32d",
+        "notation": "33d",
+        "provenance": "34d"
+    },
+    "drupal_urls": {
+        "drupal_url": "http://cantus.uwaterloo.ca",
+        "siglum": "{drupal_url}/export-sigla",
+        "office": "{drupal_url}/export-offices",
+        "indexer": "{drupal_url}/export-indexers",
+        "century": "{drupal_url}/export-centuries",
+        "source_status": "{drupal_url}/export-source-statii",
+        "chant": "{drupal_url}/export-chants",
+        "source": "{drupal_url}/export-sources",
+        "portfolio": "{drupal_url}/export-portfolia",
+        "segment": "{drupal_url}/export-segments",
+        "feast": "{drupal_url}/export-feasts",
+        "notation": "{drupal_url}/export-notations",
+        "genre": "{drupal_url}/export-genres",
+        "provenance": "{drupal_url}/export-provenances"
+    },
+    "last_updated": {
+        "siglum": "1441584000.0",
+        "office": "1441584000.0",
+        "indexer": "1441584000.0",
+        "century": "1441584000.0",
+        "source_status": "1441584000.0",
+        "chant": "1441584000.0",
+        "source": "1441584000.0",
+        "portfolio": "1441584000.0",
+        "segment": "1441584000.0",
+        "feast": "1441584000.0",
+        "notation": "1441584000.0",
+        "genre": "1441584000.0",
+        "provenance": "1441584000.0"
+    }
+}
