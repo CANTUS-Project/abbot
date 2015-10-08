@@ -61,6 +61,15 @@ Change the IP address as required.
 ::
     abbot ansible_ssh_host=10.0.1.132 ansible_ssh_user=compadmin
 
+Configure Sudo
+--------------
+
+Our Ansible playbooks require that ``sudo`` does not need a password.
+Use ``visudo`` to ensure the following line is uncommented in the ``sudo`` configuration file:
+
+::
+    %wheel  ALL=(ALL)       NOPASSWD: ALL
+
 Configure SSH
 -------------
 
