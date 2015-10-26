@@ -1,0 +1,13 @@
+[Unit]
+Description="Holy Order Update Script"
+Documentation=https://github.com/CANTUS-Project/abbot/
+Wants=abbot.service
+After=network.target
+
+[Install]
+Also=abbot.service
+WantedBy=multi-user.target
+
+[Service]
+ExecStart={{ abbot_py_exec }} {{ abbot_bin_dir }}/holy_orders {{ holy_orders_conf_file }}
+User={{ abbot_user }}

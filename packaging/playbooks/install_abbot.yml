@@ -7,6 +7,7 @@
   become: yes
   become_method: sudo
   vars:
+    pyvenv_path: /usr/bin/pyvenv-3.4
     abbot_version: master
     abbot_repo: https://github.com/CANTUS-Project/abbot.git
     abbot_bin_dir: /usr/local/abbot
@@ -16,6 +17,7 @@
     abbot_group: "{{ abbot_user }}"
     abbot_conf_file: /etc/abbot.conf
     unit_files_dir: /usr/lib/systemd/system
+    holy_orders_conf_file: /var/local/holyorders.json
     # for the configuration file
     abbot_port: 8888
     abbot_scheme: http
@@ -58,15 +60,10 @@
       file: path={{ abbot_bin_dir }}/abbot state=directory setype=lib_t
 
     # setup the virtualenv
-    - name: check whether the virtualenv exists
-      stat: path={{ abbot_venv_dir }}/bin/python
-      register: venv_exists
-    - name: make the virtualenv
-      when: not venv_exists.stat.exists
-      shell: /usr/bin/pyvenv-3.4 {{ abbot_venv_dir }}
     - name: install/update all requirements with pip
       pip:
         virtualenv: "{{ abbot_venv_dir }}"
+        virtualenv_command: "{{ pyvenv_path }}"
         requirements: "{{ abbot_bin_dir }}/requirements-deploy.txt"
       notify:
         - restart abbot
@@ -143,8 +140,44 @@
     - name: open Abbot's port in the firewall (now)
       firewalld: permanent=no port={{ abbot_port }}/tcp state=enabled zone=public
 
+    # make the HolyOrders configuration
+    - name: generate the Abbot configuration file
+      copy:
+        src: holyorders.json
+        dest: "{{ holy_orders_conf_file }}"
+        owner: abbot
+        group: root
+        mode: "u=rw,g=r,o=r"
+        seuser: system_u
+        setype: var_t
+        force: no
+    - name: install systemd unit file for HolyOrders
+      template:
+        src: holyorders.service.j2
+        dest: "{{ unit_files_dir }}/holyorders.service"
+        owner: root
+        group: root
+        seuser: system_u
+        setype: systemd_unit_file_t
+      notify:
+        - daemon-reload
+        - restart holyorders
+    - name: install systemd timer file for HolyOrders
+      template:
+        src: holyorders.timer.j2
+        dest: "{{ unit_files_dir }}/holyorders.timer"
+        owner: root
+        group: root
+        seuser: system_u
+        setype: systemd_unit_file_t
+      notify:
+        - daemon-reload
+        - restart holyorders
+
   handlers:
     - name: daemon-reload
       shell: systemctl daemon-reload
     - name: restart abbot
       service: name=abbot state=restarted
+    - name: restart holyorders
+      service: name=holyorders state=restarted
