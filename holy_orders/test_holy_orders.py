@@ -35,6 +35,8 @@ from unittest import mock
 
 from tornado import httpclient
 
+from hypothesis import given, strategies as strats
+
 import holy_orders.__main__ as holy_orders
 
 
@@ -693,21 +695,20 @@ class TestUpdateSaveConfig(unittest.TestCase):
 
     @mock.patch('holy_orders.__main__.json')
     @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_update_works(self, mock_now, mock_json):
+    @given(strats.lists(strats.sampled_from(['a', 'b', 'c', 'd', 'e', 'genres', 'chants', 'feasts']),
+                        unique=True, min_size=1),
+           strats.lists(strats.sampled_from(['a', 'b', 'c', 'd', 'e', 'genres', 'chants', 'feasts']),
+                        unique=True))
+    def test_update_works(self, mock_now, mock_json, to_update, failed_types):
         '''
-        That update_save_config() works as expected. There will be one resource type that wasn't
-        supposed to be updated, one that should have been updated but wasn't, and one that was
-        updated as intended.
+        That update_save_config() works as expected. This uses the "hypothesis" library to test all
+        sorts of combinations of "to_update" and "failed_types".
         '''
-        config = {'last_updated': {'chant': '1441584000.0', 'source': '1441584000.0',
-                                   'provenance': '1441584000.0'}}
-        config_path = 'whatever_file.json'
-        to_update = ['chant', 'source']
-        failed_types = ['source']
+        config = {'last_updated': {}}
+        config_path = '/usr/local/whatever'
         # 1443803520.0  is  2015/09/02  16:32
         mock_now.return_value = datetime.datetime(2015, 10, 2, 16, 32, tzinfo=datetime.timezone.utc)
-        expected = {'last_updated': {'chant': '1443803520.0', 'source': '1441584000.0',
-                                     'provenance': '1441584000.0'}}
+        timestamp = 1443803520.0
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
         # setup mock on "json" module
@@ -718,6 +719,13 @@ class TestUpdateSaveConfig(unittest.TestCase):
 
         mock_open.assert_called_once_with(config_path, 'w')
         mock_json.dump.assert_called_once_with(config, mock.ANY, indent='\t', sort_keys=True)
+        # Ensure everything saved in the dict was in "to_update" and not "failed_types", and has
+        # the proper timestamp.
+        saved_conf = mock_json.dump.call_args[0][0]
+        for key in saved_conf['last_updated']:
+            self.assertTrue(key in to_update)
+            self.assertFalse(key in failed_types)
+            self.assertEqual(timestamp, saved_conf['last_updated'][key])
 
 
 class TestMain(unittest.TestCase):
