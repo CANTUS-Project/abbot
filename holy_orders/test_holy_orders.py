@@ -35,7 +35,7 @@ from unittest import mock
 
 from tornado import httpclient
 
-from hypothesis import given, strategies as strats
+from hypothesis import assume, given, strategies as strats
 
 import holy_orders.__main__ as holy_orders
 
@@ -657,11 +657,15 @@ class TestLoadConfig(unittest.TestCase):
     Tests for load_config().
     '''
 
-    def test_path_doesnt_exist(self):
+    @given(strats.text())
+    def test_path_doesnt_exist(self, config_path):
         '''
         When the "config_path" doesn't exist, raise SystemExit.
         '''
-        config_path = '/this/does/not/work'
+        # don't test invalid EXT4 filenames
+        assume('.' != config_path)
+        assume('..' != config_path)
+        assume('\0' not in config_path)
         self.assertRaises(SystemExit, holy_orders.load_config, config_path)
 
     def test_path_isnt_file(self):

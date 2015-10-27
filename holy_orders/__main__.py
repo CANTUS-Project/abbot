@@ -144,7 +144,12 @@ def load_config(config_path):
     _set_up_logging()
 
     config_path = pathlib.Path(config_path)
-    if not (config_path.exists() and config_path.is_file()):
+    try:
+        if not (config_path.exists() and config_path.is_file()):
+            _log.error('Please provide the path to a valid JSON file for configuration.')
+            raise SystemExit(1)
+    except OSError:
+        # e.g., the file name is too long
         _log.error('Please provide the path to a valid JSON file for configuration.')
         raise SystemExit(1)
 
