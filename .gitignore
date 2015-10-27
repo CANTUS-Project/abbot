@@ -55,3 +55,6 @@ target/
 
 # Ansible "hosts" file
 packaging/playbooks/hosts
+
+# "Hypothesis" notes directory
+.hypothesis
