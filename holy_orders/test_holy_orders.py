@@ -248,7 +248,7 @@ class TestDownloadUpdate(unittest.TestCase):
         mock_log.warning = mock.Mock()
         resource_type = 'genre'
         config = {'drupal_urls': {'drupal_url': 'a', 'genre': '{drupal_url}b'}}
-        expected = ['']
+        expected = []
 
         actual = holy_orders.download_update(resource_type, config)
 

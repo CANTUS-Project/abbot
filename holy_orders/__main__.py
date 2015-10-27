@@ -314,10 +314,10 @@ def download_update(resource_type, config):
     :param str resource_type: The resource type for which to fetch updates.
     :param dict config: Dictionary of the configuration file that has our data.
     :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
-    :rtype: list of str
+    :rtype: list of bytes
 
-    .. note:: The return type is a list of strings, not a single string. Some resource types (chant)
-        may require updates for multiple days, which will produce multiple XML documents.
+    .. note:: The return type is a *list* of bytestrings, not a single one. Some resource types
+        (chant) may require updates for multiple days, which will produce multiple XML documents.
     '''
 
     _set_up_logging()
@@ -340,7 +340,7 @@ def download_update(resource_type, config):
         return post
     except (httpclient.HTTPError, IOError) as err:
         _log.warning('Failed to download update for {} ({})'.format(resource_type, err))
-        return ['']
+        return []
     finally:
         client.close()
 
