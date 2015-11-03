@@ -36,6 +36,7 @@ import pathlib
 import subprocess
 from sys import argv
 import tempfile
+from xml.etree import ElementTree as etree
 
 from systemdream.journal import handler as journalctl
 
@@ -82,7 +83,8 @@ def main(config_path):
     _log.info('Downloading updates')
     updates = []
     for resource_type in types_to_update:
-        if resource_type in config['drupal_urls']:
+        if (resource_type in config['drupal_urls']
+        or ('chant' == resource_type and 'chants_updated' in config['drupal_urls'])):
             the_updates = download_update(resource_type, config)
             if len(the_updates) > 0:
                 updates.extend(the_updates)
@@ -311,6 +313,124 @@ def calculate_chant_updates(config):
     return post
 
 
+def download_from_urls(url_list):
+    '''
+    Given a list of URLs, do a GET request on each and return the response bodies.
+
+    :parm url_list: The URLs from which to download.
+    :type url_list: list of str
+    :returns: The response bodies from the specified URLs, in the order specified.
+    :rtype: list of str
+
+    If one of the requests fails, a "warning" log message is emitted, and the function returns an
+    empty list.
+
+    Resposne bodies are converted from bytes to str objects, and we assume it is UTF-8 encoded.
+    '''
+
+    _set_up_logging()
+    _log.debug('now in download_from_urls()')
+
+    try:
+        post = []
+        client = httpclient.HTTPClient()
+        for url in url_list:
+            _log.debug('download_from_urls() is downloading {}'.format(url))
+            response = client.fetch(url)
+            post.append(str(response.body, 'UTF-8'))
+        return post
+    except (httpclient.HTTPError, IOError, ValueError) as err:
+        _log.warning('download_from_urls() failed to download update from {}'.format(err))
+        return []
+    finally:
+        client.close()
+
+
+def _collect_chant_ids(daily_updates):
+    '''
+    Used by download_chant_updates().
+
+    From a list of XML documents that contain the chant IDs updated on a particular day,
+    collect all the IDs.
+
+    :param daily_updates: The XML documents with the chant IDs that were updated (see below).
+    :type daily_updates: list of str or bytestr that contain an XML document
+    :returns: A list of the chant IDs that must be downloaded.
+    :rtype: list of str
+
+    **Format of Daily Updates**
+
+    The "daily_updates" parameter is a list of str or bytes objects. Each must contain an XML
+    document that has a list of chant IDs. The document will look something like this:
+
+    <chants>
+        <chant>
+            <id>123456</id>
+        </chant>
+        <chant>
+            <id>720922</id>
+        </chant>
+    </chants>
+    '''
+
+    _set_up_logging()
+    _log.debug('Now in _collect_chant_ids()')
+
+    if isinstance(daily_updates, bytes):
+        try:
+            daily_updates = str(daily_updates, 'UTF-8')
+        except UnicodeDecodeError:
+            _log.error('_collect_chant_ids() failed to convert input to str')
+            return []
+
+    try:
+        daily_updates = etree.fromstring(daily_updates)
+    except etree.ParseError:
+        _log.error('_collect_chant_ids() received invalid XML')
+        return []
+
+    post = []
+    for elem in daily_updates.iter('id'):
+        post.append(elem.text)
+
+    return post
+
+
+def download_chant_updates(config):
+    '''
+    Download required data for updating chant resources.
+
+    :param dict config: Dictionary of the configuration file that has our data.
+    :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
+    :rtype: list of str
+
+    The update download process for chants is much more complicated than other resource types. To
+    avoid complications with Drupal, the server first returns a document with the ID of chants that
+    were updated on a particular day. Then we have to request each chant separately. This avoids
+    the situation where so many chants are updated in a single day that Drupal would "time-out" the
+    request before it finishes formatting all the results.
+
+    In case Drupal still fails, this function writes an ERROR log message about the failure for
+    that day, and returns an empty list so that the "last updated" date will not change.
+    '''
+
+    _set_up_logging()
+    _log.info('Starting download_chant_updates()')
+
+    # get the lists of chant IDs that were updated, by day
+    updated_url = config['drupal_urls']['chants_updated'].format(config['drupal_urls']['drupal_url'])
+    update_urls = ['{}/{}'.format(updated_url, x) for x in calculate_chant_updates(config)]
+    ids_lists = download_from_urls(update_urls)
+
+    # pull out the IDs of all the chants we need to download
+    chant_ids = _collect_chant_ids(ids_lists)
+
+    # download all the chants by ID
+    chant_url = config['drupal_urls']['chant_id'].format(config['drupal_urls']['drupal_url'])
+    update_urls = ['{}/{}'.format(chant_url, each_id) for each_id in chant_ids]
+    return download_from_urls(update_urls)
+
+
 def download_update(resource_type, config):
     '''
     Download the data for the indicated resource type, according to the URL stored in "config." When
@@ -319,35 +439,20 @@ def download_update(resource_type, config):
     :param str resource_type: The resource type for which to fetch updates.
     :param dict config: Dictionary of the configuration file that has our data.
     :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
-    :rtype: list of bytes
+    :rtype: list of str
 
     .. note:: The return type is a *list* of bytestrings, not a single one. Some resource types
         (chant) may require updates for multiple days, which will produce multiple XML documents.
     '''
 
-    _set_up_logging()
-    _log.info('Will download an update for {}'.format(resource_type))
-
-    client = httpclient.HTTPClient()
-    update_url = config['drupal_urls'][resource_type].format(drupal_url=config['drupal_urls']['drupal_url'])
-
     if 'chant' == resource_type:
-        update_urls = ['{}/{}'.format(update_url, x) for x in calculate_chant_updates(config)]
-    else:
-        update_urls = [update_url]
+        return download_chant_updates(config)
 
-    try:
-        post = []
-        for url in update_urls:
-            _log.debug('Downloading {} update from {}'.format(resource_type, url))
-            response = client.fetch(url)
-            post.append(response.body)
-        return post
-    except (httpclient.HTTPError, IOError) as err:
-        _log.warning('Failed to download update for {} ({})'.format(resource_type, err))
-        return []
-    finally:
-        client.close()
+    _set_up_logging()
+    _log.info('Starting download_update() for {}'.format(resource_type))
+
+    update_url = [config['drupal_urls'][resource_type].format(config['drupal_urls']['drupal_url'])]
+    return download_from_urls(update_url)
 
 
 def convert_update(temp_directory, conversion_script_path, update):

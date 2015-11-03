@@ -170,148 +170,6 @@ class TestShouldUpdateThis(unittest.TestCase):
         mock_now.assert_called_once_with()
 
 
-class TestDownloadUpdate(unittest.TestCase):
-    '''
-    Tests for download_update() and calculate_chant_updates().
-    '''
-
-    # this is weird, but I promise it's a mock of tornado.httpclient
-    @mock.patch('holy_orders.__main__.httpclient')
-    def test_down_works(self, mock_httpclient):
-        '''
-        When the Drupal server responds with 200 OK and all is well.
-        '''
-        # setup the httpclient mock
-        mock_httpclient.HTTPError = httpclient.HTTPError
-        mock_client = mock.Mock()
-        mock_httpclient.HTTPClient = mock.Mock()
-        mock_httpclient.HTTPClient.return_value = mock_client
-        mock_client.close = mock.Mock()
-        mock_client.fetch = mock.Mock()
-        mock_response = mock.Mock()
-        mock_response.body = 'response body'
-        mock_client.fetch.return_value = mock_response
-        # other setup
-        resource_type = 'genre'
-        config = {'drupal_urls': {'drupal_url': 'a', 'genre': '{drupal_url}b'}}
-        expected = [mock_response.body]
-
-        actual = holy_orders.download_update(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_client.fetch.assert_called_once_with('ab')
-        mock_client.close.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__.calculate_chant_updates')
-    @mock.patch('holy_orders.__main__.httpclient')
-    def test_down_works_with_chants(self, mock_httpclient, mock_ccu):
-        '''
-        When everything goes as planned, and the script is trying to update chants!
-        '''
-        # setup the httpclient mock
-        mock_httpclient.HTTPError = httpclient.HTTPError
-        mock_client = mock.Mock()
-        mock_httpclient.HTTPClient = mock.Mock()
-        mock_httpclient.HTTPClient.return_value = mock_client
-        mock_client.close = mock.Mock()
-        mock_client.fetch = mock.Mock()
-        mock_response = mock.Mock()
-        mock_response.body = 'response body'
-        mock_client.fetch.return_value = mock_response
-        # other setup
-        resource_type = 'chant'
-        config = {'drupal_urls': {'drupal_url': 'a', 'chant': '{drupal_url}b'}}
-        expected = [mock_response.body, mock_response.body]
-        mock_ccu.return_value = ['20150908', '20150909']
-
-        actual = holy_orders.download_update(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(2, mock_client.fetch.call_count)
-        mock_client.fetch.assert_any_call('ab/20150908')
-        mock_client.fetch.assert_any_call('ab/20150909')
-        mock_client.close.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__._log')
-    @mock.patch('holy_orders.__main__.httpclient')
-    def test_down_does_not_work(self, mock_httpclient, mock_log):
-        '''
-        When the Drupal server responds with a 500 and all is not well.
-        '''
-        # setup the httpclient mock
-        mock_httpclient.HTTPError = httpclient.HTTPError
-        mock_client = mock.Mock()
-        mock_httpclient.HTTPClient = mock.Mock()
-        mock_httpclient.HTTPClient.return_value = mock_client
-        mock_client.close = mock.Mock()
-        mock_client.fetch = mock.Mock()
-        mock_client.fetch.side_effect = httpclient.HTTPError(500, 'Surfer Error')
-        # other setup
-        mock_log.warning = mock.Mock()
-        resource_type = 'genre'
-        config = {'drupal_urls': {'drupal_url': 'a', 'genre': '{drupal_url}b'}}
-        expected = []
-
-        actual = holy_orders.download_update(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_client.fetch.assert_called_once_with('ab')
-        mock_client.close.assert_called_once_with()
-        mock_log.warning.assert_called_once_with('Failed to download update for genre (HTTP 500: Surfer Error)')
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_calc_future(self, mock_now):
-        '''
-        calculate_chant_updates(): last update is in the future
-        '''
-        mock_now.return_value = datetime.datetime(2015, 9, 10, 16, 32, tzinfo=datetime.timezone.utc)
-        # 1441989120.0  is  2015/09/11  16:32
-        config = {'last_updated': {'chant': '1441989120.0'}}
-        expected = []
-        actual = holy_orders.calculate_chant_updates(config)
-        self.assertCountEqual(expected, actual)
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_calc_same_day(self, mock_now):
-        '''
-        calculate_chant_updates():  last update was today (ask for yesterday and today)
-        '''
-        mock_now.return_value = datetime.datetime(2015, 9, 10, 16, 32, tzinfo=datetime.timezone.utc)
-        # 1441894200.0  is  2015/09/10  14:10
-        config = {'last_updated': {'chant': '1441894200.0'}}
-        expected = ['20150909', '20150910']
-        actual = holy_orders.calculate_chant_updates(config)
-        self.assertCountEqual(expected, actual)
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_calc_yesterday(self, mock_now):
-        '''
-        calculate_chant_updates():  last update was yesterday (ask for ante-yesterday, yesterday, and today)
-        '''
-        mock_now.return_value = datetime.datetime(2015, 9, 10, 16, 32, tzinfo=datetime.timezone.utc)
-        # 1441816320.0  is  2015/09/09  16:32
-        config = {'last_updated': {'chant': '1441816320.0'}}
-        expected = ['20150908', '20150909', '20150910']
-        actual = holy_orders.calculate_chant_updates(config)
-        self.assertCountEqual(expected, actual)
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_calc_five_days_ago(self, mock_now):
-        '''
-        calculate_chant_updates():  last update was five days ago (ask for today and up to six days ago)
-
-        This test also ensures the function can deal with "backup up" over a month (i.e., that we
-        won't try asking for September -2nd).
-        '''
-        # NOTE: the mock returns a different value than the other tests!
-        mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, tzinfo=datetime.timezone.utc)
-        # 1577536440.0  is  2019/12/28  12:34
-        config = {'last_updated': {'chant': '1577536440.0'}}
-        expected = ['20200103', '20200102', '20200101', '20191231', '20191230', '20191229', '20191228']
-        actual = holy_orders.calculate_chant_updates(config)
-        self.assertCountEqual(expected, actual)
-
-
 class TestConvertUpdate(unittest.TestCase):
     '''
     Tests for convert_update().
@@ -767,3 +625,168 @@ class TestMain(unittest.TestCase):
         mock_pasu.assert_called_once_with(['downloaded chant'], config_file)
         # update_save_config()
         mock_usconf.assert_called_once_with(['chant', 'source'], ['source'], config_file, config_path)
+
+
+class TestUpdateDownloading(unittest.TestCase):
+    '''
+    Tests for download_update() and its helper funcitons download_chant_updates(),
+    _collect_chant_ids(), and download_from_urls().
+    '''
+
+    def test_download_from_urls_1(self):
+        '''
+        With two URLs that return successfully.
+
+        NOTE: this is an integration test that uses Tornado to make real Web requests.
+        NOTE: if this test starts failing, first check whether it's because the responses from the
+              URLs has changed.
+        '''
+        url_list = ['http://www.example.com/', 'http://www.example.org/']
+        actual = holy_orders.download_from_urls(url_list)
+        for body in actual:
+            self.assertIsInstance(body, str)
+            self.assertTrue(body.startswith('<!doctype html>'))
+
+    def test_download_from_urls_2(self):
+        '''
+        When one of the URLs returns 404, the function returns an empty list.
+
+        NOTE: this is an integration test that uses Tornado to make real Web requests.
+        '''
+        url_list = ['http://www.example.com/', 'http://www.example.org/pleasefourohfour/']
+        actual = holy_orders.download_from_urls(url_list)
+        self.assertEqual([], actual)
+
+    def test_download_from_urls_3(self):
+        '''
+        When one of the URLs is invalid, the function returns an empty list.
+
+        NOTE: this is an integration test that uses Tornado to make real Web requests.
+        '''
+        url_list = ['nkjhkjhlkjh3lkjhlk3jhlk3h3h3k2l']
+        actual = holy_orders.download_from_urls(url_list)
+        self.assertEqual([], actual)
+
+    def test_download_from_urls_4(self):
+        '''
+        When one of the URLs is less invalid, the function returns an empty list.
+
+        NOTE: this is an integration test that uses Tornado to make real Web requests.
+        '''
+        url_list = ['http://nkjhkjhlkjh3lkjhlk3jhlk3h3h3k2l']
+        actual = holy_orders.download_from_urls(url_list)
+        self.assertEqual([], actual)
+
+    @given(strats.lists(strats.text('1234567890', min_size=1, max_size=10, average_size=6)))
+    def test_collect_ids_1(self, list_of_ids):
+        '''
+        _collect_chant_ids() works with a single day of updates (str input).
+        '''
+        # build the XML document we'll input
+        xml_doc = []
+        for each_id in list_of_ids:
+            xml_doc.append('<chant><id>{}</id></chant>'.format(each_id))
+        xml_doc.insert(0, '<chants>')
+        xml_doc.append('</chants>')
+        xml_doc = ''.join(xml_doc)
+
+        # run the test and check results
+        actual = holy_orders._collect_chant_ids(xml_doc)
+        self.assertEqual(list_of_ids, actual)
+        for each_id in actual:
+            self.assertTrue(isinstance(each_id, str))
+
+    @given(strats.lists(strats.text('1234567890', min_size=1, max_size=10, average_size=6)))
+    def test_collect_ids_2(self, list_of_ids):
+        '''
+        _collect_chant_ids() works with a single day of updates (bytes input).
+        '''
+        # build the XML document we'll input
+        xml_doc = []
+        for each_id in list_of_ids:
+            xml_doc.append('<chant><id>{}</id></chant>'.format(each_id))
+        xml_doc.insert(0, '<chants>')
+        xml_doc.append('</chants>')
+        xml_doc = ''.join(xml_doc)
+        xml_doc = bytes(xml_doc, 'UTF-8')
+
+        # run the test and check results
+        actual = holy_orders._collect_chant_ids(xml_doc)
+        self.assertEqual(list_of_ids, actual)
+        for each_id in actual:
+            self.assertTrue(isinstance(each_id, str))
+
+    @given(strats.text())
+    def test_collect_ids_3(self, garbage):
+        '''
+        _collect_chant_ids() doesn't crash when we give it invalid XML (str).
+        '''
+        expected = []
+        actual = holy_orders._collect_chant_ids(garbage)
+        self.assertEqual(expected, actual)
+
+    @given(strats.binary())
+    def test_collect_ids_4(self, garbage):
+        '''
+        _collect_chant_ids() doesn't crash when we give it invalid XML(bytes).
+        '''
+        expected = []
+        actual = holy_orders._collect_chant_ids(garbage)
+        self.assertEqual(expected, actual)
+
+    @mock.patch('holy_orders.__main__.download_from_urls')
+    @mock.patch('holy_orders.__main__.calculate_chant_updates')
+    @mock.patch('holy_orders.__main__._collect_chant_ids')
+    def test_download_chant_updates(self, mock_colids, mock_calcup, mock_download):
+        '''
+        Make sure it works.
+        '''
+        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{}b', 'chant_id': '{}c'}}
+        mock_download.return_value = 'check it out'  # just needs to be identifiable
+        # first call to download_from_urls(): date-specific URLs
+        mock_calcup.return_value = ['2012', '2013', '2014']
+        exp_download_first_call = ['ab/2012', 'ab/2013', 'ab/2014']
+        # second call to download_from_urls(): chant-specific URLs
+        mock_colids.return_value = ['1', '2', '3']
+        exp_download_second_call = ['ac/1', 'ac/2', 'ac/3']
+
+        actual = holy_orders.download_chant_updates(config)
+
+        self.assertEqual(mock_download.return_value, actual)
+        mock_calcup.assert_called_once_with(config)
+        mock_colids.assert_called_once_with(mock_download.return_value)
+        self.assertEqual(2, mock_download.call_count)
+        mock_download.assert_any_call(exp_download_first_call)
+        mock_download.assert_any_call(exp_download_second_call)
+
+    @mock.patch('holy_orders.__main__.download_chant_updates')
+    @mock.patch('holy_orders.__main__.download_from_urls')
+    def test_download_update_1(self, mock_urls, mock_chants):
+        '''
+        download_update() with 'chant'
+        '''
+        resource_type = 'chant'
+        config = 'lolz'
+        mock_chants.return_value = 42
+
+        actual = holy_orders.download_update(resource_type, config)
+
+        self.assertEqual(mock_chants.return_value, actual)
+        mock_chants.assert_called_once_with(config)
+        self.assertEqual(0, mock_urls.call_count)
+
+    @mock.patch('holy_orders.__main__.download_chant_updates')
+    @mock.patch('holy_orders.__main__.download_from_urls')
+    def test_download_update_2(self, mock_urls, mock_chants):
+        '''
+        download_update() with 'feast'
+        '''
+        resource_type = 'feast'
+        config = {'drupal_urls': {'drupal_url': 'a', 'feast': '{}b'}}
+        mock_urls.return_value = 42
+
+        actual = holy_orders.download_update(resource_type, config)
+
+        self.assertEqual(mock_urls.return_value, actual)
+        mock_urls.assert_called_once_with(['ab'])
+        self.assertEqual(0, mock_chants.call_count)

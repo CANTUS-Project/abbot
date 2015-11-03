@@ -9,7 +9,8 @@
     },
 	"drupal_urls": {
         "drupal_url": "http://cantus.example.com",
-		"chant": "{drupal_url}/export-chants",
+        "chants_updated": "{drupal_url}/export-chant-ids/{}",
+        "chant_id": "{drupal_url}/export-chant/{}",
         "source": "{drupal_url}/export-sources",
 		"provenance": "{drupal_url}/export-provenances"
 	},
