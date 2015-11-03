@@ -135,6 +135,8 @@
       notify:
         - daemon-reload
         - restart abbot
+    - name: enable Abbot
+      service: name=abbot enabled=yes
     - name: open Abbot's port in the firewall (permanent)
       firewalld: permanent=yes port={{ abbot_port }}/tcp state=enabled zone=public
     - name: open Abbot's port in the firewall (now)
@@ -173,6 +175,8 @@
       notify:
         - daemon-reload
         - restart holyorders
+    - name: enable HolyOrders
+      service: name=holyorders enabled=yes
 
   handlers:
     - name: daemon-reload
