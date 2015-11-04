@@ -758,7 +758,8 @@ class TestUpdateDownloading(unittest.TestCase):
         '''
         Make sure it works.
         '''
-        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{}b', 'chant_id': '{}c'}}
+        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}b',
+                                  'chant_id': '{drupal_url}c'}}
         mock_download.return_value = 'check it out'  # just needs to be identifiable
         # first call to download_from_urls(): date-specific URLs
         mock_calcup.return_value = ['2012', '2013', '2014']
@@ -799,7 +800,7 @@ class TestUpdateDownloading(unittest.TestCase):
         download_update() with 'feast'
         '''
         resource_type = 'feast'
-        config = {'drupal_urls': {'drupal_url': 'a', 'feast': '{}b'}}
+        config = {'drupal_urls': {'drupal_url': 'a', 'feast': '{drupal_url}b'}}
         mock_urls.return_value = 42
 
         actual = holy_orders.download_update(resource_type, config)
@@ -807,3 +808,19 @@ class TestUpdateDownloading(unittest.TestCase):
         self.assertEqual(mock_urls.return_value, actual)
         mock_urls.assert_called_once_with(['ab'])
         self.assertEqual(0, mock_chants.call_count)
+
+    @mock.patch('holy_orders.__main__.download_chant_updates')
+    @mock.patch('holy_orders.__main__.download_from_urls')
+    def test_download_update_3(self, mock_urls, mock_chants):
+        '''
+        download_update() when the URL can't be formed from the config
+        '''
+        resource_type = 'beast'
+        config = {'drupal_urls': {'drupal_url': 'a', 'feast': '{drupal_url}b'}}
+        expected = []
+
+        actual = holy_orders.download_update(resource_type, config)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_chants.call_count)
+        self.assertEqual(0, mock_urls.call_count)

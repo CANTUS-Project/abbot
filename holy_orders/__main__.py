@@ -424,7 +424,7 @@ def download_chant_updates(config):
     _log.info('Starting download_chant_updates()')
 
     # get the lists of chant IDs that were updated, by day
-    updated_url = config['drupal_urls']['chants_updated'].format(config['drupal_urls']['drupal_url'])
+    updated_url = config['drupal_urls']['chants_updated'].format(drupal_url=config['drupal_urls']['drupal_url'])
     update_urls = ['{}/{}'.format(updated_url, x) for x in calculate_chant_updates(config)]
     ids_lists = download_from_urls(update_urls)
 
@@ -432,7 +432,7 @@ def download_chant_updates(config):
     chant_ids = _collect_chant_ids(ids_lists)
 
     # download all the chants by ID
-    chant_url = config['drupal_urls']['chant_id'].format(config['drupal_urls']['drupal_url'])
+    chant_url = config['drupal_urls']['chant_id'].format(drupal_url=config['drupal_urls']['drupal_url'])
     update_urls = ['{}/{}'.format(chant_url, each_id) for each_id in chant_ids]
     return download_from_urls(update_urls)
 
@@ -457,7 +457,12 @@ def download_update(resource_type, config):
     _set_up_logging()
     _log.info('Starting download_update() for {}'.format(resource_type))
 
-    update_url = [config['drupal_urls'][resource_type].format(config['drupal_urls']['drupal_url'])]
+    try:
+        update_url = [config['drupal_urls'][resource_type].format(drupal_url=config['drupal_urls']['drupal_url'])]
+    except KeyError as err:
+        _log.error('download_update(): "{}" while accessing config file'.format(err.args[0]))
+        return []
+
     return download_from_urls(update_url)
 
 
