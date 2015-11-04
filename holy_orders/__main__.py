@@ -562,12 +562,7 @@ def _set_up_logging():
     if _log is None:
         _log = logging.getLogger('holy_orders')
         _log.setLevel(LOG_LEVEL)
-        hand = logging.StreamHandler()
-        hand.setLevel(LOG_LEVEL)
-        hand.setFormatter(logging.Formatter('%(asctime)s (%(name)s) %(levelname)s: %(message)s'))
-        _log.addHandler(hand)
-        # TODO: enable journald logging when ready
-        # _log.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='holy_orders'))
+        _log.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='holy_orders'))
 
 
 if '__main__' == __name__ :
