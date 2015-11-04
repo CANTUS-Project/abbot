@@ -493,7 +493,7 @@ def convert_update(temp_directory, conversion_script_path, update):
     _log.debug('Expecting a Solr XML file at {}'.format(solr_xml_filename))
 
     # output the Drupal XML file
-    with open(drupal_xml_filename, 'wb') as the_file:
+    with open(drupal_xml_filename, 'w') as the_file:
         written = the_file.write(update)
     if written < len(update):
         err_msg = 'Could not write Drupal XML file to {}'.format(drupal_xml_filename)
