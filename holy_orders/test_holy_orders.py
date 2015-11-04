@@ -602,29 +602,46 @@ class TestMain(unittest.TestCase):
     def test_it_works(self, mock_should_update, mock_dl_update, mock_pasu, mock_usconf):
         '''
         When everything works (in that there are no exceptions).
+
+        There are four resource types:
+        - provenance, which doesn't need to be updated.
+        - source, which fails during the call to download_update().
+        - feast, which fails during the call to process_and_submit_updates().
+        - chant, which works.
         '''
         config_path = 'test_config.json'
         with open(config_path, 'r') as conf_p:
             config_file = json.load(conf_p)
-        # pretend only "chant" and "source" need updating (not "provenance")
+        # everything but "provenance" needs to be updated
         mock_should_update.side_effect = lambda x, y: False if 'provenance' == x else True
         # the "source" Drupal URL is missing in the config
         mock_dl_update.side_effect = lambda x, y: ['downloaded {}'.format(x)] if 'chant' == x else []
+        # "feast" fails in process_and_submit_updates()
+        def pasu_side_effect(updates, config):
+            if ['downloaded chant'] == updates:
+                return True
+            else:
+                return False
+        mock_pasu.side_effect = pasu_side_effect
 
         holy_orders.main(config_path)
 
         # should_update_this()
-        self.assertEqual(3, mock_should_update.call_count)
-        mock_should_update.assert_any_call('chant', config_file)
-        mock_should_update.assert_any_call('source', config_file)
+        self.assertEqual(4, mock_should_update.call_count)
         mock_should_update.assert_any_call('provenance', config_file)
+        mock_should_update.assert_any_call('source', config_file)
+        mock_should_update.assert_any_call('feast', config_file)
+        mock_should_update.assert_any_call('chant', config_file)
         # download_update()
         mock_dl_update.assert_any_call('chant', config_file)
         mock_dl_update.assert_any_call('source', config_file)
         # process_and_submit_updates()
         mock_pasu.assert_called_once_with(['downloaded chant'], config_file)
         # update_save_config()
-        mock_usconf.assert_called_once_with(['chant', 'source'], ['source'], config_file, config_path)
+        mock_usconf.assert_called_once_with(['chant', 'feast', 'source'],
+                                            ['feast', 'source'],
+                                            config_file,
+                                            config_path)
 
 
 class TestUpdateDownloading(unittest.TestCase):

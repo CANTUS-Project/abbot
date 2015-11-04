@@ -81,8 +81,9 @@ def main(config_path):
             types_to_update.append(resource_type)
 
     _log.info('Downloading updates')
-    updates = []
     for resource_type in types_to_update:
+        updates = []
+
         if (resource_type in config['drupal_urls']
         or ('chant' == resource_type and 'chants_updated' in config['drupal_urls'])):
             the_updates = download_update(resource_type, config)
@@ -93,9 +94,14 @@ def main(config_path):
                 failed_types.append(resource_type)
         else:
             _log.error('Missing Drupal URL for "{}" in configuration file! Not updating.'.format(resource_type))
+            failed_types.append(resource_type)
 
-    _log.info('Converting and submitting updates')
-    process_and_submit_updates(updates, config)
+        if len(updates) > 0:
+            _log.info('Converting and submitting {} update'.format(resource_type))
+            updates_succeeded = process_and_submit_updates(updates, config)
+            if not updates_succeeded:
+                _log.debug('main() hears that process_and_submit_updates() failed for {}'.format(resource_type))
+                failed_types.append(resource_type)
 
     _log.info('Updating configuration file')
     try:
