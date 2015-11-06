@@ -700,15 +700,16 @@ class TestUpdateDownloading(unittest.TestCase):
         _collect_chant_ids() works with a single day of updates (str input).
         '''
         # build the XML document we'll input
-        xml_doc = []
+        xml_docs = []
         for each_id in list_of_ids:
-            xml_doc.append('<chant><id>{}</id></chant>'.format(each_id))
-        xml_doc.insert(0, '<chants>')
-        xml_doc.append('</chants>')
-        xml_doc = ''.join(xml_doc)
+            xml_docs.append('<chant><id>{}</id></chant>'.format(each_id))
+        xml_docs.insert(0, '<chants>')
+        xml_docs.append('</chants>')
+        xml_docs = ''.join(xml_docs)
+        xml_docs = [xml_docs]
 
         # run the test and check results
-        actual = holy_orders._collect_chant_ids(xml_doc)
+        actual = holy_orders._collect_chant_ids(xml_docs)
         self.assertEqual(list_of_ids, actual)
         for each_id in actual:
             self.assertTrue(isinstance(each_id, str))
@@ -719,16 +720,17 @@ class TestUpdateDownloading(unittest.TestCase):
         _collect_chant_ids() works with a single day of updates (bytes input).
         '''
         # build the XML document we'll input
-        xml_doc = []
+        xml_docs = []
         for each_id in list_of_ids:
-            xml_doc.append('<chant><id>{}</id></chant>'.format(each_id))
-        xml_doc.insert(0, '<chants>')
-        xml_doc.append('</chants>')
-        xml_doc = ''.join(xml_doc)
-        xml_doc = bytes(xml_doc, 'UTF-8')
+            xml_docs.append('<chant><id>{}</id></chant>'.format(each_id))
+        xml_docs.insert(0, '<chants>')
+        xml_docs.append('</chants>')
+        xml_docs = ''.join(xml_docs)
+        xml_docs = bytes(xml_docs, 'UTF-8')
+        xml_docs = [xml_docs]
 
         # run the test and check results
-        actual = holy_orders._collect_chant_ids(xml_doc)
+        actual = holy_orders._collect_chant_ids(xml_docs)
         self.assertEqual(list_of_ids, actual)
         for each_id in actual:
             self.assertTrue(isinstance(each_id, str))
@@ -739,7 +741,7 @@ class TestUpdateDownloading(unittest.TestCase):
         _collect_chant_ids() doesn't crash when we give it invalid XML (str).
         '''
         expected = []
-        actual = holy_orders._collect_chant_ids(garbage)
+        actual = holy_orders._collect_chant_ids([garbage])
         self.assertEqual(expected, actual)
 
     @given(strats.binary())
@@ -748,8 +750,30 @@ class TestUpdateDownloading(unittest.TestCase):
         _collect_chant_ids() doesn't crash when we give it invalid XML(bytes).
         '''
         expected = []
-        actual = holy_orders._collect_chant_ids(garbage)
+        actual = holy_orders._collect_chant_ids([garbage])
         self.assertEqual(expected, actual)
+
+    def test_collect_ids_5(self):
+        '''
+        _collect_chant_ids() works with three days of updates (str input).
+        '''
+        # build the XML document we'll input
+        xml_docs = []
+        for i in range (3):
+            xml_docs.append('''<chants>
+            <chant><id>{}1</id></chant>
+            <chant><id>{}2</id></chant>
+            <chant><id>{}3</id></chant>
+            </chants>
+            '''.format(i, i, i))
+        expected = ['01', '02', '03', '11', '12', '13', '21', '22', '23']
+        print(str(xml_docs))
+
+        # run the test and check results
+        actual = holy_orders._collect_chant_ids(xml_docs)
+        self.assertEqual(expected, actual)
+        for each_id in actual:
+            self.assertTrue(isinstance(each_id, str))
 
     @mock.patch('holy_orders.__main__.download_from_urls')
     @mock.patch('holy_orders.__main__.calculate_chant_updates')

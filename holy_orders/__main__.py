@@ -389,15 +389,16 @@ def _collect_chant_ids(daily_updates):
             _log.error('_collect_chant_ids() failed to convert input to str')
             return []
 
-    try:
-        daily_updates = etree.fromstring(daily_updates)
-    except etree.ParseError:
-        _log.error('_collect_chant_ids() received invalid XML')
-        return []
-
     post = []
-    for elem in daily_updates.iter('id'):
-        post.append(elem.text)
+    for each_day in daily_updates:
+        try:
+            each_day = etree.fromstring(each_day)
+        except etree.ParseError:
+            _log.error('_collect_chant_ids() received invalid XML')
+            return []
+
+        for elem in each_day.iter('id'):
+            post.append(elem.text)
 
     return post
 
