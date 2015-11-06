@@ -425,7 +425,7 @@ class TestQueryParserSync(TestCase):
     Tests for the synchronous (non-coroutine) SEARCH request query-string parsing functions.
     '''
 
-    def testseparate_query_components_1(self):
+    def test_separate_query_components_1(self):
         '''
         The function raises InvalidQueryError if there are opening quotes without corresponding
         closing quotes.
@@ -435,7 +435,7 @@ class TestQueryParserSync(TestCase):
         for each_test in test_strings:
             self.assertRaises(util.InvalidQueryError, util.separate_query_components, each_test)
 
-    def testseparate_query_components_2(self):
+    def test_separate_query_components_2(self):
         '''
         Works with a space-separated single terms.
         '''
@@ -452,7 +452,7 @@ class TestQueryParserSync(TestCase):
             actual = util.separate_query_components(test_in)
             self.assertEqual(expected, actual)
 
-    def testseparate_query_components_3(self):
+    def test_separate_query_components_3(self):
         '''
         Works with a double-quote-delimited terms.
         '''
@@ -470,7 +470,7 @@ class TestQueryParserSync(TestCase):
             actual = util.separate_query_components(test_in)
             self.assertEqual(expected, actual)
 
-    def testseparate_query_components_4(self):
+    def test_separate_query_components_4(self):
         '''
         Works when mixing double-quote-delimited and space-separated terms.
         '''
@@ -487,7 +487,7 @@ class TestQueryParserSync(TestCase):
             actual = util.separate_query_components(test_in)
             self.assertEqual(expected, actual)
 
-    def testparse_query_components_1(self):
+    def test_parse_query_components_1(self):
         '''
         Default field by itself.
         '''
@@ -495,7 +495,7 @@ class TestQueryParserSync(TestCase):
         actual = util.parse_query_components(['antiphon'])
         self.assertEqual(expected, actual)
 
-    def testparse_query_components_2(self):
+    def test_parse_query_components_2(self):
         '''
         Fielded field by itself.
         '''
@@ -503,7 +503,7 @@ class TestQueryParserSync(TestCase):
         actual = util.parse_query_components(['genre:antiphon'])
         self.assertEqual(expected, actual)
 
-    def testparse_query_components_3(self):
+    def test_parse_query_components_3(self):
         '''
         Default and fielded.
         '''
@@ -511,14 +511,14 @@ class TestQueryParserSync(TestCase):
         actual = util.parse_query_components(['"in taberna"', 'genre:antiphon'])
         self.assertEqual(expected, actual)
 
-    def testparse_query_components_4(self):
+    def test_parse_query_components_4(self):
         '''
         Invalid fielded field.
         '''
         self.assertRaises(util.InvalidQueryError, util.parse_query_components,
                           ['"in taberna"', 'drink:Dunkelweiß'])
 
-    def testparse_query_components_5(self):
+    def test_parse_query_components_5(self):
         '''
         Fielded field, pre-cross-referenced, by itself.
         '''
@@ -526,7 +526,7 @@ class TestQueryParserSync(TestCase):
         actual = util.parse_query_components(['genre_id:123'])
         self.assertEqual(expected, actual)
 
-    def testparse_query_components_6(self):
+    def test_parse_query_components_6(self):
         '''
         Because "type" wasn't an accepted field at first, this is a regression test.
         '''
@@ -534,7 +534,7 @@ class TestQueryParserSync(TestCase):
         actual = util.parse_query_components(['type:"boston cream"'])
         self.assertEqual(expected, actual)
 
-    def testassemble_query_1(self):
+    def test_assemble_query_1(self):
         '''
         With a single query component.
         '''
@@ -543,7 +543,7 @@ class TestQueryParserSync(TestCase):
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
-    def testassemble_query_2(self):
+    def test_assemble_query_2(self):
         '''
         With several query components.
         '''
@@ -552,7 +552,7 @@ class TestQueryParserSync(TestCase):
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
-    def testassemble_query_3(self):
+    def test_assemble_query_3(self):
         '''
         With a single query component with the "default" field.
         '''
@@ -561,7 +561,7 @@ class TestQueryParserSync(TestCase):
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
-    def testassemble_query_4(self):
+    def test_assemble_query_4(self):
         '''
         With several query components, including some with the "default" field.
         '''
@@ -578,7 +578,7 @@ class TestQueryParserAsync(shared.TestHandler):
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def testrun_subqueries_1(self, mock_ask_solr):
+    def test_run_subqueries_1(self, mock_ask_solr):
         '''
         With a single cross-referenced field that has a single result.
         '''
@@ -595,7 +595,7 @@ class TestQueryParserAsync(shared.TestHandler):
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def testrun_subqueries_2(self, mock_ask_solr):
+    def test_run_subqueries_2(self, mock_ask_solr):
         '''
         With a single cross-referenced field with three results.
         '''
@@ -615,7 +615,7 @@ class TestQueryParserAsync(shared.TestHandler):
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def testrun_subqueries_3(self, mock_ask_solr):
+    def test_run_subqueries_3(self, mock_ask_solr):
         '''
         With a cross-referenced field (with a single result) and another field.
         '''
@@ -632,7 +632,7 @@ class TestQueryParserAsync(shared.TestHandler):
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def testrun_subqueries_4(self, mock_ask_solr):
+    def test_run_subqueries_4(self, mock_ask_solr):
         '''
         With two cross-referenced fields and two other fields.
         '''
@@ -661,7 +661,7 @@ class TestQueryParserAsync(shared.TestHandler):
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def testrun_subqueries_5(self, mock_ask_solr):
+    def test_run_subqueries_5(self, mock_ask_solr):
         '''
         With no cross-referenced fields.
         '''
@@ -678,7 +678,7 @@ class TestQueryParserAsync(shared.TestHandler):
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def testrun_subqueries_6(self, mock_ask_solr):
+    def test_run_subqueries_6(self, mock_ask_solr):
         '''
         With a single cross-referenced field that has no results.
         '''
