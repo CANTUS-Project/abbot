@@ -37,6 +37,9 @@ import pytest
 from tornado import gen, testing, web
 import pysolrtornado
 
+from hypothesis import assume, given, strategies as strats
+
+
 from abbot import __main__ as main
 from abbot import util
 import shared
@@ -51,9 +54,12 @@ class TestSingularResourceToPlural(TestCase):
         "When the singular form has a corresponding pural."
         self.assertEqual('cantusids', util.singular_resource_to_plural('cantusid'))
 
-    def test_singular_resource_to_plural_2(self):
+    @given(strats.text())
+    def test_singular_resource_to_plural_2(self, convert_me):
         "When the singular form doesn't have a corresponding plural."
-        self.assertIsNone(util.singular_resource_to_plural('automobiles'))
+        # It's possible to get things that will convert, but unlikely... except for '*'
+        assume('*' != convert_me)
+        self.assertIsNone(util.singular_resource_to_plural(convert_me))
 
 
 class TestAskSolrById(shared.TestHandler):
