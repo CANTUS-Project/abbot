@@ -754,19 +754,19 @@ class TestUpdateDownloading(unittest.TestCase):
     @mock.patch('holy_orders.__main__.download_from_urls')
     @mock.patch('holy_orders.__main__.calculate_chant_updates')
     @mock.patch('holy_orders.__main__._collect_chant_ids')
-    def test_download_chant_updates(self, mock_colids, mock_calcup, mock_download):
+    def test_download_chant_updates_1(self, mock_colids, mock_calcup, mock_download):
         '''
         Make sure it works.
         '''
-        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}b',
-                                  'chant_id': '{drupal_url}c'}}
+        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}/b/{date}',
+                                  'chant_id': '{drupal_url}/c/{id}'}}
         mock_download.return_value = 'check it out'  # just needs to be identifiable
         # first call to download_from_urls(): date-specific URLs
         mock_calcup.return_value = ['2012', '2013', '2014']
-        exp_download_first_call = ['ab/2012', 'ab/2013', 'ab/2014']
+        exp_download_first_call = ['a/b/2012', 'a/b/2013', 'a/b/2014']
         # second call to download_from_urls(): chant-specific URLs
         mock_colids.return_value = ['1', '2', '3']
-        exp_download_second_call = ['ac/1', 'ac/2', 'ac/3']
+        exp_download_second_call = ['a/c/1', 'a/c/2', 'a/c/3']
 
         actual = holy_orders.download_chant_updates(config)
 
@@ -776,6 +776,45 @@ class TestUpdateDownloading(unittest.TestCase):
         self.assertEqual(2, mock_download.call_count)
         mock_download.assert_any_call(exp_download_first_call)
         mock_download.assert_any_call(exp_download_second_call)
+
+    @mock.patch('holy_orders.__main__.download_from_urls')
+    @mock.patch('holy_orders.__main__.calculate_chant_updates')
+    @mock.patch('holy_orders.__main__._collect_chant_ids')
+    def test_download_chant_updates_2(self, mock_colids, mock_calcup, mock_download):
+        '''
+        download_chant_updates() returns empty list when given bad "chants_updated"
+        '''
+        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}/b/{}',
+                                  'chant_id': '{drupal_url}/c/{id}'}}
+        expected = []
+
+        actual = holy_orders.download_chant_updates(config)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_download.call_count)
+        self.assertEqual(0, mock_calcup.call_count)
+
+    @mock.patch('holy_orders.__main__.download_from_urls')
+    @mock.patch('holy_orders.__main__.calculate_chant_updates')
+    @mock.patch('holy_orders.__main__._collect_chant_ids')
+    def test_download_chant_updates_3(self, mock_colids, mock_calcup, mock_download):
+        '''
+        download_chant_updates() returns empty list when given bad "chant_id"
+        '''
+        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}/b/{date}',
+                                  'chant_id': '{drupal_url}/c/{}'}}
+        mock_download.return_value = 'check it out'  # just needs to be identifiable
+        # only one call to download_from_urls(): date-specific URLs
+        mock_calcup.return_value = ['2012', '2013', '2014']
+        exp_download_first_call = ['a/b/2012', 'a/b/2013', 'a/b/2014']
+        expected = []
+
+        actual = holy_orders.download_chant_updates(config)
+
+        self.assertEqual(expected, actual)
+        mock_calcup.assert_called_once_with(config)
+        mock_colids.assert_called_once_with(mock_download.return_value)
+        mock_download.assert_called_once_with(exp_download_first_call)
 
     @mock.patch('holy_orders.__main__.download_chant_updates')
     @mock.patch('holy_orders.__main__.download_from_urls')

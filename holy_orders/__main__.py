@@ -424,23 +424,33 @@ def download_chant_updates(config):
     _log.info('Starting download_chant_updates()')
 
     # get the lists of chant IDs that were updated, by day
-    updated_url = config['drupal_urls']['chants_updated'].format(drupal_url=config['drupal_urls']['drupal_url'])
-    update_urls = ['{}/{}'.format(updated_url, x) for x in calculate_chant_updates(config)]
+    drupal_url = config['drupal_urls']['drupal_url']
+    base_url = config['drupal_urls']['chants_updated']
+    if '{drupal_url}' not in base_url or '{date}' not in base_url:
+        # this turns out to be a serious problem, when the URLs are improperly formatted
+        _log.error('Cannot download chants: improper "chants_updated" URL')
+        return []
+    update_urls = [base_url.format(drupal_url=drupal_url, date=x) for x in calculate_chant_updates(config)]
     ids_lists = download_from_urls(update_urls)
 
     # pull out the IDs of all the chants we need to download
     chant_ids = _collect_chant_ids(ids_lists)
 
     # download all the chants by ID
-    chant_url = config['drupal_urls']['chant_id'].format(drupal_url=config['drupal_urls']['drupal_url'])
-    update_urls = ['{}/{}'.format(chant_url, each_id) for each_id in chant_ids]
+    chant_url = config['drupal_urls']['chant_id']
+    if '{drupal_url}' not in chant_url or '{id}' not in chant_url:
+        # this turns out to be a serious problem, when the URLs are improperly formatted
+        _log.error('Cannot download chants: improper "chant_id" URL')
+        return []
+    update_urls = [chant_url.format(drupal_url=drupal_url, id=each_id) for each_id in chant_ids]
     return download_from_urls(update_urls)
 
 
 def download_update(resource_type, config):
     '''
-    Download the data for the indicated resource type, according to the URL stored in "config." When
-    the server has a problem, this function logs the error and returns an empty list.
+    Download the data for the indicated resource type, according to the URL stored in "config."
+
+    .. note:: When there is a problem, this function logs the error and returns an empty list.
 
     :param str resource_type: The resource type for which to fetch updates.
     :param dict config: Dictionary of the configuration file that has our data.

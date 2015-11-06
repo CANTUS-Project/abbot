@@ -20,8 +20,8 @@
     },
     "drupal_urls": {
         "drupal_url": "http://cantus.uwaterloo.ca",
-        "chants_updated": "{drupal_url}/export-chant-ids/{}",
-        "chant_id": "{drupal_url}/export-chant/{}",
+        "chants_updated": "{drupal_url}/export-chant-ids/{date}",
+        "chant_id": "{drupal_url}/export-chant/{id}",
         "siglum": "{drupal_url}/export-sigla",
         "office": "{drupal_url}/export-offices",
         "indexer": "{drupal_url}/export-indexers",
