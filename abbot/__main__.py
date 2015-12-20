@@ -212,7 +212,7 @@ def main():
     try:
         ioloop.IOLoop.current().start()
     except KeyboardInterrupt:
-        pass
+        raise SystemExit(0)
 
 
 if __name__ == '__main__':
