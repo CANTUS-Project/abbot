@@ -1,3 +1,0 @@
-pysolr-tornado==3.3.1a1
-systemdream==0.0.2
-tornado>=4.2,<4.3
