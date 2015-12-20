@@ -4,6 +4,7 @@ Abbot
 *Abbot* is a Python 3.4 implementation of a server for the Cantus API.
 
 [![Build Status](https://api.travis-ci.org/CANTUS-Project/abbot.svg?branch=master)](https://travis-ci.org/CANTUS-Project/abbot)
+[![Coverage Status](https://coveralls.io/repos/CANTUS-Project/abbot/badge.svg?branch=master&service=github)](https://coveralls.io/github/CANTUS-Project/abbot?branch=master)
 
 License
 -------
