@@ -30,21 +30,6 @@ from setuptools import setup, Command
 import abbot  # for __version__
 
 
-class PyTest(Command):
-    user_options = []
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import subprocess
-        import sys
-        errno = subprocess.call([sys.executable, 'runtests.py'])
-        raise SystemExit(errno)
-
-
 setup(
     name = 'Abbot',
     version = abbot.__version__,
@@ -58,7 +43,6 @@ setup(
     tests_require = ['pytest'],
 
     scripts = ['packaging/start_abbot', 'runtests.py'],
-    cmdclass = {'test': PyTest},
 
     # metadata for upload to PyPI
     author = 'Christopher Antila',
