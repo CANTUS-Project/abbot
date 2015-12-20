@@ -6,6 +6,7 @@ Abbot
 [![Requirements Status](https://requires.io/github/CANTUS-Project/abbot/requirements.svg?branch=master)](https://requires.io/github/CANTUS-Project/abbot/requirements/?branch=master)
 [![Build Status](https://api.travis-ci.org/CANTUS-Project/abbot.svg?branch=master)](https://travis-ci.org/CANTUS-Project/abbot)
 [![Coverage Status](https://coveralls.io/repos/CANTUS-Project/abbot/badge.svg?branch=master&service=github)](https://coveralls.io/github/CANTUS-Project/abbot?branch=master)
+[![Code Issues](https://www.quantifiedcode.com/api/v1/project/2260402ae289418daf4b186b71ec14c4/badge.svg)](https://www.quantifiedcode.com/app/project/2260402ae289418daf4b186b71ec14c4)
 
 License
 -------
