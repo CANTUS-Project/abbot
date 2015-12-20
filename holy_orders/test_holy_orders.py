@@ -28,8 +28,9 @@ Tests for Holy Orders.
 
 import datetime
 import json
-import subprocess
+import os.path
 import pathlib
+import subprocess
 import unittest
 from unittest import mock
 
@@ -544,7 +545,7 @@ class TestLoadConfig(unittest.TestCase):
         '''
         When the "config_path" exists, is a directory, and is valid JSON, load it.
         '''
-        config_path = 'test.json'
+        config_path = os.path.join(os.path.split(__file__)[0], 'test.json')
         expected = {'a': 'b', 'c': 'd'}
         actual = holy_orders.load_config(config_path)
         self.assertEqual(expected, actual)
@@ -609,7 +610,7 @@ class TestMain(unittest.TestCase):
         - feast, which fails during the call to process_and_submit_updates().
         - chant, which works.
         '''
-        config_path = 'test_config.json'
+        config_path = os.path.join(os.path.split(__file__)[0], 'test_config.json')
         with open(config_path, 'r') as conf_p:
             config_file = json.load(conf_p)
         # everything but "provenance" needs to be updated
