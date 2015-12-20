@@ -8,7 +8,7 @@ __cantus_version__ = '0.2.1'
 try:
     import tornado
     IMPORT_TORNADO = True
-except ImportError:
+except ImportError:  # pragma: no cover
     IMPORT_TORNADO = False
 
 
