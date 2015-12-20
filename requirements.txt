@@ -1,0 +1,5 @@
+-e .
+pytest>=2.7,<3
+hypothesis>=1.12.0,<2
+python-coveralls
+pytest-cov>2,<3

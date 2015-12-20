@@ -50,7 +50,11 @@ setup(
     version = abbot.__version__,
     packages = ['abbot', 'tests'],
 
-    install_requires = ['tornado>=4', 'pysolr-tornado'],
+    install_requires = [
+        'pysolr-tornado',
+        'systemdream==0.0.2',
+        'tornado>=4,<5',
+    ],
     tests_require = ['pytest'],
 
     scripts = ['packaging/start_abbot', 'runtests.py'],
