@@ -33,7 +33,7 @@ import abbot  # for __version__
 setup(
     name = 'Abbot',
     version = abbot.__version__,
-    packages = ['abbot', 'tests'],
+    packages = ['abbot', 'holy_orders', 'tests'],
 
     install_requires = [
         'pysolr-tornado',
@@ -42,7 +42,11 @@ setup(
     ],
     tests_require = ['pytest'],
 
-    scripts = ['packaging/start_abbot'],
+    scripts = [
+        'packaging/start_abbot',
+        'scripts/chants_to_cantusids.py',
+        'scripts/drupal_xml_to_solr_xml.py',
+    ],
 
     # metadata for upload to PyPI
     author = 'Christopher Antila',
