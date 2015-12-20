@@ -28,7 +28,7 @@ Main file for the Abbot server reference implementation of the Cantus API.
 
 import logging
 
-from tornado import httpserver, log, ioloop, options, web
+from tornado import httpserver, log, ioloop, web
 from tornado.options import define, options
 from tornado.options import Error as OptionsError
 

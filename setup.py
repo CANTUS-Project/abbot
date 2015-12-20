@@ -42,7 +42,7 @@ setup(
     ],
     tests_require = ['pytest'],
 
-    scripts = ['packaging/start_abbot', 'runtests.py'],
+    scripts = ['packaging/start_abbot'],
 
     # metadata for upload to PyPI
     author = 'Christopher Antila',
