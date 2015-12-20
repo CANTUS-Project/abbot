@@ -26,6 +26,9 @@
 Tests for Holy Orders.
 '''
 
+# pylint: disable=protected-access
+# pylint: disable=no-self-use
+
 import datetime
 import json
 import os.path
@@ -46,7 +49,7 @@ class TestShouldUpdateThis(unittest.TestCase):
     Tests for should_update_this().
     '''
 
-    def test_res_type_not_in_update_freq(self):
+    def test_should_update_1(self):
         '''
         When the resource type isn't in the "update_frequency" config member, raise KeyError.
         '''
@@ -54,7 +57,7 @@ class TestShouldUpdateThis(unittest.TestCase):
         resource_type = 'feast'
         self.assertRaises(KeyError, holy_orders.should_update_this, resource_type, config)
 
-    def test_res_type_not_in_last_updated(self):
+    def test_should_update_2(self):
         '''
         When the resource type isn't in the "last_updated" config member, raise KeyError.
         '''
@@ -192,11 +195,11 @@ class TestConvertUpdate(unittest.TestCase):
         solr_xml_pathname = '{}/20200103042045001024-out.xml'.format(temp_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = len(update)
+        mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
         # setup mock on subprocess
         mock_subp.check_output = mock.Mock()
         # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned
+        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
         mock_Path.exists = mock.Mock()
         mock_Path.exists.return_value = True
         mock_pathlib.Path = mock.Mock()
@@ -207,7 +210,7 @@ class TestConvertUpdate(unittest.TestCase):
             actual = holy_orders.convert_update(temp_directory, conversion_script_path, update)
 
         self.assertEqual(expected, actual)
-        mock_open.return_value.write.assert_called_once_with(update)
+        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
         mock_subp.check_output.assert_called_once_with([conversion_script_path, drupal_xml_pathname])
         mock_pathlib.Path.assert_called_once_with(solr_xml_pathname)
         mock_Path.exists.assert_called_once_with()
@@ -224,24 +227,24 @@ class TestConvertUpdate(unittest.TestCase):
         temp_directory = '/tmp/hollabackgirls'
         conversion_script_path = '/usr/bin/inkscape'  # Inkscape opening: punishment for bad mocking
         update = '<xml quality="best"></xml>'
-        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
-        solr_xml_pathname = '{}/20200103042045001024-out.xml'.format(temp_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = 0  # NOTE: this causes the failure
+        # NOTE: this next line causes the failure
+        mock_open.return_value.write.return_value = 0  # pylint: disable=no-member
         # setup mock on subprocess
         mock_subp.check_output = mock.Mock()
         # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned
+        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
         mock_Path.exists = mock.Mock()
         mock_Path.exists.return_value = True
         mock_pathlib.Path = mock.Mock()
         mock_pathlib.Path.return_value = mock_Path
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, conversion_script_path, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory,
+                              conversion_script_path, update)
 
-        mock_open.return_value.write.assert_called_once_with(update)
+        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
         self.assertEqual(0, mock_subp.check_output.call_count)
         self.assertEqual(0, mock_pathlib.Path.call_count)
         self.assertEqual(0, mock_Path.exists.call_count)
@@ -259,25 +262,26 @@ class TestConvertUpdate(unittest.TestCase):
         conversion_script_path = '/usr/bin/inkscape'  # Inkscape opening: punishment for bad mocking
         update = '<xml quality="best"></xml>'
         drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
-        solr_xml_pathname = '{}/20200103042045001024-out.xml'.format(temp_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = len(update)
+        mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
         # setup mock on subprocess
         mock_subp.check_output = mock.Mock()
         mock_subp.CalledProcessError = subprocess.CalledProcessError
-        mock_subp.check_output.side_effect = mock_subp.CalledProcessError(1, 'python')  # NOTE: this causes the failure
+        # NOTE: this next line causes the failure
+        mock_subp.check_output.side_effect = mock_subp.CalledProcessError(1, 'python')
         # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned
+        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
         mock_Path.exists = mock.Mock()
         mock_Path.exists.return_value = True
         mock_pathlib.Path = mock.Mock()
         mock_pathlib.Path.return_value = mock_Path
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, conversion_script_path, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory,
+                              conversion_script_path, update)
 
-        mock_open.return_value.write.assert_called_once_with(update)
+        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
         mock_subp.check_output.assert_called_once_with([conversion_script_path, drupal_xml_pathname])
         self.assertEqual(0, mock_pathlib.Path.call_count)
         self.assertEqual(0, mock_Path.exists.call_count)
@@ -298,20 +302,21 @@ class TestConvertUpdate(unittest.TestCase):
         solr_xml_pathname = '{}/20200103042045001024-out.xml'.format(temp_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = len(update)
+        mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
         # setup mock on subprocess
         mock_subp.check_output = mock.Mock()
         # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned
+        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
         mock_Path.exists = mock.Mock()
         mock_Path.exists.return_value = False  # NOTE: this causes the error
         mock_pathlib.Path = mock.Mock()
         mock_pathlib.Path.return_value = mock_Path
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, conversion_script_path, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory,
+                              conversion_script_path, update)
 
-        mock_open.return_value.write.assert_called_once_with(update)
+        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
         mock_subp.check_output.assert_called_once_with([conversion_script_path, drupal_xml_pathname])
         mock_pathlib.Path.assert_called_once_with(solr_xml_pathname)
         mock_Path.exists.assert_called_once_with()
@@ -341,17 +346,17 @@ class TestSubmitUpdate(unittest.TestCase):
         mock_client.fetch = mock.Mock()
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
-        mock_open.return_value.read.return_value = update_body
+        mock_open.return_value.read.return_value = update_body  # pylint: disable=no-member
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
             holy_orders.submit_update(update_pathname, solr_url)
 
-        mock_open.return_value.read.assert_called_once_with()
+        mock_open.return_value.read.assert_called_once_with()  # pylint: disable=no-member
         mock_client.fetch.assert_called_once_with(exp_update_url, method='POST', body=update_body,
                                                   headers={'Content-Type': 'application/xml'})
 
     @mock.patch('holy_orders.__main__.httpclient')
-    def test_Solr_is_borked(self, mock_httpclient):
+    def test_solr_is_borked(self, mock_httpclient):
         '''
         submit_update() when Solr doesn't like the update, and the submission URL does not end with
         a trailing slash.
@@ -370,12 +375,12 @@ class TestSubmitUpdate(unittest.TestCase):
         mock_client.fetch.side_effect = IOError('whatever, man')
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
-        mock_open.return_value.read.return_value = update_body
+        mock_open.return_value.read.return_value = update_body  # pylint: disable=no-member
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
             self.assertRaises(RuntimeError, holy_orders.submit_update, update_pathname, solr_url)
 
-        mock_open.return_value.read.assert_called_once_with()
+        mock_open.return_value.read.assert_called_once_with()  # pylint: disable=no-member
         mock_client.fetch.assert_called_once_with(exp_update_url, method='POST', body=update_body,
                                                   headers={'Content-Type': 'application/xml'})
 
@@ -405,10 +410,10 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         self.assertEqual(expected, actual)
         mock_get_path.assert_called_once_with(config)
         self.assertEqual(len(updates), mock_convert.call_count)
-        for i in range(len(updates)):
+        for i, _ in enumerate(updates):
             mock_convert.assert_any_call(mock.ANY, str(mock_get_path.return_value), updates[i])
         self.assertEqual(len(converted), mock_submit.call_count)
-        for i in range(len(converted)):
+        for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
     @mock.patch('holy_orders.__main__.convert_update')
@@ -423,7 +428,8 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         mock_get_path.return_value = pathlib.Path('/usr/bin/gwenview')
         converted = ['converted one', 'converted three']
         mock_convert_returns = ['converted one', RuntimeError('yuck'), 'converted three']
-        def convert_mocker(*args):
+        def convert_mocker(*args):  # pylint: disable=unused-argument
+            "Mocks convert()."
             zell = mock_convert_returns.pop()
             if isinstance(zell, str):
                 return zell
@@ -437,10 +443,10 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         self.assertEqual(expected, actual)
         mock_get_path.assert_called_once_with(config)
         self.assertEqual(len(updates), mock_convert.call_count)
-        for i in range(len(updates)):
+        for i, _ in enumerate(updates):
             mock_convert.assert_any_call(mock.ANY, str(mock_get_path.return_value), updates[i])
         self.assertEqual(len(converted), mock_submit.call_count)
-        for i in range(len(converted)):
+        for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
     @mock.patch('holy_orders.__main__.convert_update')
@@ -457,7 +463,8 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         mock_convert_returns = ['converted one', 'converted two', 'converted three']
         mock_convert.side_effect = lambda *args: mock_convert_returns.pop()
         mock_submit_returns = [None, RuntimeError('wow'), None]
-        def submit_mocker(*args):
+        def submit_mocker(*args):  # pylint: disable=unused-argument
+            "Mocks submit()."
             zell = mock_submit_returns.pop()
             if zell:
                 raise zell
@@ -469,10 +476,10 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         self.assertEqual(expected, actual)
         mock_get_path.assert_called_once_with(config)
         self.assertEqual(len(updates), mock_convert.call_count)
-        for i in range(len(updates)):
+        for i, _ in enumerate(updates):
             mock_convert.assert_any_call(mock.ANY, str(mock_get_path.return_value), updates[i])
         self.assertEqual(len(converted), mock_submit.call_count)
-        for i in range(len(converted)):
+        for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
 
@@ -522,8 +529,8 @@ class TestLoadConfig(unittest.TestCase):
         When the "config_path" doesn't exist, raise SystemExit.
         '''
         # don't test invalid EXT4 filenames
-        assume('.' != config_path)
-        assume('..' != config_path)
+        assume(config_path != '.')
+        assume(config_path != '..')
         assume('\0' not in config_path)
         self.assertRaises(SystemExit, holy_orders.load_config, config_path)
 
@@ -614,15 +621,13 @@ class TestMain(unittest.TestCase):
         with open(config_path, 'r') as conf_p:
             config_file = json.load(conf_p)
         # everything but "provenance" needs to be updated
-        mock_should_update.side_effect = lambda x, y: False if 'provenance' == x else True
+        mock_should_update.side_effect = lambda x, y: False if x == 'provenance' else True
         # the "source" Drupal URL is missing in the config
-        mock_dl_update.side_effect = lambda x, y: ['downloaded {}'.format(x)] if 'chant' == x else []
+        mock_dl_update.side_effect = lambda x, y: ['downloaded {}'.format(x)] if x == 'chant' else []
         # "feast" fails in process_and_submit_updates()
-        def pasu_side_effect(updates, config):
-            if ['downloaded chant'] == updates:
-                return True
-            else:
-                return False
+        def pasu_side_effect(updates, config):  # pylint: disable=unused-argument
+            "process_and_submit_updates() side_effect function."
+            return ['downloaded chant'] == updates
         mock_pasu.side_effect = pasu_side_effect
 
         holy_orders.main(config_path)
@@ -706,7 +711,7 @@ class TestUpdateDownloading(unittest.TestCase):
             xml_docs.append('<chant><id>{}</id></chant>'.format(each_id))
         xml_docs.insert(0, '<chants>')
         xml_docs.append('</chants>')
-        xml_docs = ''.join(xml_docs)
+        xml_docs = ''.join(xml_docs)  # pylint: disable=redefined-variable-type
         xml_docs = [xml_docs]
 
         # run the test and check results
@@ -726,7 +731,7 @@ class TestUpdateDownloading(unittest.TestCase):
             xml_docs.append('<chant><id>{}</id></chant>'.format(each_id))
         xml_docs.insert(0, '<chants>')
         xml_docs.append('</chants>')
-        xml_docs = ''.join(xml_docs)
+        xml_docs = ''.join(xml_docs)  # pylint: disable=redefined-variable-type
         xml_docs = bytes(xml_docs, 'UTF-8')
         xml_docs = [xml_docs]
 
@@ -760,7 +765,7 @@ class TestUpdateDownloading(unittest.TestCase):
         '''
         # build the XML document we'll input
         xml_docs = []
-        for i in range (3):
+        for i in range(3):
             xml_docs.append('''<chants>
             <chant><id>{}1</id></chant>
             <chant><id>{}2</id></chant>
@@ -804,8 +809,7 @@ class TestUpdateDownloading(unittest.TestCase):
 
     @mock.patch('holy_orders.__main__.download_from_urls')
     @mock.patch('holy_orders.__main__.calculate_chant_updates')
-    @mock.patch('holy_orders.__main__._collect_chant_ids')
-    def test_download_chant_updates_2(self, mock_colids, mock_calcup, mock_download):
+    def test_download_chant_updates_2(self, mock_calcup, mock_download):
         '''
         download_chant_updates() returns empty list when given bad "chants_updated"
         '''
