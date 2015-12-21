@@ -397,15 +397,11 @@ class SimpleHandler(web.RequestHandler):
                 self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
             return
         else:
-            post = []
-            for each_record in resp:
-                this_record = self.format_record(each_record)
-                post.append(this_record)
+            post = {record['id']: self.format_record(record) for record in resp}
 
         # for the X-Cantus-Total-Results header
         self.total_results = resp.hits
 
-        post = {res['id']: res for res in post}
         if self.hparams['include_resources']:
             post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in iter(post)}
             for record in resp:
