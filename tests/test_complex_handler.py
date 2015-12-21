@@ -576,12 +576,11 @@ class TestSearchUnit(shared.TestHandler):
         self.handler.hparams['search_query'] = 'some query'
 
     @mock.patch('abbot.util.assemble_query')
-    @mock.patch('abbot.util.parse_query_components')
-    @mock.patch('abbot.util.separate_query_components')
+    @mock.patch('abbot.util.parse_query')
     @mock.patch('abbot.util.run_subqueries')
     @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
     @testing.gen_test
-    def test_search_handler_1(self, mock_get_handler, mock_rs, mock_sqc, mock_pqc, mock_aq):
+    def test_search_handler_1(self, mock_get_handler, mock_rs, mock_parseq, mock_aq):
         '''
         Ensure the kwargs are passed along properly.
         '''
@@ -589,16 +588,14 @@ class TestSearchUnit(shared.TestHandler):
         mock_get_handler.return_value = shared.make_future('five')
         query = 'i can haz cheezburger?'
         self.handler.hparams['search_query'] = query
-        mock_sqc.return_value = 'mock_sqc'
-        mock_pqc.return_value = 'mock_pqc'
+        mock_parseq.return_value = 'mock_parseq'
         mock_aq.return_value = 'mock_aq'
         mock_rs.return_value = shared.make_future('mock_rs')
 
         actual = yield self.handler.search_handler()
 
-        mock_sqc.assert_called_once_with('type:source {}'.format(query))
-        mock_pqc.assert_called_once_with('mock_sqc')
-        mock_rs.assert_called_once_with('mock_pqc')
+        mock_parseq.assert_called_once_with('type:source {}'.format(query))
+        mock_rs.assert_called_once_with('mock_parseq')
         mock_aq.assert_called_once_with('mock_rs')
         self.assertEqual('five', actual)
         mock_get_handler.assert_called_once_with(query='mock_aq')

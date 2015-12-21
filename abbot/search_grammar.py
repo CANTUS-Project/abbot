@@ -70,3 +70,17 @@ def it_parses(it, reraise=False):
         if reraise:
             raise exc
         return False
+
+
+def parse(query):
+    '''
+    Parse the "query" string with the SEARCH query grammar.
+
+    :param str query: The raw, user-submitted search query string.
+    :returns: The resulting "parsimonious" nodes.
+    :raises: :exc:`RuntimeError` when the input is invalid.
+    '''
+    try:
+        return SEARCH_GRAMMAR.parse(query)
+    except (exceptions.ParseError, exceptions.IncompleteParseError, exceptions.VisitationError):
+        raise RuntimeError()

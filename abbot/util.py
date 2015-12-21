@@ -33,6 +33,8 @@ from tornado.log import app_log as log
 from tornado.options import options
 import pysolrtornado
 
+from abbot import search_grammar
+
 
 options.define('solr_url', type=str, help='Full URL path to the Solr instance and collection.',
                default='http://localhost:8983/solr/collection1/')
@@ -48,6 +50,9 @@ _UNKNOWN_FIELD = 'Unknown field for Abbot: "{}"'
 
 # error message for parse_fields_header() and parse_query_components()
 _INVALID_FIELD_NAME = '{} is not a valid field name'
+
+# error message for parse_query()
+_INVALID_QUERY = 'Invalid search query.'
 
 # Used by prepare_formatted_sort() and parse_query_components(). Put here, they might be used by
 # other methods to check whether they have proper values for these things.
@@ -370,93 +375,52 @@ def request_wrapper(func):
     return decorated
 
 
-def separate_query_components(query):
+def parse_query(query):
     '''
-    From a user-submitted query string, parse a list of space-separated or double-quote-separated
-    query components, as relevant.
+    Parse a user-submitted query string into a list of field/value tuples.
 
     :param str query: The raw, user-submitted search query string.
-    :returns: A list of query components.
-    :rtype: list of str
-    :raises: :exc:`InvalidQueryError` if a double-quoted substring is missing an ending mark.
-    '''
-
-    num_dquos = query.count('"')
-
-    if (num_dquos % 2) != 0:
-        raise InvalidQueryError('A double-quote is missing its end double-quote.')
-
-    # i.e., components
-    comps = []
-
-    if num_dquos > 0:
-        # This regex acts like three regexes with "OR" (the pipe character):
-        # - The left regex matches non-whitespace followed by a colon and a double-quoted bit, like
-        #   this:  feast:"fun day"
-        # - The middle regex matches anything between double-quotes, non-greedily.
-        # - The right regex matches strings of non-whitespace.
-        dquos_re = re.compile(r'\S*:".*?"|".*?"|\S+')
-        startpos = 0
-        len_query = len(query)
-        while startpos < len_query:
-            match = dquos_re.search(query, startpos)
-            if match is None:
-                # stop on the next go-around
-                startpos = len_query + 1
-            else:
-                startpos = match.span()[1]
-                subquery = match.group()
-                if subquery[0] == '"':
-                    subquery = '"{}"'.format(subquery[1:-1].strip())
-                comps.append(subquery)
-    else:
-        comps = query.split()
-
-    return comps
-
-
-def parse_query_components(components):
-    '''
-    Parse the separated query components according to field name and contents.
-
-    :param components: The output of :func:`separate_query_components`
-    :type components: list of str
     :returns: A list of parsed query components (see below).
     :rtype: list of 2-tuple of str
-    :raises: :exc:`InvalidQueryError` if one of the fields has an invalid name.
+    :raises: :exc:`InvalidQueryError` when SOMETHING SOMETHING SOMETHING
 
     **Return Value**
 
-    This function calls :func:`separate_query_components` internally, and enhances its return
-    value by verifying that any specified field names are valid, and by adding "default" if the
-    user did not specify a field for that query component. Note that fields are are checked for
-    their validity in general (i.e., to ensure they won't cause a Solr error) but not (at this
-    time) that they are sensible for the resource type requested.
+    This function produces a list of 2-tuples of strings. In each 2-tuple, the first element is a
+    field name, and the second element is the field value. If the user's provided query string does
+    not specify a field name for some values, the field name "default" is used in the output.
 
     **Examples**
 
-    >>> parse_query_components(['antiphon'])
+    >>> parse_query('antiphon')
     [('default', 'antiphon')]
-    >>> parse_query_components(['genre:antiphon'])
+    >>> parse_query('genre:antiphon')
     [('genre', 'antiphon')]
-    >>> parse_query_components(['"in taberna"', 'genre:antiphon'])
+    >>> parse_query('"in taberna" genre:antiphon')
     [('default', '"in taberna"'), ('genre', 'antiphon')]
-    >>> parse_query_components(['"in taberna"', 'drink:Dunkelweiß'])
+    >>> parse_query('size: drink:Dunkelweiß')
     (raises InvalidQueryError)
     '''
 
-    clean_comps = []
+    try:
+        parsed = search_grammar.parse(query)
+    except RuntimeError:
+        raise InvalidQueryError(_INVALID_QUERY)
 
-    for component in components:
-        parts = component.split(':')
-        if len(parts) == 1:
-            clean_comps.append(('default', parts[0]))
-        else:
-            if parts[0] not in FIELDS and parts[0] not in TRANSFORMED_FIELDS:
-                raise InvalidQueryError(_INVALID_FIELD_NAME.format(parts[0]))
-            clean_comps.append(tuple(parts))
+    post = []
 
-    return clean_comps
+    for term in parsed.children:
+        # each "term" contains the term itself, plus arbitrary spaces
+        term = term.children[0].children[0]
+
+        if term.expr_name == 'named_field':
+            term = term.children[0]  # idk why
+            post.append((term.children[0].text, term.children[2].text))
+
+        else:  # default field
+            post.append(('default', term.children[0].text))
+
+    return post
 
 
 @gen.coroutine

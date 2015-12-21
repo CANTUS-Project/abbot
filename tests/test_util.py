@@ -38,7 +38,7 @@ from tornado import gen, testing, web
 import pysolrtornado
 
 from hypothesis import assume, given, strategies as strats
-
+import pytest
 
 from abbot import __main__ as main
 from abbot import util
@@ -425,114 +425,25 @@ class TestQueryParserSync(TestCase):
     Tests for the synchronous (non-coroutine) SEARCH request query-string parsing functions.
     '''
 
-    def test_separate_query_components_1(self):
-        '''
-        The function raises InvalidQueryError if there are opening quotes without corresponding
-        closing quotes.
-        '''
-        test_strings = ('"', '"""', '"a', 'a"', 'feast:"swap genre:toast',
-                        'feast:"swap" genre:toast"', ' d "d ', '"  fa d', '  " soupy  twist  ')
-        for each_test in test_strings:
-            self.assertRaises(util.InvalidQueryError, util.separate_query_components, each_test)
-
-    def test_separate_query_components_2(self):
-        '''
-        Works with a space-separated single terms.
-        '''
-        ins_n_outs = [('Ne', ['Ne']),
-                      ('Ne suivons', ['Ne', 'suivons']),
-                      ('Ne suivons pas l\'exemple des États-Unis', ['Ne', 'suivons', 'pas',
-                                                                    'l\'exemple', 'des', 'États-Unis']),
-                      ('   donnons   une    voix    aux    travailleuses    ',
-                       ['donnons', 'une', 'voix', 'aux', 'travailleuses']),
-                      ('look for this field:middle term before:after',
-                       ['look', 'for', 'this', 'field:middle', 'term', 'before:after']),
-                     ]
-        for test_in, expected in ins_n_outs:
-            actual = util.separate_query_components(test_in)
-            self.assertEqual(expected, actual)
-
-    def test_separate_query_components_3(self):
-        '''
-        Works with a double-quote-delimited terms.
-        '''
-        ins_n_outs = [('"Ne"', ['"Ne"']),
-                      ('"Ne suivons"', ['"Ne suivons"']),
-                      ('"Ne""suivons"', ['"Ne"', '"suivons"']),
-                      ('   "Ne"    "suivons" ', ['"Ne"', '"suivons"']),
-                      ('   "  Ne "    "  suivons" ', ['"Ne"', '"suivons"']),
-                      ('"Ne suivons pas l\'exemple" "des États-Unis"',
-                       ['"Ne suivons pas l\'exemple"', '"des États-Unis"']),
-                      ('"look for this" field:"middle term" before:"after"',
-                       ['"look for this"', 'field:"middle term"', 'before:"after"']),
-                     ]
-        for test_in, expected in ins_n_outs:
-            actual = util.separate_query_components(test_in)
-            self.assertEqual(expected, actual)
-
-    def test_separate_query_components_4(self):
-        '''
-        Works when mixing double-quote-delimited and space-separated terms.
-        '''
-        ins_n_outs = [('"Ne" suivons', ['"Ne"', 'suivons']),
-                      ('"Ne suivons" pas', ['"Ne suivons"', 'pas']),
-                      ('   "Ne  suivons"   pas   ', ['"Ne  suivons"', 'pas']),
-                      ('Ne "suivons pas" l\'exemple des "États-Unis où" le mouvement',
-                       ['Ne', '"suivons pas"', 'l\'exemple', 'des', '"États-Unis où"',
-                        'le', 'mouvement']),
-                      ('"look for" this field:"middle term" before:after',
-                       ['"look for"', 'this', 'field:"middle term"', 'before:after']),
-                     ]
-        for test_in, expected in ins_n_outs:
-            actual = util.separate_query_components(test_in)
-            self.assertEqual(expected, actual)
-
-    def test_parse_query_components_1(self):
-        '''
-        Default field by itself.
-        '''
+    def test_parse_1(self):
         expected = [('default', 'antiphon')]
-        actual = util.parse_query_components(['antiphon'])
-        self.assertEqual(expected, actual)
+        actual = util.parse_query('antiphon')
+        assert expected == actual
 
-    def test_parse_query_components_2(self):
-        '''
-        Fielded field by itself.
-        '''
+    def test_parse_2(self):
         expected = [('genre', 'antiphon')]
-        actual = util.parse_query_components(['genre:antiphon'])
-        self.assertEqual(expected, actual)
+        actual = util.parse_query('genre:antiphon')
+        assert expected == actual
 
-    def test_parse_query_components_3(self):
-        '''
-        Default and fielded.
-        '''
+    def test_parse_3(self):
         expected = [('default', '"in taberna"'), ('genre', 'antiphon')]
-        actual = util.parse_query_components(['"in taberna"', 'genre:antiphon'])
-        self.assertEqual(expected, actual)
+        actual = util.parse_query('"in taberna" genre:antiphon')
+        assert expected == actual
 
-    def test_parse_query_components_4(self):
-        '''
-        Invalid fielded field.
-        '''
-        self.assertRaises(util.InvalidQueryError, util.parse_query_components,
-                          ['"in taberna"', 'drink:Dunkelweiß'])
-
-    def test_parse_query_components_5(self):
-        '''
-        Fielded field, pre-cross-referenced, by itself.
-        '''
-        expected = [('genre_id', '123')]
-        actual = util.parse_query_components(['genre_id:123'])
-        self.assertEqual(expected, actual)
-
-    def test_parse_query_components_6(self):
-        '''
-        Because "type" wasn't an accepted field at first, this is a regression test.
-        '''
-        expected = [('type', '"boston cream"')]
-        actual = util.parse_query_components(['type:"boston cream"'])
-        self.assertEqual(expected, actual)
+    def test_parse_4(self):
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('size: drink:Dunkelweiß')
+        assert util._INVALID_QUERY in str(excinfo.value)
 
     def test_assemble_query_1(self):
         '''

@@ -746,7 +746,7 @@ class SimpleHandler(web.RequestHandler):
         query = self.hparams['search_query']
         log.debug("SEARCH request starts with this query: '{}'".format(query))
         query = 'type:{} {}'.format(self.type_name, query)
-        query = util.assemble_query(util.parse_query_components(util.separate_query_components(query)))
+        query = util.assemble_query(util.parse_query(query))
         log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))
 
