@@ -38,7 +38,7 @@ import pysolrtornado
 from abbot import __main__ as main
 from abbot.complex_handler import ComplexHandler
 from abbot import simple_handler
-from abbot.simple_handler import SimpleHandler
+SimpleHandler = simple_handler.SimpleHandler
 import shared
 
 
@@ -151,7 +151,7 @@ class TestInitialize(shared.TestHandler):
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = SimpleHandler(self.get_app(), request, type_name='twist')
         self.assertIsNone(actual.hparams['search_query'])
-        mock_send_error.assert_called_once_with(400, reason=SimpleHandler._MISSING_SEARCH_BODY)
+        mock_send_error.assert_called_once_with(400, reason=simple_handler._MISSING_SEARCH_BODY)
 
 class TestFormatRecord(shared.TestHandler):
     '''
@@ -317,7 +317,7 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_solr_response = shared.make_results([])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
-        expected_reason = SimpleHandler._ID_NOT_FOUND.format('century', resource_id[:-1])
+        expected_reason = simple_handler._ID_NOT_FOUND.format('century', resource_id[:-1])
 
         actual = yield self.handler.basic_get(resource_id)
 
@@ -389,7 +389,7 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
         self.handler.hparams['page'] = 6000
-        exp_reason = SimpleHandler._TOO_LARGE_PAGE
+        exp_reason = simple_handler._TOO_LARGE_PAGE
 
         actual = yield self.handler.basic_get(resource_id)
 
@@ -409,7 +409,7 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_solr_response = shared.make_results([])
         mock_search_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
-        expected_reason = SimpleHandler._NO_SEARCH_RESULTS
+        expected_reason = simple_handler._NO_SEARCH_RESULTS
 
         actual = yield self.handler.basic_get(query=query)
 
@@ -643,7 +643,7 @@ class TestGetUnit(shared.TestHandler):
         mock_get_handler.assert_called_once_with(resource_id)
         self.assertEqual(0, mock_mrh.call_count)
         self.assertEqual(0, mock_write.call_count)
-        mock_send_error.assert_called_once_with(502, reason=SimpleHandler._SOLR_502_ERROR)
+        mock_send_error.assert_called_once_with(502, reason=simple_handler._SOLR_502_ERROR)
 
     @mock.patch('abbot.simple_handler.SimpleHandler.basic_get')
     @testing.gen_test
@@ -718,7 +718,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
-        self.assertEqual(SimpleHandler._INVALID_PER_PAGE, actual.reason)
+        self.assertEqual(simple_handler._INVALID_PER_PAGE, actual.reason)
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -736,7 +736,7 @@ class TestGetIntegration(shared.TestHandler):
                                               rows=10, sort=None)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
-        self.assertEqual(SimpleHandler._TOO_LARGE_PAGE, actual.reason)
+        self.assertEqual(simple_handler._TOO_LARGE_PAGE, actual.reason)
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -787,7 +787,7 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual(0, mock_ask_solr.call_count)
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
-        self.assertEqual(SimpleHandler._INVALID_FIELDS, actual.reason)
+        self.assertEqual(simple_handler._INVALID_FIELDS, actual.reason)
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -1076,7 +1076,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                                mock_send_error=mock_send_error)
 
         mock_pfh.assert_called_once_with('something', ['id', 'type', 'name', 'description'])
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_FIELDS)
+        mock_send_error.assert_called_with(400, reason=simple_handler._INVALID_FIELDS)
 
     def test_not_browse_request_4(self):
         '''
@@ -1123,7 +1123,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                                include_resources='wristwatch',
                                expected=False,
                                mock_send_error=mock_send_error)
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._BAD_INCLUDE_RESOURCES)
+        mock_send_error.assert_called_with(400, reason=simple_handler._BAD_INCLUDE_RESOURCES)
 
     def test_browse_request_1(self):
         '''
@@ -1145,7 +1145,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='five')
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_PER_PAGE)
+        mock_send_error.assert_called_with(400, reason=simple_handler._INVALID_PER_PAGE)
 
     def test_browse_request_3(self):
         '''
@@ -1157,7 +1157,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='-3')
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._TOO_SMALL_PER_PAGE)
+        mock_send_error.assert_called_with(400, reason=simple_handler._TOO_SMALL_PER_PAGE)
 
     def test_browse_request_4(self):
         '''
@@ -1170,7 +1170,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, per_page='40000000')
         mock_send_error.assert_called_with(507,
-                                           reason=SimpleHandler._TOO_BIG_PER_PAGE,
+                                           reason=simple_handler._TOO_BIG_PER_PAGE,
                                            per_page=SimpleHandler._MAX_PER_PAGE)
 
     def test_browse_request_5(self):
@@ -1193,7 +1193,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, page='two')
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._INVALID_PAGE)
+        mock_send_error.assert_called_with(400, reason=simple_handler._INVALID_PAGE)
 
     def test_browse_request_7(self):
         '''
@@ -1225,7 +1225,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, page='0')
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._TOO_SMALL_PAGE)
+        mock_send_error.assert_called_with(400, reason=simple_handler._TOO_SMALL_PAGE)
 
     def test_browse_request_10(self):
         '''
@@ -1248,7 +1248,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='name')
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._MISSING_DIRECTION_SPEC)
+        mock_send_error.assert_called_with(400, reason=simple_handler._MISSING_DIRECTION_SPEC)
 
     def test_browse_request_12(self):
         '''
@@ -1260,7 +1260,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - send_error() called with _DISALLOWED_CHARACTER_IN_SORT
         '''
         mock_send_error = mock.Mock()
-        exp_reason = SimpleHandler._DISALLOWED_CHARACTER_IN_SORT
+        exp_reason = simple_handler._DISALLOWED_CHARACTER_IN_SORT
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='n!me,asc')
         mock_send_error.assert_called_with(400, reason=exp_reason)
 
@@ -1275,7 +1275,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         '''
         mock_send_error = mock.Mock()
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='nime,asc')
-        mock_send_error.assert_called_with(400, reason=SimpleHandler._UNKNOWN_FIELD)
+        mock_send_error.assert_called_with(400, reason=simple_handler._UNKNOWN_FIELD)
 
     def test_browse_request_14(self):
         '''
@@ -1291,9 +1291,9 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         self.test_vrh_template(mock_send_error=mock_send_error, expected=False, use_complex_handler=True,
                                per_page='-4', page='yes')
         mock_send_error.assert_called_with(400,
-                                           reason=SimpleHandler._MANY_BAD_HEADERS,
-                                           body=[SimpleHandler._TOO_SMALL_PER_PAGE,
-                                                 SimpleHandler._INVALID_PAGE])
+                                           reason=simple_handler._MANY_BAD_HEADERS,
+                                           body=[simple_handler._TOO_SMALL_PER_PAGE,
+                                                 simple_handler._INVALID_PAGE])
 
 
 class TestMakeResponseHeaders(shared.TestHandler):

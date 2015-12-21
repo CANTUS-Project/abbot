@@ -35,6 +35,11 @@ from abbot import util
 from abbot import simple_handler
 
 
+# translatable strings
+_INVALID_NO_XREF = 'X-Cantus-No-Xref must be either "true" or "false"'
+# X-Cantus-No-Xref doesn't contain any sort of 'true' or 'false'
+
+
 XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])
 '''
 Provide instructions for processing fields that are obtained with by cross-reference to another
@@ -75,9 +80,6 @@ class ComplexHandler(simple_handler.SimpleHandler):
     Replaces the "genre_id" field with the "description" field of a "genre" record, stored in the
     "genre" member on output.
     '''
-
-    _INVALID_NO_XREF = 'X-Cantus-No-Xref must be either "true" or "false"'
-    # X-Cantus-No-Xref doesn't contain any sort of 'true' or 'false'
 
     @gen.coroutine
     def look_up_xrefs(self, record):
@@ -281,7 +283,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
             elif no_xref == 'false':
                 self.hparams['no_xref'] = False
             else:
-                self.send_error(400, reason=ComplexHandler._INVALID_NO_XREF)
+                self.send_error(400, reason=_INVALID_NO_XREF)
                 all_is_well = False
 
         return all_is_well

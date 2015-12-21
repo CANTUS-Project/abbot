@@ -36,7 +36,8 @@ from unittest import mock
 from tornado import escape, httpclient, testing
 from abbot import __main__ as main
 from abbot import simple_handler
-from abbot.complex_handler import ComplexHandler
+from abbot import complex_handler
+ComplexHandler = complex_handler.ComplexHandler
 import shared
 
 
@@ -565,7 +566,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                            exp_no_xref='switchboard',
                            expected=False,
                            exp_send_error_count=1)
-        self.handler.send_error.assert_called_once_with(400, reason=ComplexHandler._INVALID_NO_XREF)
+        self.handler.send_error.assert_called_once_with(400, reason=complex_handler._INVALID_NO_XREF)
 
 
 class TestSearchUnit(shared.TestHandler):

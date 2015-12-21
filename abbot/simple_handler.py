@@ -46,6 +46,41 @@ options.define('cors_allow_origin',
                default=None)
 
 
+# translatable strings
+# as advertised
+_MANY_BAD_HEADERS = 'Multiple Invalid Headers'
+# whe X-Cantus-Include-Resources can't be determined to be True or False
+_BAD_INCLUDE_RESOURCES = 'Include-Resources header was not "true" or "false"'
+# when the X-Cantus-Per-Page value doesn't work in a call to int()
+_INVALID_PER_PAGE = 'Invalid "X-Cantus-Per-Page" header'
+# when X-Cantus-Per-Page is greater than _MAX_PER_PAGE
+_TOO_BIG_PER_PAGE = '"X-Cantus-Per-Page" is too high'
+# when X-Cantus-Per-Page is less than 0
+_TOO_SMALL_PER_PAGE = '"X-Cantus-Per-Page" must be 0 or greater'
+# when the X-Cantus-Page value doesn't work in a call to int()
+_INVALID_PAGE = 'Invalid "X-Cantus-Page" header'
+# when X-Cantus-Page is less than 1
+_TOO_SMALL_PAGE = '"X-Cantus-Page" must be greater than 0'
+# when we've gone off the last page
+_TOO_LARGE_PAGE = '"X-Cantus-Page" is too high (there are not that many pages)'
+# when the "id" is...
+_ID_NOT_FOUND = 'No {} has id "{}"'
+# X-Cantus-Sort contains an invalid character
+_DISALLOWED_CHARACTER_IN_SORT = 'Found a disallowed character in the X-Cantus-Sort header'
+# X-Cantus-Sort has a field that's missing a direction
+_MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
+# X-Cantus-Sort wants to sort on a field that doesn't exist
+_UNKNOWN_FIELD = 'Unknown field name in X-Cantus-Sort'
+# X-Cantus-Fields has fields that don't exist in this resource type
+_INVALID_FIELDS = 'X-Cantus-Fields header has field name(s) invalid for this resource type'
+# when the SEARCH reqest body is missing or can't be parsed from JSON
+_MISSING_SEARCH_BODY = 'Request body was malformed or missing'
+# when the Solr server has an error
+_SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
+# when there's a SEARCH request with a query that returns no results, and we've decided to give up
+_NO_SEARCH_RESULTS = 'SEARCH query returned no results'
+
+
 class SimpleHandler(web.RequestHandler):
     '''
     For the resource types that were represented in Drupal with its "taxonomy" feature. This class
@@ -65,54 +100,6 @@ class SimpleHandler(web.RequestHandler):
 
     _ALLOWED_VIEW_METHODS = 'GET, HEAD, OPTIONS'
     # value of the "Allow" header in response to an OPTIONS request on a "view" URL
-
-    _MANY_BAD_HEADERS = 'Multiple Invalid Headers'
-    # as advertised
-
-    _BAD_INCLUDE_RESOURCES = 'Include-Resources header was not "true" or "false"'
-    # whe X-Cantus-Include-Resources can't be determined to be True or False
-
-    _INVALID_PER_PAGE = 'Invalid "X-Cantus-Per-Page" header'
-    # when the X-Cantus-Per-Page value doesn't work in a call to int()
-
-    _TOO_BIG_PER_PAGE = '"X-Cantus-Per-Page" is too high'
-    # when X-Cantus-Per-Page is greater than _MAX_PER_PAGE
-
-    _TOO_SMALL_PER_PAGE = '"X-Cantus-Per-Page" must be 0 or greater'
-    # when X-Cantus-Per-Page is less than 0
-
-    _INVALID_PAGE = 'Invalid "X-Cantus-Page" header'
-    # when the X-Cantus-Page value doesn't work in a call to int()
-
-    _TOO_SMALL_PAGE = '"X-Cantus-Page" must be greater than 0'
-    # when X-Cantus-Page is less than 1
-
-    _TOO_LARGE_PAGE = '"X-Cantus-Page" is too high (there are not that many pages)'
-    # when we've gone off the last page
-
-    _ID_NOT_FOUND = 'No {} has id "{}"'
-    # when the "id" is...
-
-    _DISALLOWED_CHARACTER_IN_SORT = 'Found a disallowed character in the X-Cantus-Sort header'
-    # X-Cantus-Sort contains an invalid character
-
-    _MISSING_DIRECTION_SPEC = 'Could not find a direction ("asc" or "desc") for all sort fields'
-    # X-Cantus-Sort has a field that's missing a direction
-
-    _UNKNOWN_FIELD = 'Unknown field name in X-Cantus-Sort'
-    # X-Cantus-Sort wants to sort on a field that doesn't exist
-
-    _INVALID_FIELDS = 'X-Cantus-Fields header has field name(s) invalid for this resource type'
-    # X-Cantus-Fields has fields that don't exist in this resource type
-
-    _MISSING_SEARCH_BODY = 'Request body was malformed or missing'
-    # when the SEARCH reqest body is missing or can't be parsed from JSON
-
-    _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
-    # when the Solr server has an error
-
-    _NO_SEARCH_RESULTS = 'SEARCH query returned no results'
-    # when there's a SEARCH request with a query that returns no results, and we've decided to give up
 
     _DEFAULT_RETURNED_FIELDS = ['id', 'type', 'name', 'description']
     # I realized there was no reason for the default list to be world-accessible, since it has to be
@@ -200,7 +187,7 @@ class SimpleHandler(web.RequestHandler):
             try:
                 body = escape.json_decode(self.request.body)
             except ValueError:
-                self.send_error(400, reason=SimpleHandler._MISSING_SEARCH_BODY)
+                self.send_error(400, reason=_MISSING_SEARCH_BODY)
             else:
                 # take settings from members in the request body
                 member_to_setting = (('query', 'search_query'),
@@ -390,11 +377,11 @@ class SimpleHandler(web.RequestHandler):
         if not resp:
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
-                self.send_error(400, reason=SimpleHandler._TOO_LARGE_PAGE)
+                self.send_error(400, reason=_TOO_LARGE_PAGE)
             elif query:  # assume this is a SEARCH request
-                self.send_error(404, reason=SimpleHandler._NO_SEARCH_RESULTS)
+                self.send_error(404, reason=_NO_SEARCH_RESULTS)
             else:
-                self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
+                self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
             return
         else:
             post = {record['id']: self.format_record(record) for record in resp}
@@ -466,16 +453,16 @@ class SimpleHandler(web.RequestHandler):
                 try:
                     self.hparams['per_page'] = int(self.hparams['per_page'])
                 except ValueError:
-                    error_messages.append(SimpleHandler._INVALID_PER_PAGE)
+                    error_messages.append(_INVALID_PER_PAGE)
                     all_is_well = False
                 else:
                     # if "per_page" was already found to be faulty, we don't need to keep checking
                     if self.hparams['per_page'] < 0:
-                        error_messages.append(SimpleHandler._TOO_SMALL_PER_PAGE)
+                        error_messages.append(_TOO_SMALL_PER_PAGE)
                         all_is_well = False
                     elif self.hparams['per_page'] > SimpleHandler._MAX_PER_PAGE:
                         self.send_error(507,
-                                        reason=SimpleHandler._TOO_BIG_PER_PAGE,
+                                        reason=_TOO_BIG_PER_PAGE,
                                         per_page=SimpleHandler._MAX_PER_PAGE)
                         return False
                     elif self.hparams['per_page'] == 0:
@@ -488,10 +475,10 @@ class SimpleHandler(web.RequestHandler):
                 try:
                     self.hparams['page'] = int(self.hparams['page'])
                 except ValueError:
-                    error_messages.append(SimpleHandler._INVALID_PAGE)
+                    error_messages.append(_INVALID_PAGE)
                     all_is_well = False
                 if all_is_well and self.hparams['page'] < 1:
-                    error_messages.append(SimpleHandler._TOO_SMALL_PAGE)
+                    error_messages.append(_TOO_SMALL_PAGE)
                     all_is_well = False
             else:
                 self.hparams['page'] = 1
@@ -503,12 +490,12 @@ class SimpleHandler(web.RequestHandler):
                 except ValueError as val_e:
                     # TODO: this shouldn't use protected data like this
                     if val_e.args[0] == util._MISSING_DIRECTION_SPEC:
-                        error_messages.append(SimpleHandler._MISSING_DIRECTION_SPEC)
+                        error_messages.append(_MISSING_DIRECTION_SPEC)
                     else:
-                        error_messages.append(SimpleHandler._DISALLOWED_CHARACTER_IN_SORT)
+                        error_messages.append(_DISALLOWED_CHARACTER_IN_SORT)
                     all_is_well = False
                 except KeyError:
-                    error_messages.append(SimpleHandler._UNKNOWN_FIELD)
+                    error_messages.append(_UNKNOWN_FIELD)
                     all_is_well = False
 
         if self.hparams['include_resources'] is not True:
@@ -520,7 +507,7 @@ class SimpleHandler(web.RequestHandler):
             elif 'false' in include:
                 self.hparams['include_resources'] = False
             else:
-                error_messages.append(SimpleHandler._BAD_INCLUDE_RESOURCES)
+                error_messages.append(_BAD_INCLUDE_RESOURCES)
                 all_is_well = False
 
         if self.hparams['fields']:
@@ -529,14 +516,14 @@ class SimpleHandler(web.RequestHandler):
                 self.returned_fields = util.parse_fields_header(self.hparams['fields'], self.returned_fields)
             except ValueError:
                 # probably the field wasn't present
-                error_messages.append(SimpleHandler._INVALID_FIELDS)
+                error_messages.append(_INVALID_FIELDS)
                 all_is_well = False
 
         if not all_is_well:
             if len(error_messages) == 1:
                 self.send_error(400, reason=error_messages[0])
             else:
-                self.send_error(400, reason=SimpleHandler._MANY_BAD_HEADERS, body=error_messages)
+                self.send_error(400, reason=_MANY_BAD_HEADERS, body=error_messages)
 
         return all_is_well
 
@@ -642,7 +629,7 @@ class SimpleHandler(web.RequestHandler):
                 return
         except pysolrtornado.SolrError:
             # TODO: send back details from the SolrError, once we fully write self.send_error()
-            self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
+            self.send_error(502, reason=_SOLR_502_ERROR)
             return
 
         # finally, prepare the response headers
@@ -671,7 +658,7 @@ class SimpleHandler(web.RequestHandler):
                 resource_id = resource_id[:-1]
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
             if not resp:
-                self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
+                self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
 
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_VIEW:
@@ -785,7 +772,7 @@ class SimpleHandler(web.RequestHandler):
                 return
         except pysolrtornado.SolrError:
             # TODO: send back details from the SolrError, once we fully write self.send_error()
-            self.send_error(502, reason=SimpleHandler._SOLR_502_ERROR)
+            self.send_error(502, reason=_SOLR_502_ERROR)
             return
 
         # finally, prepare the response headers
