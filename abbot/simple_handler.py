@@ -565,9 +565,9 @@ class SimpleHandler(web.RequestHandler):
             else:
                 fields.append(self._lookup_name_for_response(field))
 
-        if len(fields) > 0:
+        if fields:
             self.add_header('X-Cantus-Fields', ','.join(fields))
-        if len(extra_fields) > 0:
+        if extra_fields:
             self.add_header('X-Cantus-Extra-Fields', ','.join(extra_fields))
 
         # figure out the X-Cantus-Include-Resources header
