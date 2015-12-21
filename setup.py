@@ -36,6 +36,7 @@ setup(
     packages = ['abbot', 'holy_orders', 'tests'],
 
     install_requires = [
+        'parsimonious>=0.6,<0.7',
         'pysolr-tornado',
         'systemdream==0.0.2',
         'tornado>=4,<5',
