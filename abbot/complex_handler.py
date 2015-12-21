@@ -332,7 +332,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
 
         query = self.hparams['search_query']
         log.debug("SEARCH request starts with this query: '{}'".format(query))
-        query = 'type:{} {}'.format(self.type_name, query)
+        query = 'type:{type} {query}'.format(type=self.type_name, query=query)
         query = util.assemble_query((yield util.run_subqueries(util.parse_query(query))))
         log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))

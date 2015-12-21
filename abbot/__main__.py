@@ -144,8 +144,9 @@ def main():
         options.licence = True
 
     # print the standard header
-    starting_msg = 'Abbot Server {} for Cantus API {} is starting up!'.format(abbot.__version__,
-                                                                              abbot.__cantus_version__)
+    starting_msg = 'Abbot Server {server} for Cantus API {api} is starting up!'.format(
+        server=abbot.__version__,
+        api=abbot.__cantus_version__)
     log.app_log.warning(starting_msg)
     if options.debug or options.about or options.licence or options.version:
         print(starting_msg)
@@ -195,7 +196,10 @@ def main():
         return
 
     # set the server_name option
-    options.server_name = '{}://{}:{}/'.format(options.scheme, options.hostname, options.port)
+    options.server_name = '{scheme}://{hostname}:{port}/'.format(
+        scheme=options.scheme,
+        hostname=options.hostname,
+        port=options.port)
 
     if options.debug:
         print('Listening on {}'.format(options.server_name))

@@ -315,11 +315,11 @@ class SimpleHandler(web.RequestHandler):
             if options.drupal_type_map[res_type] is None:
                 return ''
             else:
-                partial = '{}/{}'.format(options.drupal_type_map[res_type], res_id)
+                partial = '{type}/{id}'.format(type=options.drupal_type_map[res_type], id=res_id)
         else:
-            partial = '{}/{}'.format(res_type, res_id)
+            partial = '{type}/{id}'.format(type=res_type, id=res_id)
 
-        return '{}/{}'.format(drupal_url, partial)
+        return '{drupal}/{partial}'.format(drupal=drupal_url, partial=partial)
 
     @gen.coroutine
     def basic_get(self, resource_id=None, query=None):
@@ -708,7 +708,7 @@ class SimpleHandler(web.RequestHandler):
         if 'response' in kwargs:
             response = kwargs['response']
         else:
-            response = '{}: {}'.format(code, kwargs['reason'])
+            response = '{code}: {reason}'.format(code=code, reason=kwargs['reason'])
 
         self.write(response)
 
@@ -731,7 +731,7 @@ class SimpleHandler(web.RequestHandler):
 
         query = self.hparams['search_query']
         log.debug("SEARCH request starts with this query: '{}'".format(query))
-        query = 'type:{} {}'.format(self.type_name, query)
+        query = 'type:{type} {query}'.format(type=self.type_name, query=query)
         query = util.assemble_query(util.parse_query(query))
         log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))
