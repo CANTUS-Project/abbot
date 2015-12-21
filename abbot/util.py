@@ -58,13 +58,15 @@ _INVALID_QUERY = 'Invalid search query.'
 # other methods to check whether they have proper values for these things.
 ALLOWED_CHARS = ',;_'
 DIRECTIONS = ('asc', 'desc')
-FIELDS = ['id', 'name', 'description', 'mass_or_office', 'date', 'feast_code', 'incipit', 'source',
-          'marginalia', 'folio', 'sequence', 'office', 'genre', 'position', 'cantus_id', 'feast',
-          'mode', 'differentia', 'finalis', 'full_text', 'full_text_manuscript', 'full_text_simssa',
-          'volpiano', 'notes', 'cao_concordances', 'siglum', 'proofreader', 'melody_id', 'title',
-          'rism', 'provenance', 'century', 'notation_style', 'editors', 'indexers', 'summary',
-          'liturgical_occasion', 'indexing_notes', 'indexing_date', 'display_name', 'given_name',
-          'family_name', 'institution', 'city', 'country', 'type']
+FIELDS = (
+    'id', 'name', 'description', 'mass_or_office', 'date', 'feast_code', 'incipit', 'source',
+    'marginalia', 'folio', 'sequence', 'office', 'genre', 'position', 'cantus_id', 'feast',
+    'mode', 'differentia', 'finalis', 'full_text', 'full_text_manuscript', 'proofread_fulltext',
+    'volpiano', 'notes', 'cao_concordances', 'siglum', 'proofreader', 'melody_id', 'title',
+    'rism', 'provenance', 'century', 'notation_style', 'editors', 'indexers', 'summary',
+    'liturgical_occasion', 'indexing_notes', 'indexing_date', 'display_name', 'given_name',
+    'family_name', 'institution', 'city', 'country', 'type', 'proofread_fulltext_manuscript'
+)
 # maps fields that must be cross-referenced into the field name it will have after the cross-reference
 TRANSFORM_FIELDS = {'source': 'source_id', 'office': 'office_id', 'genre': 'genre_id',
                     'feast': 'feast_id', 'provenance': 'provenance_id', 'century': 'century_id',
