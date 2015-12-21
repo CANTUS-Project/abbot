@@ -72,9 +72,9 @@ class TestRootHandler(shared.TestHandler):
             ]
         expected = {'browse': {}, 'view': {}}
         for term in all_plural_resources:
-            expected['view'][term] = '{}{}/id?'.format(server_name, term)
+            expected['view'][term] = '{}{}/id?/'.format(server_name, term)
             expected['browse'][term] = '{}{}/'.format(server_name, term)
-        expected['view']['source_statii'] = '{}statii/id?'.format(server_name)
+        expected['view']['source_statii'] = '{}statii/id?/'.format(server_name)
         expected['browse']['source_statii'] = '{}statii/'.format(server_name)
         expected['browse']['all'] = '{}browse/'.format(server_name)
         expected = {'resources': expected}
@@ -105,9 +105,9 @@ class TestRootHandler(shared.TestHandler):
             ]
         expected = {'browse': {}, 'view': {}}
         for term in all_plural_resources:
-            expected['view'][term] = '{}{}/id?'.format(server_name, term)
+            expected['view'][term] = '{}{}/id?/'.format(server_name, term)
             expected['browse'][term] = '{}{}/'.format(server_name, term)
-        expected['view']['source_statii'] = '{}statii/id?'.format(server_name)
+        expected['view']['source_statii'] = '{}statii/id?/'.format(server_name)
         expected['browse']['source_statii'] = '{}statii/'.format(server_name)
         expected['browse']['all'] = '{}browse/'.format(server_name)
         expected = {'resources': expected}
