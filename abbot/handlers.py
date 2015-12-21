@@ -70,11 +70,11 @@ class RootHandler(web.RequestHandler):
             ]
         post = {'browse': {}, 'view': {}}
         for resource_type in all_plural_resources:
-            this_url = '{}{}'.format(server_name,
-                                     self.reverse_url('view_{}'.format(resource_type), 'id'))
+            this_url = '{name}{url}'.format(name=server_name,
+                                            url=self.reverse_url('view_{}'.format(resource_type), 'id'))
             post['view'][resource_type] = this_url
             post['browse'][resource_type] = this_url[:-3]
-        post['browse']['all'] = '{}{}'.format(server_name, self.reverse_url('browse_all'))
+        post['browse']['all'] = '{name}{url}'.format(name=server_name, url=self.reverse_url('browse_all'))
         return {'resources': post}
 
     def get(self):  # pylint: disable=arguments-differ

@@ -22,7 +22,7 @@ if IMPORT_TORNADO:
     define('copyright', default=False, type=bool, help='show copyright information')
     define('options_file', default='', type=str, help='optional path to the server configuration file')
 
-    from abbot import *
+    from abbot import __all__
     # we must retain this import statement to ensure that all modules will be imported with
     # "import abbot" so that all the Tornado options will be definitely registered before use
 

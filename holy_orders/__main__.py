@@ -87,7 +87,7 @@ def main(config_path):
         if (resource_type in config['drupal_urls']
         or ('chant' == resource_type and 'chants_updated' in config['drupal_urls'])):
             the_updates = download_update(resource_type, config)
-            if len(the_updates) > 0:
+            if the_updates:
                 updates.extend(the_updates)
             else:
                 _log.error('No updates donwloaded for {} resources!'.format(resource_type))
@@ -96,7 +96,7 @@ def main(config_path):
             _log.error('Missing Drupal URL for "{}" in configuration file! Not updating.'.format(resource_type))
             failed_types.append(resource_type)
 
-        if len(updates) > 0:
+        if updates:
             _log.info('Converting and submitting {} update'.format(resource_type))
             updates_succeeded = process_and_submit_updates(updates, config)
             if not updates_succeeded:
@@ -497,7 +497,8 @@ def convert_update(temp_directory, conversion_script_path, update):
     _set_up_logging()
 
     # calculate filenames
-    drupal_xml_filename = '{}/{}'.format(temp_directory, _now_wrapper().strftime('%Y%m%d%H%M%S%f'))
+    drupal_xml_filename = '{dir}/{file}'.format(dir=temp_directory,
+                                                file=_now_wrapper().strftime('%Y%m%d%H%M%S%f'))
     solr_xml_filename = '{}-out.xml'.format(drupal_xml_filename)
     drupal_xml_filename = '{}.xml'.format(drupal_xml_filename)
     _log.debug('Saving a Drupal XML file to {}'.format(drupal_xml_filename))

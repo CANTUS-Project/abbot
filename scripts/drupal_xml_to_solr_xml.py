@@ -47,8 +47,7 @@ SOLR_UNIQUE_ID = 'solr_unique_id'
 
 
 def solr_node_from_drupal_node(node):
-    '''
-    '''
+
     out = ETree.Element('doc')
     kids = list(node)
 
@@ -67,7 +66,7 @@ def solr_node_from_drupal_node(node):
             out.append(elem)
             if 'id' == each.tag:
                 elem = ETree.Element(FIELD, {NAME: SOLR_UNIQUE_ID})
-                elem.text = '{}_{}'.format(node.tag, each.get('text'))
+                elem.text = '{tag}_{text}'.format(tag=node.tag, text=each.get('text'))
                 out.append(elem)
         elif each.text is not None:
             elem = ETree.Element(FIELD, {NAME: each.tag.lower()})
@@ -75,15 +74,14 @@ def solr_node_from_drupal_node(node):
             out.append(elem)
             if 'id' == each.tag:
                 elem = ETree.Element(FIELD, {NAME: SOLR_UNIQUE_ID})
-                elem.text = '{}_{}'.format(node.tag, each.text)
+                elem.text = '{tag}_{text}'.format(tag=node.tag, text=each.text)
                 out.append(elem)
 
     return out
 
 
 def make_new_filename(old_filename):
-    '''
-    '''
+
     if old_filename[-4:] == '.xml':
         return '{}-out.xml'.format(old_filename[:-4])
     else:
