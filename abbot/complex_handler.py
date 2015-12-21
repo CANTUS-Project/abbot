@@ -239,15 +239,11 @@ class ComplexHandler(simple_handler.SimpleHandler):
         if results is None:
             return
 
+        post = {'sort_order': results['sort_order']}
         if self.hparams['include_resources']:
-            post = {'resources': results['resources']}
-        else:
-            post = {}
+            post['resources'] = results['resources']
 
-        for record in iter(results):
-            if record == 'resources':
-                continue
-
+        for record in results['sort_order']:
             # look up basic fields with ComplexHandler.LOOKUP
             xreffed = yield self.look_up_xrefs(results[record])
             post[record] = xreffed[0]

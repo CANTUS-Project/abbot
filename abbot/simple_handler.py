@@ -398,12 +398,13 @@ class SimpleHandler(web.RequestHandler):
             return
         else:
             post = {record['id']: self.format_record(record) for record in resp}
+            post['sort_order'] = [record['id'] for record in resp]
 
         # for the X-Cantus-Total-Results header
         self.total_results = resp.hits
 
         if self.hparams['include_resources']:
-            post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in iter(post)}
+            post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in post['sort_order']}
             for record in resp:
                 drupal_path = self.make_drupal_url(record['id'], record['type'])
                 if drupal_path:
@@ -645,7 +646,9 @@ class SimpleHandler(web.RequestHandler):
             return
 
         # finally, prepare the response headers
-        num_records = (len(response) - 1) if self.hparams['include_resources'] else len(response)
+        num_records = len(response) - 1
+        if self.hparams['include_resources']:
+            num_records -= 1
         self.make_response_headers(is_browse_request, num_records)
 
         if not self.head_request:

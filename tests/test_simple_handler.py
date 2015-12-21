@@ -293,7 +293,9 @@ class TestBasicGetUnit(shared.TestHandler):
                     '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
                     'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
                                   '2': {'self': 'https://cantus.org/centuries/2/'},
-                                  '3': {'self': 'https://cantus.org/centuries/3/'}}}
+                                  '3': {'self': 'https://cantus.org/centuries/3/'}},
+                    'sort_order': ['1', '2', '3'],
+        }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.basic_get(resource_id)
@@ -335,7 +337,9 @@ class TestBasicGetUnit(shared.TestHandler):
         resource_id = '888'  # such good luck
         mock_solr_response = shared.make_results([{'id': '888', 'type': 'century'}])
         expected = {'888': {'id': '888', 'type': 'century'},
-                    'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}}}
+                    'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}},
+                    'sort_order': ['888'],
+        }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.hparams['page'] = 42
         self.handler.hparams['per_page'] = 10
@@ -358,7 +362,7 @@ class TestBasicGetUnit(shared.TestHandler):
                                                   {'id': '2', 'type': 'century'},
                                                   {'id': '3', 'type': 'century'}])
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
-                    '3': {'id': '3', 'type': 'century'}}
+                    '3': {'id': '3', 'type': 'century'}, 'sort_order': ['1', '2', '3']}
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.hparams['page'] = 4
         self.handler.hparams['per_page'] = 12
@@ -438,7 +442,9 @@ class TestBasicGetUnit(shared.TestHandler):
                     '3': {'id': '3', 'name': 'three', 'type': 'source', 'drupal_path': 'http://drp/source/3'},
                     'resources': {'1': {'self': 'https://cantus.org/feasts/1/'},
                                   '2': {'self': 'https://cantus.org/genres/2/'},
-                                  '3': {'self': 'https://cantus.org/sources/3/'}}}
+                                  '3': {'self': 'https://cantus.org/sources/3/'}},
+                    'sort_order': ['1', '2', '3'],
+        }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.basic_get(resource_id)
@@ -493,7 +499,7 @@ class TestGetUnit(shared.TestHandler):
 
         mock_vrh.assert_called_once_with(True)
         mock_get_handler.assert_called_once_with(resource_id)
-        mock_mrh.assert_called_once_with(True, len(response) - 1)
+        mock_mrh.assert_called_once_with(True, len(response) - 2)
         mock_write.assert_called_once_with(response)
 
     def test_normal_view(self):
@@ -529,7 +535,7 @@ class TestGetUnit(shared.TestHandler):
 
         mock_vrh.assert_called_once_with(False)
         mock_get_handler.assert_called_once_with(resource_id)
-        mock_mrh.assert_called_once_with(False, len(response))
+        mock_mrh.assert_called_once_with(False, len(response) - 1)
         self.assertEqual(0, mock_write.call_count)
 
     def test_no_resources_found(self):
@@ -681,7 +687,9 @@ class TestGetIntegration(shared.TestHandler):
                     '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
                     'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
                                   '2': {'self': 'https://cantus.org/centuries/2/'},
-                                  '3': {'self': 'https://cantus.org/centuries/3/'}}}
+                                  '3': {'self': 'https://cantus.org/centuries/3/'}},
+                    'sort_order': ['1', '2', '3'],
+        }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         expected_fields = ['id', 'name', 'type']
 
@@ -742,7 +750,9 @@ class TestGetIntegration(shared.TestHandler):
                     '3': {'id': '3', 'type': 'century'},
                     'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
                                   '2': {'self': 'https://cantus.org/centuries/2/'},
-                                  '3': {'self': 'https://cantus.org/centuries/3/'}}}
+                                  '3': {'self': 'https://cantus.org/centuries/3/'}},
+                    'sort_order': ['1', '2', '3'],
+        }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         expected_fields = ['id', 'type']
         request_header = 'id, type'

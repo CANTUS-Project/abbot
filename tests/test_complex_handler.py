@@ -326,7 +326,9 @@ class TestGetIntegration(shared.TestHandler):
                                'drupal_path': 'http://drp/chant/357679', 'type': 'chant'},
                     'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
                                              'genre': 'https://cantus.org/genres/161/',
-                                             'feast': 'https://cantus.org/feasts/2378/'}}}
+                                             'feast': 'https://cantus.org/feasts/2378/'}},
+                    'sort_order': ['357679'],
+        }
 
         def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
             "mock version of ask_solr_by_id()"
@@ -361,7 +363,9 @@ class TestGetIntegration(shared.TestHandler):
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
                     '111222': {'id': '111222', 'type': 'chant', 'genre': 'Responsory Verse',
                                'sequence': 4, 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'}}
+                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
+                    'sort_order': ['357679', '111222'],
+        }
 
         def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
             "mock version of ask_solr_by_id()"
@@ -396,7 +400,9 @@ class TestGetIntegration(shared.TestHandler):
                                'cantus_id': '600482a', 'feast_id': '2378', 'mode': '2S'},
                     'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
                                              'genre': 'https://cantus.org/genres/161/',
-                                             'feast': 'https://cantus.org/feasts/2378/'}}}
+                                             'feast': 'https://cantus.org/feasts/2378/'}},
+                    'sort_order': ['357679'],
+        }
 
         def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
             "mock version of ask_solr_by_id()"
