@@ -166,9 +166,7 @@ def prepare_formatted_sort(sort):
         else:
             raise KeyError(_UNKNOWN_FIELD.format(field))
 
-    sort = ','.join(sort)
-
-    return sort
+    return ','.join(sort)
 
 
 def postpare_formatted_sort(sort):
@@ -194,9 +192,7 @@ def postpare_formatted_sort(sort):
         field, direction = each_sort.split()
         sort.append('{},{}'.format(field, direction))
 
-    sort = ';'.join(sort)
-
-    return sort
+    return ';'.join(sort)
 
 
 def parse_fields_header(header, returned_fields):
@@ -216,7 +212,7 @@ def parse_fields_header(header, returned_fields):
     '''
     post = []
     for field in [x.strip() for x in header.split(',')]:
-        if '' == field or 'type' == field or 'id' == field:
+        if field == '' or field == 'type' or field == 'id':
             continue
         elif field in returned_fields:
             post.append(field)
@@ -357,7 +353,7 @@ def request_wrapper(func):
 
         try:
             yield func(self, *args, **kwargs)
-        except (gen.BadYieldError, Exception) as exc:
+        except (gen.BadYieldError, Exception) as exc:   # pylint: disable=broad-except
             import traceback
             tback = ''.join(traceback.format_exception(type(exc), exc, None))
             if isinstance(exc, gen.BadYieldError):
@@ -410,7 +406,7 @@ def separate_query_components(query):
             else:
                 startpos = match.span()[1]
                 subquery = match.group()
-                if '"' == subquery[0]:
+                if subquery[0] == '"':
                     subquery = '"{}"'.format(subquery[1:-1].strip())
                 comps.append(subquery)
     else:
@@ -453,7 +449,7 @@ def parse_query_components(components):
 
     for component in components:
         parts = component.split(':')
-        if 1 == len(parts):
+        if len(parts) == 1:
             clean_comps.append(('default', parts[0]))
         else:
             if parts[0] not in FIELDS and parts[0] not in TRANSFORMED_FIELDS:
@@ -503,7 +499,7 @@ def run_subqueries(components):
             reffed_comps.append(comp)
         else:
             results = yield search_solr('type:{} AND ({})'.format(comp[0], comp[1]))
-            if 0 == len(results):
+            if not results:
                 raise InvalidQueryError('No results for cross-referenced field "{}"'.format(comp[0]))
             selected = results[0]
             reffed_comps.append((TRANSFORM_FIELDS[comp[0]], selected['id']))
@@ -522,10 +518,11 @@ def assemble_query(components):
     :rtype: str
     '''
     def helper(comp):
-        if 'default' == comp[0]:
+        "Prepare a single field:value pair."
+        if comp[0] == 'default':
             return comp[1]
         else:
-            return '{}:{}'.format(comp[0], comp[1])
+            return '{field}:{value}'.format(field=comp[0], value=comp[1])
 
     components = [helper(component) for component in components]
 

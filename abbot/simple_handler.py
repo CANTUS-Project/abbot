@@ -28,7 +28,6 @@ SimpleHandler for the Abbot server.
 
 import copy
 from collections import defaultdict
-import importlib
 
 from tornado.log import app_log as log
 from tornado import escape, gen, web
@@ -196,11 +195,11 @@ class SimpleHandler(web.RequestHandler):
         # set values from request body
         # NOTE: it's important to do this after the header-setting part; the API says header values
         #       in the request body must take precedence over those in headers
-        if 'SEARCH' == self.request.method:
+        if self.request.method == 'SEARCH':
             # prepare "body" as JSON-parsed-to-dict
             try:
                 body = escape.json_decode(self.request.body)
-            except ValueError as val_err:
+            except ValueError:
                 self.send_error(400, reason=SimpleHandler._MISSING_SEARCH_BODY)
             else:
                 # take settings from members in the request body
@@ -266,11 +265,12 @@ class SimpleHandler(web.RequestHandler):
 
         try:
             # hope it's a plural resource_type
-            resource_path = self.reverse_url('view_{}'.format(resource_type), resource_id + '/')
+            resource = 'view_{}'.format(resource_type)
+            resource_path = self.reverse_url(resource, resource_id + '/')
         except KeyError:
             # plural didn't work so try converting from a singular resource_type
-            resource_path = self.reverse_url('view_{}'.format(util.singular_resource_to_plural(resource_type)),
-                                             resource_id + '/')
+            resource = 'view_{}'.format(util.singular_resource_to_plural(resource_type))
+            resource_path = self.reverse_url(resource, resource_id + '/')
 
         # Because of the handler configuration, reverse_url() returns something like this:
         #    /chants/125522/?
@@ -376,8 +376,9 @@ class SimpleHandler(web.RequestHandler):
         # run the query -----------------------------------
         if query:
             # SEARCH method
-            resp = yield util.search_solr(query, start=start, rows=self.hparams['per_page'], sort=self.hparams['sort'])
-        elif '*' == resource_id:
+            resp = yield util.search_solr(query, start=start, rows=self.hparams['per_page'],
+                                          sort=self.hparams['sort'])
+        elif resource_id == '*':
             # "browse" URLs
             resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
                                              rows=self.hparams['per_page'], sort=self.hparams['sort'])
@@ -386,7 +387,7 @@ class SimpleHandler(web.RequestHandler):
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
 
         # format the query --------------------------------
-        if 0 == len(resp):
+        if not resp:
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
                 self.send_error(400, reason=SimpleHandler._TOO_LARGE_PAGE)
@@ -409,7 +410,7 @@ class SimpleHandler(web.RequestHandler):
             post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in iter(post)}
             for record in resp:
                 drupal_path = self.make_drupal_url(record['id'], record['type'])
-                if '' != drupal_path:
+                if drupal_path:
                     post[record['id']]['drupal_path'] = drupal_path
 
         return post
@@ -434,6 +435,8 @@ class SimpleHandler(web.RequestHandler):
         '''
         return (yield self.basic_get(resource_id=resource_id, query=query))
 
+    # TODO: too many branches
+    # TODO: too many statements
     def verify_request_headers(self, is_browse_request):
         '''
         Ensure that the request headers have valid values.
@@ -478,7 +481,7 @@ class SimpleHandler(web.RequestHandler):
                                         reason=SimpleHandler._TOO_BIG_PER_PAGE,
                                         per_page=SimpleHandler._MAX_PER_PAGE)
                         return False
-                    elif 0 == self.hparams['per_page']:
+                    elif self.hparams['per_page'] == 0:
                         self.hparams['per_page'] = SimpleHandler._MAX_PER_PAGE
             else:
                 self.hparams['per_page'] = 10
@@ -501,6 +504,7 @@ class SimpleHandler(web.RequestHandler):
                 try:
                     self.hparams['sort'] = util.prepare_formatted_sort(self.hparams['sort'])
                 except ValueError as val_e:
+                    # TODO: this shouldn't use protected data like this
                     if val_e.args[0] == util._MISSING_DIRECTION_SPEC:
                         error_messages.append(SimpleHandler._MISSING_DIRECTION_SPEC)
                     else:
@@ -513,10 +517,10 @@ class SimpleHandler(web.RequestHandler):
         if self.hparams['include_resources'] is not True:
             # This looks a little weird; True is the defalt value, and if it's been changed, then
             # we need to find "true" or "false" in the string that it's been set to from the request
-            self.hparams['include_resources'] = self.hparams['include_resources'].strip().lower()
-            if 'true' in self.hparams['include_resources']:
+            include = self.hparams['include_resources'].strip().lower()  # pylint: disable=no-member
+            if 'true' in include:
                 self.hparams['include_resources'] = True
-            elif 'false' in self.hparams['include_resources']:
+            elif 'false' in include:
                 self.hparams['include_resources'] = False
             else:
                 error_messages.append(SimpleHandler._BAD_INCLUDE_RESOURCES)
@@ -532,14 +536,14 @@ class SimpleHandler(web.RequestHandler):
                 all_is_well = False
 
         if not all_is_well:
-            if 1 == len(error_messages):
+            if len(error_messages) == 1:
                 self.send_error(400, reason=error_messages[0])
             else:
                 self.send_error(400, reason=SimpleHandler._MANY_BAD_HEADERS, body=error_messages)
 
         return all_is_well
 
-    def _lookup_name_for_response(self, name):
+    def _lookup_name_for_response(self, name):  # pylint: disable=no-self-use
         '''
         Look up the ``name`` of a field as returned by the Solr database. Return the name that it
         should have when given to the user agent.
@@ -667,7 +671,7 @@ class SimpleHandler(web.RequestHandler):
             if resource_id.endswith('/') and len(resource_id) > 1:
                 resource_id = resource_id[:-1]
             resp = yield util.ask_solr_by_id(self.type_name, resource_id)
-            if 0 == len(resp):
+            if not resp:
                 self.send_error(404, reason=SimpleHandler._ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
 
             # add Cantus-specific request headers
@@ -748,7 +752,7 @@ class SimpleHandler(web.RequestHandler):
 
     @util.request_wrapper
     @gen.coroutine
-    def search(self, resource_id=None):
+    def search(self, resource_id=None):  # pylint: disable=unused-argument
         '''
         Response to SEARCH requests. Returns the result of :meth:`search_handler` without modification.
 

@@ -29,7 +29,7 @@ ComplexHandler for the Abbot server.
 from collections import namedtuple
 
 from tornado.log import app_log as log
-from tornado import gen, web
+from tornado import gen
 
 from abbot import util
 from abbot import simple_handler
@@ -114,6 +114,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         post = {}
         resources = {}
 
+        # TODO: this is too complicated
         for field in iter(record):
             if field in LOOKUP:
                 replace_to = LOOKUP[field].replace_to  # for readability
@@ -129,13 +130,13 @@ class ComplexHandler(simple_handler.SimpleHandler):
                                 post[replace_to].append(resp[0][LOOKUP[field].replace_with])
 
                         # if nothing the list was found, remove the empty list
-                        if 0 == len(post[replace_to]):
+                        if not post[replace_to]:
                             del post[replace_to]
                             continue  # avoid writing the "resources" block for a missing xref resource
 
                     else:
                         resp = yield util.ask_solr_by_id(LOOKUP[field].type, record[field])
-                        if len(resp) > 0:
+                        if resp:
                             post[replace_to] = resp[0][LOOKUP[field].replace_with]
                         else:
                             continue  # avoid writing the "resources" block for a missing xref resource
@@ -152,7 +153,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
                         resource_url = self.make_resource_url(record[field], plural)
                     resources[replace_to] = resource_url
 
-            elif field in self.returned_fields or 'drupal_path' == field:
+            elif field in self.returned_fields or field == 'drupal_path':
                 # This is for non-cross-referenced fields. Because cross-referenced fields must
                 # also appear in self.returned_fields, this branch must appear after the cross-
                 # referencing branch, or else cross-references would never work correctly. The one
@@ -244,7 +245,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
             post = {}
 
         for record in iter(results):
-            if 'resources' == record:
+            if record == 'resources':
                 continue
 
             # look up basic fields with ComplexHandler.LOOKUP
@@ -273,14 +274,15 @@ class ComplexHandler(simple_handler.SimpleHandler):
         **Please refer to the superclass method's documentation.**
         '''
 
-        all_is_well = super(ComplexHandler, self).verify_request_headers(is_browse_request=is_browse_request)
+        all_is_well = super(ComplexHandler, self).verify_request_headers(
+            is_browse_request=is_browse_request)
 
         if all_is_well:
             # X-Cantus-No-Xref
             no_xref = str(self.hparams['no_xref']).lower().strip()
-            if 'true' == no_xref:
+            if no_xref == 'true':
                 self.hparams['no_xref'] = True
-            elif 'false' == no_xref:
+            elif no_xref == 'false':
                 self.hparams['no_xref'] = False
             else:
                 self.send_error(400, reason=ComplexHandler._INVALID_NO_XREF)
@@ -333,6 +335,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         query = self.hparams['search_query']
         log.debug("SEARCH request starts with this query: '{}'".format(query))
         query = 'type:{} {}'.format(self.type_name, query)
-        query = util.assemble_query((yield util.run_subqueries(util.parse_query_components(util.separate_query_components(query)))))
+        query = util.assemble_query((yield util.run_subqueries(util.parse_query_components(
+            util.separate_query_components(query)))))
         log.debug("SEARCH request resolves to this query: '{}'".format(query))
         return (yield self.get_handler(query=query))

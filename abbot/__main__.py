@@ -28,7 +28,7 @@ Main file for the Abbot server reference implementation of the Cantus API.
 
 import logging
 
-from tornado import httpserver, log, ioloop, web
+from tornado import log, ioloop, web
 from tornado.options import define, options
 from tornado.options import Error as OptionsError
 
@@ -113,6 +113,8 @@ HANDLERS = [
     ]
 
 
+# TODO: too many branches
+# TODO: too many statements
 def main():
     '''
     This function creates a Tornado Web Application listening on the specified port, then starts
@@ -143,8 +145,8 @@ def main():
 
     # print the standard header
     starting_msg = 'Abbot Server {} for Cantus API {} is starting up!'.format(abbot.__version__,
-                                                                               abbot.__cantus_version__)
-    log.app_log.warn(starting_msg)
+                                                                              abbot.__cantus_version__)
+    log.app_log.warning(starting_msg)
     if options.debug or options.about or options.licence or options.version:
         print(starting_msg)
 
@@ -169,11 +171,11 @@ def main():
 
     # Job #1.5: because Tornado doesn't seem to do its job, we need to set the logging level
     log_level = str(options.logging).lower()
-    if 'debug' == log_level:
+    if log_level == 'debug':
         log.access_log.setLevel(logging.DEBUG)
         log.app_log.setLevel(logging.DEBUG)
         log.gen_log.setLevel(logging.DEBUG)
-    elif 'info' == log_level:
+    elif log_level == 'info':
         log.access_log.setLevel(logging.INFO)
         log.app_log.setLevel(logging.INFO)
         log.gen_log.setLevel(logging.INFO)
