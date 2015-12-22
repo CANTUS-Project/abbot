@@ -731,12 +731,9 @@ class SimpleHandler(web.RequestHandler):
         #       doesn't call util.run_subqueries() because they don't exist for simple resources.
         #       However, they should be kept "in sync" whenever possible.
 
-        query = self.hparams['search_query']
-        log.debug("SEARCH request starts with this query: '{}'".format(query))
-        query = 'type:{type} {query}'.format(type=self.type_name, query=query)
+        query = 'type:{type} {query}'.format(type=self.type_name, query=self.hparams['search_query'])
         try:
             query = util.assemble_query(util.parse_query(query))
-            log.debug("SEARCH request resolves to this query: '{}'".format(query))
         except util.InvalidQueryError:
             self.send_error(400, reason=_INVALID_SEARCH_QUERY)
         else:

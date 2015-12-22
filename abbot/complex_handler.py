@@ -330,9 +330,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         #       doesn't call util.run_subqueries() because they don't exist for simple resources.
         #       However, they should be kept "in sync" whenever possible.
 
-        query = self.hparams['search_query']
-        log.debug("SEARCH request starts with this query: '{}'".format(query))
-        query = 'type:{type} {query}'.format(type=self.type_name, query=query)
+        query = 'type:{type} {query}'.format(type=self.type_name, query=self.hparams['search_query'])
 
         try:
             query = util.parse_query(query)
@@ -341,9 +339,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         else:
             try:
                 query = util.assemble_query((yield util.run_subqueries(query)))
-                log.debug("SEARCH request resolves to this query: '{}'".format(query))
             except util.InvalidQueryError as iqe:
-                log.debug('SEARCH request ends poorly: {}'.format(iqe))
                 self.send_error(404, reason=simple_handler._NO_SEARCH_RESULTS)
             else:
                 return (yield self.get_handler(query=query))
