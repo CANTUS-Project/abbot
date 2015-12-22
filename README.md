@@ -1,5 +1,4 @@
-Abbot
-======
+# Abbot
 
 *Abbot* is a Python 3.4 implementation of a server for the Cantus API.
 
@@ -8,79 +7,60 @@ Abbot
 [![Coverage Status](https://img.shields.io/coveralls/CANTUS-Project/abbot.svg?style=flat-square)](https://coveralls.io/github/CANTUS-Project/abbot?branch=master)
 [![Code Issues](https://www.quantifiedcode.com/api/v1/project/2260402ae289418daf4b186b71ec14c4/badge.svg)](https://www.quantifiedcode.com/app/project/2260402ae289418daf4b186b71ec14c4)
 
-License
--------
+
+## License
 
 *Abbot* is copyrighted according to the terms of the GNU AGPLv3+. A copy of the license is held in
 the file called "LICENSE."
 
-Repository Layout
------------------
 
-The ``abbot`` directory contains program code. The simplest way to run *Abbot* is to execute this
-directory as a Python module.
+## Repository Layout
 
-The ``scripts`` directory contains scripts used to convert between various formats, and tests for
-those scripts. These are primarily for moving data from the Drupal to the Solr servers.
+- ``abbot``: this directory contains program code for the Cantus API server.
+- ``holy_orders``: a program that updates *Abbot*'s Solr server.
+- ``scripts``: Python scripts (and tests) used to convert between various XML formats. These are
+    primarily used by *HolyOrders* to move data exported from Drupal into Solr.
+- ``tests``: unit and integration tests for *Abbot* and *HolyOrders*.
+- ``packaging``: deployment scripts for *Abbot* and *HolyOrders*.
 
-The ``tests`` directory contains unit and integration tests for the program code.
 
-The ``test_client`` directory contains a simple HTML Web page to use when testing *Abbot*.
+## Install for Development
 
-The ``packaging`` directory contains files relevant to deploying *Abbot*, such as a sample
-configuration file, *systemd* unit files, and an alternative startup script.
+1. Clone this git repository:
 
-Install for Development
------------------------
-
-Clone this git repository:
-
+    ```bash
     $ git clone https://github.com/CANTUS-Project/abbot.git
+    ```
 
-Create and activate a new virtualenv:
+1. Create and activate a new virtualenv:
 
+    ```bash
     $ pyvenv */your/path/here*
     $ source */your/path/here/bin/activate*
+    ```
 
-Install the development requirements:
+1. Install the Python packages:
 
-    $ pip install -r requirements-devel.txt
+    ```bash
+    $ pip install -r requirements.txt
+    ```
 
-Install ``abbot`` itself. This ensure the ``abbot`` module is importable in the interpreter.
+1. The test suite uses the ``pytest`` package. To run the test suite, ensure your venv is activated,
+   then issue the following command from the "abbot" root directory:
 
-    $ pip install -e .
-
-The test suite uses the ``pytest`` package. To run the test suite, ensure your venv is activated,
-then issue the following command from the "abbot" root directory:
-
+    ```bash
     $ py.test
+    ```
 
-``pytest`` is quite clear in its output, so you should not have to guess whether the tests passed.
-To run a test instance of *Abbot*, run this command from the "abbot" root directory:
+1. ``pytest`` is quite clear in its output, so you should not have to guess whether the tests passed.
+   To run a test instance of *Abbot*, run this command:
 
-    $ python abbot
+   ```bash
+   $ python -m abbot
+   ```
 
-Install for Deployment: Preferred Way
--------------------------------------
+
+## Install for Deployment
 
 Use the [Ansible](http://www.ansible.com/) playbooks, according to the instructions in the
 ``packaging/deployment_instructions.rst`` document.
-
-Install for Deployment: Alternative Way
----------------------------------------
-
-Please note that THIS IS NOT THE RECOMMENDED WAY TO DEPLOY *Abbot*. If your deployment system uses
-*systemd*, we strongly recommend deploying *Abbot* with *systemd* as described above.
-
-Install as for development, but use the ``requirements-deploy.txt`` file.
-
-After you install *Abbot*, you may wish to test its functionality:
-
-    $ python setup.py test
-
-Now customize the included ``start_abbot`` script from the ``packaging`` directory.
-
-Now start the Solr server.
-
-Now run the included ``start_abbot`` script from the ``packaging`` directory---no need to activate
-the virtualenv beforehand.
