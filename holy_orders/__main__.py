@@ -41,13 +41,14 @@ from xml.etree import ElementTree as etree
 from systemdream.journal import handler as journalctl
 
 from tornado import httpclient
+import tornado.log
 
 # settings
 LOG_LEVEL = logging.DEBUG
 
 
 # script-level "globals"
-_log = None
+_log = tornado.log.app_log
 
 
 def _now_wrapper():
@@ -570,15 +571,12 @@ def _set_up_logging():
     Set up logging for the script. This function does not replace the gloabl ``_log`` object if it
     has already been created, so it is safe to run this function many times.
     '''
-    global _log
-    if _log is None:
-        _log = logging.getLogger('holy_orders')
-        _log.setLevel(LOG_LEVEL)
-        _log.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='holy_orders'))
+    return None
 
 
 if '__main__' == __name__ :
-    _set_up_logging()
+    logging.root.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='holy_orders'))
+    _log.setLevel(LOG_LEVEL)
     _log.info('HolyOrders awakens.')
 
     try:
