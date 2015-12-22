@@ -269,15 +269,11 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     :param str q_type: The "type" field to require of the resource. If you only know the record
         ``id`` you may use ``'*'`` for the ``q_type`` to match a record of any type.
     :param str q_id: The "id" field to require of the resource.
-    :param int start: The "start" field to use when calling Solr (i.e., in a list of results, start
-        at the ``start``-th result). Default is Solr default (effectively 0).
-    :param int rows: The "rows" field to use when calling Solr (i.e., the maximum number of results
-        to include for a single search). Default is Solr default (effectively 10).
-    :param str sort: The "sort" field to use when calling Solr, like ``'incipit asc'`` or
-        ``'cantus_id desc'``. Default is Solr default.
-    :returns: Results from the Solr server, in an object that acts like a list of dicts.
-    :rtype: :class:`pysolrtornado.Results`
-    :raises: :exc:`pysolrtornado.SolrError` when there's an error while connecting to Solr.
+    :param start: As described in :func:`search_solr`.
+    :param rows: As described in :func:`search_solr`.
+    :param sort: As described in :func:`search_solr`.
+    :returns: As described in :func:`search_solr`.
+    :raises: As described in :func:`search_solr`.
 
     **Example**
 
@@ -290,17 +286,7 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     >>> func()
     <pysolrtornado results thing>
     '''
-    extra_params = {}
-    if start is not None:
-        extra_params['start'] = start
-    if rows is not None:
-        extra_params['rows'] = rows
-    if sort is not None:
-        extra_params['sort'] = sort
-
-    query = '+type:{} +id:{}'.format(q_type, q_id)
-    log.debug("ask_solr_by_id(): '{}'".format(query))
-    return (yield SOLR.search(query, **extra_params))
+    return (yield search_solr('+type:{} +id:{}'.format(q_type, q_id), start=start, rows=rows, sort=sort))
 
 
 @gen.coroutine

@@ -69,43 +69,13 @@ class TestSolrAskers(shared.TestHandler):
 
     @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
     @testing.gen_test
-    def test_ask_solr_by_id_1(self, mock_solr):
-        "Basic test."
-        mock_solr.search.return_value = shared.make_future('search results')
-        expected = 'search results'
-        actual = yield util.ask_solr_by_id('genre', '162')
-        self.assertEqual(expected, actual)
-        util.SOLR.search.assert_called_once_with('+type:genre +id:162')
-
-    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
-    @testing.gen_test
-    def test_ask_solr_by_id_2(self, mock_solr):
-        "with 'start' and 'rows' kwargs"
-        mock_solr.search.return_value = shared.make_future('search results')
-        expected = 'search results'
-        actual = yield util.ask_solr_by_id('genre', '162', start=5, rows=50)
-        self.assertEqual(expected, actual)
-        util.SOLR.search.assert_called_once_with('+type:genre +id:162', start=5, rows=50)
-
-    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
-    @testing.gen_test
-    def test_ask_solr_by_id_3(self, mock_solr):
-        "with 'rows' and 'sort' kwargs"
-        mock_solr.search.return_value = shared.make_future('search results')
-        expected = 'search results'
-        actual = yield util.ask_solr_by_id('genre', '162', rows=42, sort='incipit asc')
-        self.assertEqual(expected, actual)
-        util.SOLR.search.assert_called_once_with('+type:genre +id:162', rows=42, sort='incipit asc')
-
-    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
-    @testing.gen_test
     def test_search_solr_1(self, mock_solr):
         "Basic test (no 'extra_params')."
         query = 'searching for this'
-        mock_solr.search.return_value = shared.make_future('search results')
         expected = 'search results'
+        mock_solr.search.return_value = shared.make_future(expected)
         actual = yield util.search_solr(query)
-        self.assertEqual(expected, actual)
+        assert expected == actual
         util.SOLR.search.assert_called_once_with(query, df='default_search')
 
     @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
@@ -113,11 +83,21 @@ class TestSolrAskers(shared.TestHandler):
     def test_search_solr_2(self, mock_solr):
         "Basic test (with 'start', 'rows', and 'sort' kwargs)."
         query = 'searching for this'
-        mock_solr.search.return_value = shared.make_future('search results')
         expected = 'search results'
+        mock_solr.search.return_value = shared.make_future(expected)
         actual = yield util.search_solr(query, start=5, rows=50, sort='lol')
-        self.assertEqual(expected, actual)
+        assert expected == actual
         util.SOLR.search.assert_called_once_with(query, df='default_search', start=5, rows=50, sort='lol')
+
+    @mock.patch('abbot.util.search_solr')
+    @testing.gen_test
+    def test_ask_solr_by_id_1(self, mock_search):
+        "Ensure everything gets passed to search_solr()."
+        expected = 'search results'
+        mock_search.return_value = shared.make_future(expected)
+        actual = yield util.ask_solr_by_id('genre', '162', start=1, rows=2, sort=3)
+        assert expected == actual
+        mock_search.assert_called_with('+type:genre +id:162', start=1, rows=2, sort=3)
 
 
 class TestFormattedSorts(TestCase):
