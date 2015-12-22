@@ -517,7 +517,7 @@ class TestQueryParserAsync(shared.TestHandler):
         ])
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         components = [('genre', 'antiphon')]
-        expected = [('genre_id', '123')]
+        expected = [('default', '(genre_id:123^3 OR genre_id:124^2 OR genre_id:125^1)')]
 
         actual = yield util.run_subqueries(components)
 
@@ -551,7 +551,8 @@ class TestQueryParserAsync(shared.TestHandler):
         # complex bit to have two different results returned
         response_genre = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
         response_genre = shared.make_future(response_genre)
-        response_feast = shared.make_results([{'id': '1474', 'name': 'Ad Magnificat', 'type': 'feast'}])
+        response_feast = shared.make_results([{'id': '1474', 'name': 'Ad Magnificat', 'type': 'feast'},
+                                              {'id': '1499', 'name': 'Ad Subtrac', 'type': 'feast'}])
         response_feast = shared.make_future(response_feast)
         def returner(query):
             if 'genre' in query:
@@ -562,7 +563,8 @@ class TestQueryParserAsync(shared.TestHandler):
         #
         components = [('genre', 'antiphon'), ('differentia', '3'), ('folio', '001r'),
                       ('feast', 'magnificat')]
-        expected = [('genre_id', '123'), ('differentia', '3'), ('folio', '001r'), ('feast_id', '1474')]
+        expected = [('genre_id', '123'), ('differentia', '3'), ('folio', '001r'),
+                    ('default', '(feast_id:1474^2 OR feast_id:1499^1)')]
 
         actual = yield util.run_subqueries(components)
 

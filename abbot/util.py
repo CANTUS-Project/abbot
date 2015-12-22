@@ -443,6 +443,10 @@ def run_subqueries(components):
     .. note:: In the future, this function may be modified according to whether server-side search
         help is requested, to modify cross-referenced fields with no results.
 
+    .. note:: This function takes advantage of how :func:`assemble_query` treats the "default"
+        field to provide "OR" chunks for subqueries that return multiple results. See below for an
+        example.
+
     **Return Value**
 
     This function enhances the result of :func:`parse_query_components` by running subqueries and
@@ -452,10 +456,17 @@ def run_subqueries(components):
     function does.
 
     **Examples**
+
     >>> run_subqueries([('default', 'antiphon')])
     [('default', 'antiphon')]
     >>> run_subqueries([('genre': 'antiphon')])
     [('genre_id': '123')]
+    >>> run_subqueries([('filling': 'marzipan')])
+    [('default', '(filling_id:529^2 OR filling_id:532^1)')]
+
+    In the third example, there are two "filling" resources that match "marzipan," with IDs 529 and
+    532. This function uses the order of subquery results to determine term boosting values, joining
+    both "filling" IDs with an OR.
     '''
 
     reffed_comps = []
@@ -464,11 +475,24 @@ def run_subqueries(components):
         if comp[0] not in TRANSFORM_FIELDS:
             reffed_comps.append(comp)
         else:
-            results = yield search_solr('type:{} AND ({})'.format(comp[0], comp[1]))
+            field = comp[0]
+            results = yield search_solr('type:{} AND ({})'.format(field, comp[1]))
             if not results:
-                raise InvalidQueryError('No results for cross-referenced field "{}"'.format(comp[0]))
-            selected = results[0]
-            reffed_comps.append((TRANSFORM_FIELDS[comp[0]], selected['id']))
+                raise InvalidQueryError('No results for cross-referenced field "{}"'.format(field))
+
+            max_boost = len(results)  # so the min_boost is 1
+            if max_boost == 1:
+                reffed_comps.append((TRANSFORM_FIELDS[field], results[0]['id']))
+            else:
+                subq_ids = []
+                field_name = TRANSFORM_FIELDS[field]
+                for i, result in enumerate(results):
+                    subq_ids.append('{field}:{id}^{boost}'.format(
+                        field=field_name,
+                        id=result['id'],
+                        boost=(max_boost - i)
+                    ))
+                reffed_comps.append(('default', '({})'.format(' OR '.join(subq_ids))))
 
     return reffed_comps
 
