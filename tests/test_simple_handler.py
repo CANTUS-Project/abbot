@@ -1583,6 +1583,25 @@ class TestSearchUnit(shared.TestHandler):
         self.assertEqual('five', actual)
         mock_get_handler.assert_called_once_with(query='mock_aq')
         self.assertEqual(0, mock_rs.call_count)
+        self.handler.hparams['search_query'] = 'some query'
+
+    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
+    @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
+    @testing.gen_test
+    def test_search_handler_2(self, mock_get_handler, mock_senderr):
+        '''
+        When given an invalid query string, search_handler() returns a 400.
+
+        This is a regression test for GitHub issue #74.
+        '''
+        query = 'feast: genre:Absalon'
+        self.handler.hparams['search_query'] = query
+
+        actual = yield self.handler.search_handler()
+
+        assert actual is None
+        assert 0 == mock_get_handler.call_count
+        mock_senderr.assert_called_with(400, reason=simple_handler._INVALID_SEARCH_QUERY)
 
     @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test

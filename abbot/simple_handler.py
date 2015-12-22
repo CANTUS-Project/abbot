@@ -79,6 +79,8 @@ _MISSING_SEARCH_BODY = 'Request body was malformed or missing'
 _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
 # when there's a SEARCH request with a query that returns no results, and we've decided to give up
 _NO_SEARCH_RESULTS = 'SEARCH query returned no results'
+# when the search query itself is improperly formatted
+_INVALID_SEARCH_QUERY = 'SEARCH query is malformed'
 
 
 class SimpleHandler(web.RequestHandler):
@@ -732,9 +734,13 @@ class SimpleHandler(web.RequestHandler):
         query = self.hparams['search_query']
         log.debug("SEARCH request starts with this query: '{}'".format(query))
         query = 'type:{type} {query}'.format(type=self.type_name, query=query)
-        query = util.assemble_query(util.parse_query(query))
-        log.debug("SEARCH request resolves to this query: '{}'".format(query))
-        return (yield self.get_handler(query=query))
+        try:
+            query = util.assemble_query(util.parse_query(query))
+            log.debug("SEARCH request resolves to this query: '{}'".format(query))
+        except util.InvalidQueryError:
+            self.send_error(400, reason=_INVALID_SEARCH_QUERY)
+        else:
+            return (yield self.get_handler(query=query))
 
     @util.request_wrapper
     @gen.coroutine
