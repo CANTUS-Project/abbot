@@ -27,20 +27,28 @@
     abbot_solr_url: http://localhost:8983/solr/collection1/
 
   tasks:
-    # setup the virtualenv
+    # download Abbot repository and checkout the proper commit
     - name: check that git is installed
-      # (Git is required for the next step)
       yum: name=git state=present
-    - name: install/update all requirements with pip
+    - name: clone the "abbot" repository
+      # no need to set permissions because everything is copied into the virtualenv
+      git:
+        clone: yes
+        update: yes
+        force: yes  # meaning to overwrite local changes
+        dest: "{{ abbot_bin_dir }}"
+        repo: "{{ abbot_repo }}"
+        version: "{{ abbot_version }}"
+      notify:
+        - restart abbot
+
+    - name: install abbot to the virtualenv
       pip:
         virtualenv: "{{ abbot_venv_dir }}"
         virtualenv_command: "{{ pyvenv_path }}"
-        name: "git+{{ abbot_repo }}#egg=Abbot"
-        # editable: false  # TODO: this parameter is required with Ansible 2
+        name: "{{ abbot_bin_dir }}"
       notify:
         - restart abbot
-    - name: install abbot to the virtualenv
-      pip: virtualenv={{ abbot_venv_dir }} name={{ abbot_bin_dir }}
     - name: set permissions on the virtualenv
       file:
         path: "{{ abbot_venv_dir }}"
