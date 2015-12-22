@@ -27,44 +27,16 @@
     abbot_solr_url: http://localhost:8983/solr/collection1/
 
   tasks:
-    # download Abbot repository and checkout the proper commit
-    - name: check that git is installed
-      yum: name=git state=present
-    - name: clone the "abbot" repository
-      git:
-        clone: yes
-        update: yes
-        force: yes  # meaning to overwrite local changes
-        dest: "{{ abbot_bin_dir }}"
-        repo: "{{ abbot_repo }}"
-        version: "{{ abbot_version }}"
-      notify:
-        - restart abbot
-    - name: set permissions on the abbot directory
-      file:
-        path: "{{ abbot_bin_dir }}"
-        state: directory
-        owner: root
-        group: root
-        mode: "u=rwX,g=rX,o=rX"
-        seuser: system_u
-        setype: usr_t
-    - name: set SELinux type on the abbot Python files
-      file: path={{ item }} state=directory recurse=yes setype=usr_t
-      with_items:
-        - "{{ abbot_bin_dir }}/packaging"
-        - "{{ abbot_bin_dir }}/scripts"
-        - "{{ abbot_bin_dir }}/tests"
-        - "{{ abbot_bin_dir }}/test_client"
-    - name: set SELinux type on the abbot Python lib files
-      file: path={{ abbot_bin_dir }}/abbot state=directory setype=lib_t
-
     # setup the virtualenv
+    - name: check that git is installed
+      # (Git is required for the next step)
+      yum: name=git state=present
     - name: install/update all requirements with pip
       pip:
         virtualenv: "{{ abbot_venv_dir }}"
         virtualenv_command: "{{ pyvenv_path }}"
-        requirements: "{{ abbot_bin_dir }}/requirements-deploy.txt"
+        name: "git+{{ abbot_repo }}#egg=Abbot"
+        # editable: false  # TODO: this parameter is required with Ansible 2
       notify:
         - restart abbot
     - name: install abbot to the virtualenv
