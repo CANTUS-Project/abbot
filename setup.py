@@ -33,7 +33,7 @@ import abbot  # for __version__
 setup(
     name = 'Abbot',
     version = abbot.__version__,
-    packages = ['abbot', 'holy_orders', 'tests'],
+    packages = ['abbot', 'holy_orders'],
 
     install_requires = [
         'parsimonious>=0.6,<0.7',
