@@ -42,21 +42,36 @@ the file called "LICENSE."
 1. Install the Python packages:
 
     ```bash
+    $ cd abbot
     $ pip install -r requirements.txt
     ```
 
-1. The test suite uses the ``pytest`` package. To run the test suite, ensure your venv is activated,
-   then issue the following command from the "abbot" root directory:
+1. The test suite uses the ``pytest`` package. To run the test suite, use the ``py.test`` command.
+    The output is quite clear, so you should not have to guess whether the tests passed.
+
+1. Modify the ``packaging/server_configuration.py`` file as required for your testing machine. In
+    particular, you must set the ``solr_url``, which means you must also be running a CANTUS-ready
+    Solr server locally. That's a bit of a pain, and I'm not going to tell you about it at all.
+
+1. Okay, I'll give you a little help. You have to download and install Solr yourself, but when you
+    go to run it, use the ``solr.home`` directory in
+    [this repository](https://github.com/CANTUS-Project/abbot_solr_home). The command to start Solr
+    will look something like this:
 
     ```bash
-    $ py.test
+    /path/to/solr/bin/solr start -s /path/to/abbot_solr_home
     ```
 
-1. ``pytest`` is quite clear in its output, so you should not have to guess whether the tests passed.
-   To run a test instance of *Abbot*, run this command:
+    And you can stop Solr with a command like this:
+
+    ```bash
+    /path/to/solr/bin/solr stop all
+    ```
+
+1. Run a development instance of *Abbot*:
 
    ```bash
-   $ python -m abbot
+   $ python -m abbot --options-file packaging/server_configuration.py
    ```
 
 
