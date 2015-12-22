@@ -62,7 +62,6 @@ def main(config_path):
     '''
     Run Holy Orders. Perform an update of the Solr server running on localhost:8983.
     '''
-    _set_up_logging()
 
     config = load_config(config_path)
 
@@ -127,7 +126,6 @@ def update_save_config(to_update, failed_types, config, config_path):
     :raises: :exc:`OSError` when the file cannot be written.
     :raises: :exc:`IOError` when the file cannot be written.
     '''
-    _set_up_logging()
 
     for each_type in to_update:
         if each_type not in failed_types:
@@ -150,7 +148,6 @@ def load_config(config_path):
     :returns: The configuration file's contents.
     :rtype: dict
     '''
-    _set_up_logging()
 
     config_path = pathlib.Path(config_path)
     try:
@@ -182,7 +179,6 @@ def process_and_submit_updates(updates, config):
     :returns: Whether all the updates were successfully converted and submitted.
     :rtype: bool
     '''
-    _set_up_logging()
 
     conversion_script_path = get_conversion_script_path(config)
 
@@ -223,7 +219,6 @@ def get_conversion_script_path(config):
     :returns: The path to the conversion script.
     :rtype: :class:`pathlib.Path`
     '''
-    _set_up_logging()
 
     if 'drupal_to_solr_script' not in config:
         _log.error('Did not find "drupal_to_solr_script" path in configuration file.')
@@ -255,8 +250,6 @@ def should_update_this(resource_type, config):
     :rtype: bool
     :raises: :exc:`KeyError` if data for ``resource_type`` is not found in ``config``.
     '''
-
-    _set_up_logging()
 
     if (resource_type not in config['update_frequency'] or
         resource_type not in config['last_updated']):
@@ -297,8 +290,6 @@ def calculate_chant_updates(config):
     .. note:: If the last update is in the future, the function returns an empty list.
     '''
 
-    _set_up_logging()
-
     post = []
 
     last_update = config['last_updated']['chant']
@@ -335,7 +326,6 @@ def download_from_urls(url_list):
     Resposne bodies are converted from bytes to str objects, and we assume it is UTF-8 encoded.
     '''
 
-    _set_up_logging()
     _log.debug('now in download_from_urls()')
 
     try:
@@ -380,7 +370,6 @@ def _collect_chant_ids(daily_updates):
     </chants>
     '''
 
-    _set_up_logging()
     _log.debug('Now in _collect_chant_ids()')
 
     if isinstance(daily_updates, bytes):
@@ -422,7 +411,6 @@ def download_chant_updates(config):
     that day, and returns an empty list so that the "last updated" date will not change.
     '''
 
-    _set_up_logging()
     _log.info('Starting download_chant_updates()')
 
     # get the lists of chant IDs that were updated, by day
@@ -466,7 +454,6 @@ def download_update(resource_type, config):
     if 'chant' == resource_type:
         return download_chant_updates(config)
 
-    _set_up_logging()
     _log.info('Starting download_update() for {}'.format(resource_type))
 
     try:
@@ -494,8 +481,6 @@ def convert_update(temp_directory, conversion_script_path, update):
     :raises: :exc:`RuntimeError` if the conversion failed for any reason. This function will write
         appropriate log entries.
     '''
-
-    _set_up_logging()
 
     # calculate filenames
     drupal_xml_filename = '{dir}/{file}'.format(dir=temp_directory,
@@ -543,7 +528,6 @@ def submit_update(update_pathname, solr_url):
     :raises: :exc:`RuntimeError` if the update file could not be loaded for any reason.
     '''
 
-    _set_up_logging()
     _log.info('Will submit an update to the Solr server at {}'.format(solr_url))
 
     with open(update_pathname, 'r') as the_file:
@@ -564,14 +548,6 @@ def submit_update(update_pathname, solr_url):
         raise RuntimeError(err_msg)
     finally:
         client.close()
-
-
-def _set_up_logging():
-    '''
-    Set up logging for the script. This function does not replace the gloabl ``_log`` object if it
-    has already been created, so it is safe to run this function many times.
-    '''
-    return None
 
 
 if '__main__' == __name__ :
