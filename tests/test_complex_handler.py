@@ -38,6 +38,7 @@ from abbot import __main__ as main
 from abbot import simple_handler
 from abbot import complex_handler
 ComplexHandler = complex_handler.ComplexHandler
+from abbot import util
 import shared
 
 
@@ -606,3 +607,30 @@ class TestSearchUnit(shared.TestHandler):
         mock_aq.assert_called_once_with('mock_rs')
         self.assertEqual('five', actual)
         mock_get_handler.assert_called_once_with(query='mock_aq')
+        self.handler.hparams['search_query'] = 'some query'
+
+    @mock.patch('abbot.util.assemble_query')
+    @mock.patch('abbot.util.parse_query')
+    @mock.patch('abbot.util.run_subqueries')
+    @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
+    @mock.patch('abbot.complex_handler.ComplexHandler.send_error')
+    @testing.gen_test
+    def test_search_handler_2(self, mock_senderr, mock_get_handler, mock_rs, mock_parseq, mock_aq):
+        '''
+        Ensure a 404 error when a subquery has no results.
+
+        This is a regression test for GitHub issue #55.
+        '''
+        query = 'i can haz cheezburger?'
+        self.handler.hparams['search_query'] = query
+        mock_parseq.return_value = 'mock_parseq'
+        mock_rs.side_effect = util.InvalidQueryError
+
+        actual = yield self.handler.search_handler()
+
+        mock_parseq.assert_called_once_with('type:source {}'.format(query))
+        mock_rs.assert_called_once_with('mock_parseq')
+        mock_senderr.assert_called_once_with(404, reason=simple_handler._NO_SEARCH_RESULTS)
+        assert 0 == mock_aq.call_count
+        assert 0 == mock_get_handler.call_count
+        assert actual is None
