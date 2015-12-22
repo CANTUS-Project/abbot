@@ -335,10 +335,15 @@ class ComplexHandler(simple_handler.SimpleHandler):
         query = 'type:{type} {query}'.format(type=self.type_name, query=query)
 
         try:
-            query = util.assemble_query((yield util.run_subqueries(util.parse_query(query))))
-            log.debug("SEARCH request resolves to this query: '{}'".format(query))
-        except util.InvalidQueryError as iqe:
-            log.debug('SEARCH request ends poorly: {}'.format(iqe))
-            self.send_error(404, reason=simple_handler._NO_SEARCH_RESULTS)
+            query = util.parse_query(query)
+        except util.InvalidQueryError:
+            self.send_error(400, reason=simple_handler._INVALID_SEARCH_QUERY)
         else:
-            return (yield self.get_handler(query=query))
+            try:
+                query = util.assemble_query((yield util.run_subqueries(query)))
+                log.debug("SEARCH request resolves to this query: '{}'".format(query))
+            except util.InvalidQueryError as iqe:
+                log.debug('SEARCH request ends poorly: {}'.format(iqe))
+                self.send_error(404, reason=simple_handler._NO_SEARCH_RESULTS)
+            else:
+                return (yield self.get_handler(query=query))

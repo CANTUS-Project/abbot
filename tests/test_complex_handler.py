@@ -634,3 +634,22 @@ class TestSearchUnit(shared.TestHandler):
         assert 0 == mock_aq.call_count
         assert 0 == mock_get_handler.call_count
         assert actual is None
+        self.handler.hparams['search_query'] = 'some query'
+
+    @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
+    @mock.patch('abbot.complex_handler.ComplexHandler.send_error')
+    @testing.gen_test
+    def test_search_handler_3(self, mock_senderr, mock_get_handler):
+        '''
+        Ensure a 400 error when given an invalid query string.
+
+        This is a regression test for GitHub issue #74.
+        '''
+        query = 'feast: genre:Absalon'
+        self.handler.hparams['search_query'] = query
+
+        actual = yield self.handler.search_handler()
+
+        assert actual is None
+        assert 0 == mock_get_handler.call_count
+        mock_senderr.assert_called_with(400, reason=simple_handler._INVALID_SEARCH_QUERY)
