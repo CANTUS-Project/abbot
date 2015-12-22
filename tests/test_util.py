@@ -62,9 +62,9 @@ class TestSingularResourceToPlural(TestCase):
         self.assertIsNone(util.singular_resource_to_plural(convert_me))
 
 
-class TestAskSolrById(shared.TestHandler):
+class TestSolrAskers(shared.TestHandler):
     '''
-    Tests for abbot.util.ask_solr_by_id().
+    Tests for abbot.util.ask_solr_by_id() and search_solr().
     '''
 
     @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
@@ -96,6 +96,28 @@ class TestAskSolrById(shared.TestHandler):
         actual = yield util.ask_solr_by_id('genre', '162', rows=42, sort='incipit asc')
         self.assertEqual(expected, actual)
         util.SOLR.search.assert_called_once_with('+type:genre +id:162', rows=42, sort='incipit asc')
+
+    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
+    @testing.gen_test
+    def test_search_solr_1(self, mock_solr):
+        "Basic test (no 'extra_params')."
+        query = 'searching for this'
+        mock_solr.search.return_value = shared.make_future('search results')
+        expected = 'search results'
+        actual = yield util.search_solr(query)
+        self.assertEqual(expected, actual)
+        util.SOLR.search.assert_called_once_with(query, df='default_search')
+
+    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
+    @testing.gen_test
+    def test_search_solr_2(self, mock_solr):
+        "Basic test (with 'start', 'rows', and 'sort' kwargs)."
+        query = 'searching for this'
+        mock_solr.search.return_value = shared.make_future('search results')
+        expected = 'search results'
+        actual = yield util.search_solr(query, start=5, rows=50, sort='lol')
+        self.assertEqual(expected, actual)
+        util.SOLR.search.assert_called_once_with(query, df='default_search', start=5, rows=50, sort='lol')
 
 
 class TestFormattedSorts(TestCase):

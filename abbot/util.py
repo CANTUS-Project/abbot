@@ -321,17 +321,14 @@ def search_solr(query, start=None, rows=None, sort=None):
     :rtype: :class:`pysolrtornado.Results`
     :raises: :exc:`pysolrtornado.SolrError` when there's an error while connecting to Solr.
     '''
-    # TODO: finalize then test this function
-    # TODO: make ask_solr_by_id use this as a helper function
     extra_params = {}
-    if start is not None:
+    if start:
         extra_params['start'] = start
-    if rows is not None:
+    if rows:
         extra_params['rows'] = rows
-    if sort is not None:
+    if sort:
         extra_params['sort'] = sort
 
-    log.info("search_solr() submits '{}'".format(query))
     return (yield SOLR.search(query, df='default_search', **extra_params))
 
 
