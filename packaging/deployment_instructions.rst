@@ -1,115 +1,145 @@
-I set up a virtual machine with CentOS 7, with a "minimal install," 1GB of memory, and the following partitions:
+Deployment Instructions for Abbot and HolyOrders
+================================================
 
-/: 10G
-/home: 5G
-/var: 5G
-/var/log: 5G
-/var/log/audit: 2G
-/usr/local: 5G
-swap: 2G
+Follow these instructions to deploy a new *Abbot* server from scratch.
 
-total: 34G
 
-====
+The Virtual Machine
+-------------------
 
-I created a user, "compadmin," to use for the system administration tasks.
-We will not use the "root" user.
-Ensure the "compadmin" user has a good password.
-We will disable the "root" user later.
+*Abbot* is intended for deployment on CentOS 7. We recommend a minimum of 1 GB of memory and 20 GB
+of persistent storage in a single partition. If you're as picky as me, you can set up with the
+following partitions:
 
-====
+- /: 10G
+- /home: 5G
+- /var: 5G
+- /var/log: 5G
+- /var/log/audit: 2G
+- /usr/local: 5G
+- swap: 2G
+- total: 34G
 
-After the installation, I logged in as "compadmin" and created the ".ssh" directory:
 
-::
-    $ mkdir ~/.ssh
-    $ chmod u=rwX,g=-,o=- ~/.ssh
+Your Own Computer
+-----------------
 
-From my own computer, I transferred my RSA public key to the new server:
+*Abbot* uses a configuration and deployment management application called *Ansible*. While the first
+several configuration steps are manual, the majority of the configuration (and indeed all of the
+difficult parts) are automated.
 
-::
-    $ scp ~/.ssh/id_rsa_key.pub new_server:/home/compadmin/.ssh/authorized_keys
+You must install *Ansible* on your own computer, which will be the "Control Machine." Refer to
+https://docs.ansible.com/ansible/intro_installation.html#installing-the-control-machine for help.
 
-New SSH connections should use the RSA public key. We will disable password-based SSH logins later.
-
-====
-
-On the new server VM, I ran a full system update:
-
-::
-    $ sudo yum update "rpm*" -y
-    ... (you will have to approve the CentOS package-signing key)...
-    ... (it should be fast)...
-    $ sudo yum update "yum*" -y
-    ... (it should be fast)...
-    $ sudo yum update -y
-    ... (this will not be as fast)...
-
-After the update is finished, restart the VM:
-
-::
-    $ sudo systemctl reboot
-
-====
-
-From this point on, everything shall be managed with a collection of Ansible playbooks.
-You must install Ansible on your own computer, which will be the "Control Machine": https://docs.ansible.com/ansible/intro_installation.html#installing-the-control-machine
-
-Make an "inventory file" named "hosts" with the new VM.
-Change the IP address as required.
+You will also want to define an "abbot" host in an inventory file, something like this:
 
 ::
     abbot ansible_ssh_host=10.0.1.132 ansible_ssh_user=compadmin
 
-Configure Sudo
---------------
 
-Our Ansible playbooks require that ``sudo`` does not need a password.
-Use ``visudo`` to ensure the following line is uncommented in the ``sudo`` configuration file:
+Post-Install Preparation
+------------------------
 
+You must perform a little extra preparation before running the Ansible playbooks.
+
+1. Login as the "root" user.
+1. Create a "compadmin" user with a known, secure password.
+1. Grant *sudo* access to the "compadmin" user **with the NOPASSWD setting**.
 ::
+
     %wheel  ALL=(ALL)       NOPASSWD: ALL
 
-Configure SSH
--------------
-
-Before you run this playbook, make sure you have an active SSH session.
-This playbook changes SSH settings in ways that may prevent you from connecting again, in which case a previously-running session will be important to help fix the mess!
-
+1. Logout from the "root" account and login as "compadmin."
+1. Disable root shell access:
+    ``sudo /usr/bin/chsh -s /usr/sbin/nologin root``
+1. Set the root password to something unknown and arbitrarily complex. The idea is that you will
+    never need to access the "root" account, and a very long password makes it harder for attackers.
+1. Make your own ".ssh" directory:
 ::
+
+    $ mkdir ~/.ssh
+    $ chmod u=rwX,g=-,o=- ~/.ssh
+
+1. From your own computer, transfer your SSH public key to the server. The playbook disables
+    password-based logins later.
+::
+
+    $ scp ~/.ssh/id_rsa_key.pub new_server:/home/compadmin/.ssh/authorized_keys
+
+1. Finally, back on the new VM, run a full system update (``sudo yum update -y``). Note that this
+    will automatically approve the CentOS package-signing key. When the update has finished, restart
+    the VM (``sudo systemctl reboot``).
+
+From this point on, all configuration is run through Ansible.
+
+
+Run the SSH Playbook
+--------------------
+
+Because a failure in the SSH playbook may prevent you from reconnecting via SSH, you should keep an
+active session while you run the playbook for the first time. Also note that, when you run the SSH
+playbook for the first time, the server will generate new host keys, so you may have to override the
+SSH client settings on your own computer *the first time* you connect after running the playbook.
+
+For example:
+::
+
     $ ssh compadmin@new_host
     ... then in a new terminal window...
     $ cd /path/to/ansible/playbooks
-    $ ansible-playbook -i hosts configure_ssh.yml
+    $ ansible-playbook configure_ssh.yml
     ... and in the same terminal window...
-    $ ssh <<new_vm>>
+    $ ssh compadmin@new_host
 
-If you can successfully SSH into the new VM after the playbook has run, you can go ahead and close the other SSH session.
-You may need to delete the previous host key, and disable "StrictHostKeyChecking" on the command line for the *first* time you connect to the new VM.
+If you can successfully connect to the new VM after the playbook has run, you can go ahead and
+close the other SSH session. Remember that you should only see a warning about the SSH host key
+changing after the *first* time you run the SSH playbook. After this, no matter how many times you
+run the "configure_ssh.yml" playbook, any warnings about the host keys may be a sign of malicious
+activity on the server.
 
-Like all the playbooks for Abbot, it is safe to re-run the "configure_ssh.yml" playbook as many times as you wish.
-
-Set Up Everything Else
-----------------------
-
-The rest of the setup doesn't require human intervention. Once you start the setup, you don't even have to watch!
-
-::
-    $ ansible-playbook -i hosts abbot.yml
 
 Configuration Variables
 -----------------------
 
-You may be interested in changing some of the configuration variables in the ``install_solr.yml`` and especially ``install_abbot.yml`` files.
-In particular, you may want to set the "abbot_hostname", "abbot_port", and "abbot_drupal_path" variables in the ``install_abbot.yml`` file, because these affect the resource URLs generated by the server.
-Incorrect values here will break any user agent.
+You may wish to change some of the configuration variables in the ``install_solr.yml`` and
+especially the ``install_abbot.yml`` files. Of particular interest are the following in
+``install_abbot.yml``:
 
-To upgrade the version of Abbot, simply change the "abbot_version" variable in ``install_abbot.yml``.
-This can either be a branch name, a tag name, or a "committish." The re-run the playbook.
+:abbot_hostname: The server's full hostname, without scheme (the "http" part) or port.
+:abbot_port: The port on which the server should listen.
+:abbot_drupal_path: The fully-qualified domain name of the associated Drupal installation.
+:abbot_version: The git branch, tag, or "committish" object to install on this host.
+
+
+Run all the Playbooks
+---------------------
+
+The rest of the setup doesn't require human intervention. In fact, you don't even have to watch!
+::
+
+    $ ansible-playbook -i hosts abbot.yml
+
+
+Set Initial Data
+----------------
+
+The *HolyOrders* script will run immediately following installation, automatically populating the
+Solr database with the latest available data from Drupal.
+
+HOWEVER THIS WILL NOT WORK FOR CHANTS, AND I NEED TO FIND A BETTER SOLUTION FOR THAT.
+
 
 Maintenance
 -----------
 
-The Ansible playbooks are designed to be run again, at any time, without causing harm.
-Ansible only modifies the target system if it is not already in the desired state.
-Thus, running Abbot's playbooks on a system that's already set up will not change the system at all, and running the playbooks on a system that has been changed, or is in an unknown state, will correct the system to the state specified in the playbooks.
+The Ansible playbooks are designed to be run again, at any time, without causing harm. Ansible only
+modifies the target system if it is not already in the desired state. Thus, running Abbot's
+playbooks on a system that's already set up will not change the system at all, and running the
+playbooks on a system that has been changed, or is in an unknown state, should correct the system
+to the state specified in the playbooks.
+
+You may update the version of *Abbot* installed on the server by changing the ``abbot_version``
+variable in the ``install_abbot.yml`` playbook and rerunning that playbook. If ``abbot_version`` is
+set to a branch name, the playbook will deploy the most recent commit on that branch. If a tag, the
+playbook will deploy the tagged commit. In all cases, local modifications to the git repository
+are destroyed before deployment.
