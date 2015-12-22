@@ -583,58 +583,41 @@ class TestSearchUnit(shared.TestHandler):
         self.handler = ComplexHandler(self.get_app(), request, type_name='source')
         self.handler.hparams['search_query'] = 'some query'
 
-    @mock.patch('abbot.util.assemble_query')
-    @mock.patch('abbot.util.parse_query')
     @mock.patch('abbot.util.run_subqueries')
     @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
     @testing.gen_test
-    def test_search_handler_1(self, mock_get_handler, mock_rs, mock_parseq, mock_aq):
+    def test_search_handler_1(self, mock_get_handler, mock_rs):
         '''
         Ensure the kwargs are passed along properly.
         '''
-        # TODO: this is the type of test that someone won't bother to keep up-to-date...
-        mock_get_handler.return_value = shared.make_future('five')
-        query = 'i can haz cheezburger?'
-        self.handler.hparams['search_query'] = query
-        mock_parseq.return_value = 'mock_parseq'
-        mock_aq.return_value = 'mock_aq'
-        mock_rs.return_value = shared.make_future('mock_rs')
+        expected = 'five'
+        mock_get_handler.return_value = shared.make_future(expected)
+        self.handler.hparams['search_query'] = 'feast:celery genre:tasty'
+        mock_rs.return_value = shared.make_future([('feast', 'celery'), ('genre', 'tasty')])
+        expected_final_query = 'feast:celery AND genre:tasty'  # what's sent on to get_handler()
 
         actual = yield self.handler.search_handler()
 
-        mock_parseq.assert_called_once_with('type:source {}'.format(query))
-        mock_rs.assert_called_once_with('mock_parseq')
-        mock_aq.assert_called_once_with('mock_rs')
-        self.assertEqual('five', actual)
-        mock_get_handler.assert_called_once_with(query='mock_aq')
-        self.handler.hparams['search_query'] = 'some query'
+        assert expected == actual
+        mock_get_handler.assert_called_once_with(query=expected_final_query)
 
-    @mock.patch('abbot.util.assemble_query')
-    @mock.patch('abbot.util.parse_query')
     @mock.patch('abbot.util.run_subqueries')
     @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
     @mock.patch('abbot.complex_handler.ComplexHandler.send_error')
     @testing.gen_test
-    def test_search_handler_2(self, mock_senderr, mock_get_handler, mock_rs, mock_parseq, mock_aq):
+    def test_search_handler_2(self, mock_senderr, mock_get_handler, mock_rs):
         '''
         Ensure a 404 error when a subquery has no results.
 
         This is a regression test for GitHub issue #55.
         '''
-        query = 'i can haz cheezburger?'
-        self.handler.hparams['search_query'] = query
-        mock_parseq.return_value = 'mock_parseq'
         mock_rs.side_effect = util.InvalidQueryError
 
         actual = yield self.handler.search_handler()
 
-        mock_parseq.assert_called_once_with('type:source {}'.format(query))
-        mock_rs.assert_called_once_with('mock_parseq')
         mock_senderr.assert_called_once_with(404, reason=simple_handler._NO_SEARCH_RESULTS)
-        assert 0 == mock_aq.call_count
         assert 0 == mock_get_handler.call_count
         assert actual is None
-        self.handler.hparams['search_query'] = 'some query'
 
     @mock.patch('abbot.complex_handler.ComplexHandler.get_handler')
     @mock.patch('abbot.complex_handler.ComplexHandler.send_error')
