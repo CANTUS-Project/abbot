@@ -36,6 +36,7 @@ import pathlib
 import subprocess
 from sys import argv
 import tempfile
+import time as time_module
 from xml.etree import ElementTree as etree
 
 from systemdream.journal import handler as journalctl
@@ -199,7 +200,9 @@ def process_and_submit_updates(updates, config):
             updates_have_failed = True
 
         submissions_failed = False
-        for update in converted:
+        for i, update in enumerate(converted):
+            if i != 0 and i % 100 == 0:
+                time_module.sleep(5)
             try:
                 submit_update(update, config['solr_url'])
             except RuntimeError:
