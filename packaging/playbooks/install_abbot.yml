@@ -41,6 +41,7 @@
         version: "{{ abbot_version }}"
       notify:
         - restart abbot
+        - restart holyorders
 
     - name: install abbot to the virtualenv
       pip:
@@ -49,6 +50,7 @@
         name: "{{ abbot_repo_local }}"
       notify:
         - restart abbot
+        - restart holyorders
     - name: set permissions on the virtualenv
       file:
         path: "{{ abbot_venv_dir }}"
