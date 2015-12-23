@@ -11,6 +11,6 @@ WantedBy=multi-user.target
 
 [Service]
 Environment=PATH="{{ abbot_venv_dir }}:$PATH"
-ExecStart={{ abbot_py_exec }} {{ abbot_bin_dir }}/abbot --options_file={{ abbot_conf_file }}
+ExecStart={{ abbot_py_exec }} -m abbot --options_file={{ abbot_conf_file }}
 Restart=on-failure
 User={{ abbot_user }}

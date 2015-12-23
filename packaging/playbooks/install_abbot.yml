@@ -10,7 +10,7 @@
     pyvenv_path: /usr/bin/pyvenv-3.4
     abbot_version: master
     abbot_repo: https://github.com/CANTUS-Project/abbot.git
-    abbot_bin_dir: /usr/local/abbot
+    abbot_repo_local: /usr/local/abbot
     abbot_venv_dir: /usr/local/abbot-venv
     abbot_py_exec: "{{ abbot_venv_dir }}/bin/python"
     abbot_user: abbot
@@ -36,7 +36,7 @@
         clone: yes
         update: yes
         force: yes  # meaning to overwrite local changes
-        dest: "{{ abbot_bin_dir }}"
+        dest: "{{ abbot_repo_local }}"
         repo: "{{ abbot_repo }}"
         version: "{{ abbot_version }}"
       notify:
@@ -46,7 +46,7 @@
       pip:
         virtualenv: "{{ abbot_venv_dir }}"
         virtualenv_command: "{{ pyvenv_path }}"
-        name: "{{ abbot_bin_dir }}"
+        name: "{{ abbot_repo_local }}"
       notify:
         - restart abbot
     - name: set permissions on the virtualenv
