@@ -713,12 +713,11 @@ class TestUpdateDownloading(unittest.TestCase):
         xml_docs.append('</chants>')
         xml_docs = ''.join(xml_docs)  # pylint: disable=redefined-variable-type
         xml_docs = [xml_docs]
+        expected = set(list_of_ids)
 
         # run the test and check results
         actual = holy_orders._collect_chant_ids(xml_docs)
-        self.assertEqual(list_of_ids, actual)
-        for each_id in actual:
-            self.assertTrue(isinstance(each_id, str))
+        self.assertCountEqual(expected, actual)
 
     @given(strats.lists(strats.text('1234567890', min_size=1, max_size=10, average_size=6)))
     def test_collect_ids_2(self, list_of_ids):
@@ -734,12 +733,11 @@ class TestUpdateDownloading(unittest.TestCase):
         xml_docs = ''.join(xml_docs)  # pylint: disable=redefined-variable-type
         xml_docs = bytes(xml_docs, 'UTF-8')
         xml_docs = [xml_docs]
+        expected = set(list_of_ids)
 
         # run the test and check results
         actual = holy_orders._collect_chant_ids(xml_docs)
-        self.assertEqual(list_of_ids, actual)
-        for each_id in actual:
-            self.assertTrue(isinstance(each_id, str))
+        self.assertCountEqual(expected, actual)
 
     @given(strats.text())
     def test_collect_ids_3(self, garbage):
@@ -773,13 +771,18 @@ class TestUpdateDownloading(unittest.TestCase):
             </chants>
             '''.format(i, i, i))
         expected = ['01', '02', '03', '11', '12', '13', '21', '22', '23']
-        print(str(xml_docs))
 
         # run the test and check results
         actual = holy_orders._collect_chant_ids(xml_docs)
-        self.assertEqual(expected, actual)
-        for each_id in actual:
-            self.assertTrue(isinstance(each_id, str))
+        self.assertCountEqual(expected, actual)
+
+    def test_collect_ids_6(self):
+        '''
+        _collect_chant_ids() deduplicates chant IDs for update, so we only download a chant once
+        '''
+        xml_docs = ['<chants><chant><id>888</id></chant><chant><id>888</id></chant></chants>']
+        actual = holy_orders._collect_chant_ids(xml_docs)
+        assert ['888'] == actual
 
     @mock.patch('holy_orders.__main__.download_from_urls')
     @mock.patch('holy_orders.__main__.calculate_chant_updates')

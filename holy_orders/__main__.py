@@ -379,7 +379,7 @@ def _collect_chant_ids(daily_updates):
             _log.error('_collect_chant_ids() failed to convert input to str')
             return []
 
-    post = []
+    post = {}
     for each_day in daily_updates:
         try:
             each_day = etree.fromstring(each_day)
@@ -388,9 +388,9 @@ def _collect_chant_ids(daily_updates):
             return []
 
         for elem in each_day.iter('id'):
-            post.append(elem.text)
+            post[elem.text] = None
 
-    return post
+    return list(post.keys())
 
 
 def download_chant_updates(config):
