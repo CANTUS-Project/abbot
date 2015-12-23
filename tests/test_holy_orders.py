@@ -335,7 +335,7 @@ class TestSubmitUpdate(unittest.TestCase):
         '''
         update_pathname = '123abc.xml'
         solr_url = 'http::/com.checkit/'
-        exp_update_url = '{}update?commit=true'.format(solr_url)
+        exp_update_url = '{}update?commit=false'.format(solr_url)
         update_body = '<xml funlevel="woo"/>'
         # setup the httpclient mock
         mock_httpclient.HTTPError = httpclient.HTTPError
@@ -363,7 +363,7 @@ class TestSubmitUpdate(unittest.TestCase):
         '''
         update_pathname = '123abc.xml'
         solr_url = 'http::/com.trailingslash'
-        exp_update_url = '{}/update?commit=true'.format(solr_url)
+        exp_update_url = '{}/update?commit=false'.format(solr_url)
         update_body = '<xml funlevel="woo"/>'
         # setup the httpclient mock
         mock_httpclient.HTTPError = httpclient.HTTPError
@@ -603,11 +603,12 @@ class TestMain(unittest.TestCase):
     Tests for main().
     '''
 
+    @mock.patch('holy_orders.__main__.commit_then_optimize')
     @mock.patch('holy_orders.__main__.update_save_config')
     @mock.patch('holy_orders.__main__.process_and_submit_updates')
     @mock.patch('holy_orders.__main__.download_update')
     @mock.patch('holy_orders.__main__.should_update_this')
-    def test_it_works(self, mock_should_update, mock_dl_update, mock_pasu, mock_usconf):
+    def test_it_works(self, mock_should_update, mock_dl_update, mock_pasu, mock_usconf, mock_cto):
         '''
         When everything works (in that there are no exceptions).
 
@@ -648,6 +649,8 @@ class TestMain(unittest.TestCase):
                                             ['feast', 'source'],
                                             config_file,
                                             config_path)
+        # commit_then_optimize()
+        mock_cto.assert_called_once_with(config_file['solr_url'])
 
 
 class TestUpdateDownloading(unittest.TestCase):
@@ -895,3 +898,91 @@ class TestUpdateDownloading(unittest.TestCase):
         self.assertEqual(expected, actual)
         self.assertEqual(0, mock_chants.call_count)
         self.assertEqual(0, mock_urls.call_count)
+
+
+class TestCommitThenOptimize(unittest.TestCase):
+    '''
+    Tests for holy_orders.__main__.commit_then_optimize().
+    '''
+
+    @mock.patch('holy_orders.__main__.httpclient')
+    def test_everything_works(self, mock_httpclient):
+        '''
+        commit_then_optimize() when everything goes according to plan and the URL ends with a /
+        '''
+        solr_url = 'http::/com.checkit/'
+        commit_url = '{}update?commit=true'.format(solr_url)
+        optimize_url = '{}update?optimize=true'.format(solr_url)
+        request_timeout = 5 * 60
+        expected = 0
+        # setup the httpclient mock
+        mock_httpclient.HTTPError = httpclient.HTTPError
+        mock_client = mock.Mock()
+        mock_httpclient.HTTPClient = mock.Mock()
+        mock_httpclient.HTTPClient.return_value = mock_client
+        mock_client.close = mock.Mock()
+        mock_client.fetch = mock.Mock()
+
+        actual = holy_orders.commit_then_optimize(solr_url)
+
+        assert expected == actual
+        mock_client.fetch.assert_any_call(commit_url, method='GET', request_timeout=request_timeout)
+        mock_client.fetch.assert_any_call(optimize_url, method='GET', request_timeout=request_timeout)
+        mock_client.close.assert_called_once_with()
+
+    @mock.patch('holy_orders.__main__.httpclient')
+    def test_commit_fails(self, mock_httpclient):
+        '''
+        commit_then_optimize() when the commit fails and the URL doesn't end with a /
+        '''
+        solr_url = 'http::/com.checkit'
+        commit_url = '{}/update?commit=true'.format(solr_url)
+        optimize_url = '{}/update?optimize=true'.format(solr_url)
+        request_timeout = 5 * 60
+        expected = 1
+        # setup the httpclient mock
+        mock_httpclient.HTTPError = httpclient.HTTPError
+        mock_client = mock.Mock()
+        mock_httpclient.HTTPClient = mock.Mock()
+        mock_httpclient.HTTPClient.return_value = mock_client
+        mock_client.close = mock.Mock()
+        mock_client.fetch = mock.Mock(side_effect=IOError)
+
+        actual = holy_orders.commit_then_optimize(solr_url)
+
+        assert expected == actual
+        assert 1 == mock_client.fetch.call_count
+        mock_client.fetch.assert_any_call(commit_url, method='GET', request_timeout=request_timeout)
+        mock_client.close.assert_called_once_with()
+
+    @mock.patch('holy_orders.__main__.httpclient')
+    def test_optimize_fails(self, mock_httpclient):
+        '''
+        commit_then_optimize() when the commit works but the optimize fails
+        '''
+        solr_url = 'http::/com.checkit/'
+        commit_url = '{}update?commit=true'.format(solr_url)
+        optimize_url = '{}update?optimize=true'.format(solr_url)
+        request_timeout = 5 * 60
+        expected = 2
+        # setup the httpclient mock
+        mock_httpclient.HTTPError = httpclient.HTTPError
+        mock_client = mock.Mock()
+        mock_httpclient.HTTPClient = mock.Mock()
+        mock_httpclient.HTTPClient.return_value = mock_client
+        mock_client.close = mock.Mock()
+        mock_client.fetch = mock.Mock()
+        # ugh...
+        call_count = 0
+        def fetch_side_effect(url, *args, **kwargs):
+            "Raise IOError if 'commit' is not in 'url'."
+            if 'commit' not in url:
+                raise IOError()
+        mock_client.fetch.side_effect = fetch_side_effect
+
+        actual = holy_orders.commit_then_optimize(solr_url)
+
+        assert expected == actual
+        mock_client.fetch.assert_any_call(commit_url, method='GET', request_timeout=request_timeout)
+        mock_client.fetch.assert_any_call(optimize_url, method='GET', request_timeout=request_timeout)
+        mock_client.close.assert_called_once_with()

@@ -103,6 +103,8 @@ def main(config_path):
                 _log.debug('main() hears that process_and_submit_updates() failed for {}'.format(resource_type))
                 failed_types.append(resource_type)
 
+    commit_then_optimize(config['solr_url'])
+
     _log.info('Updating configuration file')
     try:
         update_save_config(types_to_update, failed_types, config, config_path)
@@ -535,7 +537,7 @@ def submit_update(update_pathname, solr_url):
 
     if solr_url.endswith('/'):
         solr_url = solr_url[:-1]
-    update_url = '{}/update?commit=true'.format(solr_url)
+    update_url = '{}/update?commit=false'.format(solr_url)
     _log.debug('Final Solr URL is {}'.format(update_url))
 
     client = httpclient.HTTPClient()
@@ -548,6 +550,50 @@ def submit_update(update_pathname, solr_url):
         raise RuntimeError(err_msg)
     finally:
         client.close()
+
+
+def commit_then_optimize(solr_url):
+    '''
+    Given the URL to a Solr installation, ask it to commit then optimize the most recent updates.
+
+    :param str solr_url: The full URL to the Solr server, including protocol and port, plus the
+        collection name. For example, ``'http://localhost:8983/solr/collection1'``.
+    :returns: 0 if everything was successful; 1 if the commit failed; 2 if the optimize failed.
+    :rtype: int
+    '''
+
+    while solr_url.endswith('/'):
+        solr_url = solr_url[:-1]
+
+    commit_url = '{}/update?commit=true'.format(solr_url)
+    optimize_url = '{}/update?optimize=true'.format(solr_url)
+
+    # We'll wait five minutes for each step to complete. It's a long time, but there's no rush.
+    request_timeout = 5 * 60
+
+    client = httpclient.HTTPClient()
+
+    try:
+        try:
+            _log.info('Asking Solr to "commit" the updates.')
+            client.fetch(commit_url, method='GET', request_timeout=request_timeout)
+        except (httpclient.HTTPError, IOError) as err:
+            err_msg = 'Solr failed during the "commit" ({})'.format(err)
+            _log.error(err_msg)
+            return 1
+
+        try:
+            _log.info('Asking Solr to "optimize" the updates.')
+            client.fetch(optimize_url, method='GET', request_timeout=request_timeout)
+        except (httpclient.HTTPError, IOError) as err:
+            err_msg = 'Solr failed during the "optimize" ({})'.format(err)
+            _log.error(err_msg)
+            return 2
+
+    finally:
+        client.close()
+
+    return 0
 
 
 if '__main__' == __name__ :
