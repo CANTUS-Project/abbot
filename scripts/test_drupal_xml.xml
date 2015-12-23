@@ -21,4 +21,14 @@
         <cause></cause>
         <other_cause/>
     </crop_circle>
+    <genre>
+        <id>438</id>
+        <name>Smoke meat</name>
+        <mass_or_office>Office</mass_or_office>
+    </genre>
+    <genre>
+        <id>514</id>
+        <name>Gravyfries</name>
+        <mass_or_office>Mass, Office</mass_or_office>
+    </genre>
 </tests>

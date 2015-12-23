@@ -70,8 +70,23 @@ def solr_node_from_drupal_node(node):
                 out.append(elem)
         elif each.text is not None:
             elem = ETree.Element(FIELD, {NAME: each.tag.lower()})
-            elem.text = each.text
-            out.append(elem)
+
+            if each.tag == 'mass_or_office':
+                # this field might need to be split into two
+                if each.text == 'Mass' or each.text == 'Office':
+                    elem.text = each.text
+                    out.append(elem)
+                else:  # it's both "Mass" and "Office"
+                    elem.text = 'Mass'
+                    out.append(elem)
+                    elem = ETree.Element(FIELD, {NAME: each.tag.lower()})
+                    elem.text = 'Office'
+                    out.append(elem)
+
+            else:
+                elem.text = each.text
+                out.append(elem)
+
             if 'id' == each.tag:
                 elem = ETree.Element(FIELD, {NAME: SOLR_UNIQUE_ID})
                 elem.text = '{tag}_{text}'.format(tag=node.tag, text=each.text)
