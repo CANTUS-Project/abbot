@@ -40,8 +40,10 @@ GRAMMAR_STRING = '''
     text = character+
     quoted_text = '"' character_or_space* '"'
 
+    field_name = (~"[A-Za-z_]")+
+
     default_field = quoted_text / text
-    named_field = (text ':' quoted_text) / (text ':' text)
+    named_field = (field_name ':' quoted_text) / (field_name ':' text)
 
     term = (named_field / default_field) space*
 '''

@@ -53,6 +53,9 @@ class TestWhetherItParses(object):
     def test_single_6(self):
         assert it_parses('key:"val ue"')
 
+    def test_single_6_bis(self):
+        assert it_parses('ke_ey:"val ue"')
+
     def test_single_7(self):
         assert not it_parses('"key":"value"')
 
