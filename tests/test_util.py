@@ -35,6 +35,7 @@ Tests for abbot/util.py of the Abbot server.
 from unittest import mock, TestCase
 import pytest
 from tornado import gen, testing, web
+import parsimonious
 import pysolrtornado
 
 from hypothesis import assume, given, strategies as strats
@@ -427,24 +428,98 @@ class TestQueryParserSync(TestCase):
     Tests for the synchronous (non-coroutine) SEARCH request query-string parsing functions.
     '''
 
+    def test_collect_terms_1(self):
+        '''
+        Input looks like this:
+        <query>
+            <term A>
+            <wonderful>
+                <term B>
+                <beautiful>
+                    <term C>
+                <term D>
+            <meili>
+            <perfect>
+                <term E>
+        '''
+        term_a = parsimonious.nodes.Node('term', 'A', 0, 1)
+        term_b = parsimonious.nodes.Node('term', 'B', 0, 1)
+        term_c = parsimonious.nodes.Node('term', 'C', 0, 1)
+        term_d = parsimonious.nodes.Node('term', 'D', 0, 1)
+        term_e = parsimonious.nodes.Node('term', 'E', 0, 1)
+        beautiful = parsimonious.nodes.Node('beautiful', '', 0, 1, [term_c])
+        wonderful = parsimonious.nodes.Node('wonderful', '', 0, 1, [term_b, beautiful, term_d])
+        meili = parsimonious.nodes.Node('meili', '', 0, 1)
+        perfect = parsimonious.nodes.Node('perfect', '', 0, 1, [term_e])
+        query = parsimonious.nodes.Node('query', '', 0, 1, [term_a, wonderful, meili, perfect])
+
+        expected = [term_a, term_b, term_c, term_d, term_e]
+        actual = util._collect_terms(query)
+        assert expected == actual
+
+    def test_collect_terms_2(self):
+        '''
+        Input looks like this:
+        <query>
+            <wonderful>
+                <beautiful>
+            <meili>
+            <perfect>
+        '''
+        beautiful = parsimonious.nodes.Node('beautiful', '', 0, 1)
+        wonderful = parsimonious.nodes.Node('wonderful', '', 0, 1, [beautiful])
+        meili = parsimonious.nodes.Node('meili', '', 0, 1)
+        perfect = parsimonious.nodes.Node('perfect', '', 0, 1)
+        query = parsimonious.nodes.Node('query', '', 0, 1, [wonderful, meili, perfect])
+
+        expected = []
+        actual = util._collect_terms(query)
+        assert expected == actual
+
+    def test_collect_terms_3(self):
+        '''
+        Input looks like this:
+        <term A>
+        '''
+        root = parsimonious.nodes.Node('term', 'A', 0, 1)
+        expected = [root]
+        actual = util._collect_terms(root)
+        assert expected == actual
+
     def test_parse_1(self):
+        "Single default field."
         expected = [('default', 'antiphon')]
         actual = util.parse_query('antiphon')
         assert expected == actual
 
     def test_parse_2(self):
+        "Single named field."
         expected = [('genre', 'antiphon')]
         actual = util.parse_query('genre:antiphon')
         assert expected == actual
 
     def test_parse_3(self):
+        "One default field, one named field."
         expected = [('default', '"in taberna"'), ('genre', 'antiphon')]
         actual = util.parse_query('"in taberna" genre:antiphon')
         assert expected == actual
 
     def test_parse_4(self):
+        "Invalid: named field without corresponding value."
         with pytest.raises(util.InvalidQueryError) as excinfo:
             util.parse_query('size: drink:Dunkelweiß')
+        assert util._INVALID_QUERY in str(excinfo.value)
+
+    def test_parse_5(self):
+        "One default field, one named field, each with * wildcard."
+        expected = [('default', '"in *"'), ('genre', '*phon')]
+        actual = util.parse_query('"in *" genre:*phon')
+        assert expected == actual
+
+    def test_parse_6(self):
+        "Invalid: consecutive * wildcards."
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('drink:Dunkel**')
         assert util._INVALID_QUERY in str(excinfo.value)
 
     def test_assemble_query_1(self):

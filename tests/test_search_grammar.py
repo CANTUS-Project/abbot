@@ -89,3 +89,68 @@ class TestWhetherItParses(object):
 
     def test_many_5(self):
         assert not it_parses('one: two:three')
+
+
+class TestWildcardTokens(object):
+    "Tests for the wildcard operators * and ?"
+
+    # wildcard * ----------------------
+    def test_star_1(self):
+        assert it_parses('*')
+
+    def test_star_2(self):
+        assert it_parses('field:*')
+
+    def test_star_3(self):
+        assert it_parses('field:as*')
+
+    def test_star_4(self):
+        assert it_parses('field:*df')
+
+    def test_star_5(self):
+        assert it_parses('field:as*f')
+
+    def test_double_star_1(self):
+        assert not it_parses('**')
+
+    def test_double_star_2(self):
+        assert not it_parses('field:**')
+
+    def test_double_star_3(self):
+        assert not it_parses('field:as**')
+
+    def test_double_star_4(self):
+        assert not it_parses('field:**df')
+
+    def test_double_star_5(self):
+        assert not it_parses('field:as**f')
+
+    def test_quoted_star_1(self):
+        assert it_parses('"*"')
+
+    def test_quoted_star_2(self):
+        assert it_parses('field:"*"')
+
+    def test_quoted_star_3(self):
+        assert it_parses('field:"as*"')
+
+    def test_quoted_star_4(self):
+        assert it_parses('field:"*df"')
+
+    def test_quoted_star_5(self):
+        assert it_parses('field:"as*f"')
+
+    def test_quoted_double_star_1(self):
+        assert not it_parses('"**"')
+
+    def test_quoted_double_star_2(self):
+        assert not it_parses('field:"**"')
+
+    def test_quoted_double_star_3(self):
+        assert not it_parses('field:"as**"')
+
+    def test_quoted_double_star_4(self):
+        assert not it_parses('field:"**df"')
+
+    def test_quoted_double_star_5(self):
+        assert not it_parses('field:"as**f"')

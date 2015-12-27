@@ -31,21 +31,25 @@ The grammar is held in a separate file, with a dedicated grammar-testing functio
 from parsimonious import exceptions, grammar
 
 GRAMMAR_STRING = '''
-    query = term+
+    query = term_list
 
+    empty = ''
     character = ~"[A-Za-z0-9]"
+    characters = character+
     space = ' '
-    character_or_space = character / space
+    star = '*'
+    characters_or_spaces = (character / space)*
 
-    text = character+
-    quoted_text = '"' character_or_space* '"'
+    text = (characters? star characters?) / characters
+    quoted_text = '"' ((characters_or_spaces? star characters_or_spaces?) / characters_or_spaces) '"'
 
     field_name = (~"[A-Za-z_]")+
 
     default_field = quoted_text / text
     named_field = (field_name ':' quoted_text) / (field_name ':' text)
 
-    term = (named_field / default_field) space*
+    term = named_field / default_field
+    term_list = (space* term) (space+ term)*
 '''
 
 SEARCH_GRAMMAR = grammar.Grammar(GRAMMAR_STRING)

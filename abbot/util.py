@@ -360,6 +360,34 @@ def request_wrapper(func):
     return decorated
 
 
+def _collect_terms(root):
+    '''
+    Collect all the "term" nodes from the "root" of a parsed search query.
+
+    :param root: The "root" outputted from parsing a search query with our Parsimonious grammar.
+    :type root: :class:`parsimonious.nodes.Node`
+    :returns: A list of all the "term" :class:`Node` objects.
+    :rtype: list of :class:`Node`
+
+    .. note:: This function hopes for a relatively consistent use of the nodes called "term" in our
+        Parsimonious grammar. No matter what, the function will always perform a depth-first recursive
+        search through the nodes, collecting nodes called "term." However, the usefulness of the
+        produced list depends on what a "term" node holds.
+
+    .. note:: This function does not look for "term" nodes in "term" nodes.
+    '''
+
+    post = []
+
+    if root.expr_name == 'term':
+        post.append(root)
+        return post
+    else:
+        for child in root.children:
+            post.extend(_collect_terms(child))
+        return post
+
+
 def parse_query(query):
     '''
     Parse a user-submitted query string into a list of field/value tuples.
@@ -394,9 +422,9 @@ def parse_query(query):
 
     post = []
 
-    for term in parsed.children:
-        # each "term" contains the term itself, plus arbitrary spaces
-        term = term.children[0].children[0]
+    for term in _collect_terms(parsed):
+        # each "term" contains either a single "default_field" or "named_field"
+        term = term.children[0]
 
         if term.expr_name == 'named_field':
             term = term.children[0]  # idk why
