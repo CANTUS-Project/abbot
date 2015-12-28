@@ -297,12 +297,13 @@ class TestBasicGetUnit(shared.TestHandler):
                     'sort_order': ['1', '2', '3'],
         }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        exp_num = 3
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
                                               rows=10, sort=None)
-        self.assertEqual(expected, actual)
+        assert (expected, exp_num) == actual
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -322,8 +323,8 @@ class TestBasicGetUnit(shared.TestHandler):
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
-        self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
+        assert (None, 0) == actual
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -344,11 +345,12 @@ class TestBasicGetUnit(shared.TestHandler):
         self.handler.hparams['page'] = 42
         self.handler.hparams['per_page'] = 10
         self.handler.hparams['sort'] = 'incipit asc'
+        exp_num = 1
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
-        self.assertEqual(expected, actual)
+        assert (expected, exp_num) == actual
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -366,15 +368,16 @@ class TestBasicGetUnit(shared.TestHandler):
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.hparams['page'] = 4
         self.handler.hparams['per_page'] = 12
-
         self.handler.hparams['include_resources'] = False
-        actual = yield self.handler.basic_get(resource_id)
+        exp_num = 3
+
+        actual  = yield self.handler.basic_get(resource_id)
 
         # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
         # "start" of 0, so "page" 2 should have a "start" equal to "per_page" (12 in this test)
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36,
                                               rows=12, sort=None)
-        self.assertEqual(expected, actual)
+        assert (expected, exp_num) == actual
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -394,8 +397,8 @@ class TestBasicGetUnit(shared.TestHandler):
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
-        self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(409, reason=exp_reason)
+        assert (None, 0) == actual
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
@@ -414,8 +417,8 @@ class TestBasicGetUnit(shared.TestHandler):
         actual = yield self.handler.basic_get(query=query)
 
         mock_search_solr.assert_called_once_with(query, sort=None, start=0, rows=10)
-        self.assertIsNone(actual)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
+        assert (None, 0) == actual
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
@@ -446,12 +449,13 @@ class TestBasicGetUnit(shared.TestHandler):
                     'sort_order': ['1', '2', '3'],
         }
         mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        exp_num = 3
 
         actual = yield self.handler.basic_get(resource_id)
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
                                               rows=10, sort=None)
-        self.assertEqual(expected, actual)
+        assert (expected, exp_num) == actual
 
 
 class TestGetUnit(shared.TestHandler):
@@ -487,7 +491,7 @@ class TestGetUnit(shared.TestHandler):
         self.handler.head_request = False
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
-        response = [1, 2, 3]
+        response = ([1, 2, 3], 1900)
         mock_get_handler = mock.Mock(return_value=shared.make_future(response))
         self.handler.get_handler = mock_get_handler
         mock_mrh = mock.Mock()
@@ -499,8 +503,8 @@ class TestGetUnit(shared.TestHandler):
 
         mock_vrh.assert_called_once_with(True)
         mock_get_handler.assert_called_once_with(resource_id)
-        mock_mrh.assert_called_once_with(True, len(response) - 2)
-        mock_write.assert_called_once_with(response)
+        mock_mrh.assert_called_once_with(True, response[1])
+        mock_write.assert_called_once_with(response[0])
 
     def test_normal_view(self):
         '''
@@ -523,7 +527,7 @@ class TestGetUnit(shared.TestHandler):
         self.handler.head_request = True
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
-        response = [1]
+        response = ([1], 42)
         mock_get_handler = mock.Mock(return_value=shared.make_future(response))
         self.handler.get_handler = mock_get_handler
         mock_mrh = mock.Mock()
@@ -535,7 +539,7 @@ class TestGetUnit(shared.TestHandler):
 
         mock_vrh.assert_called_once_with(False)
         mock_get_handler.assert_called_once_with(resource_id)
-        mock_mrh.assert_called_once_with(False, len(response) - 1)
+        mock_mrh.assert_called_once_with(False, response[1])
         self.assertEqual(0, mock_write.call_count)
 
     def test_no_resources_found(self):
@@ -558,7 +562,7 @@ class TestGetUnit(shared.TestHandler):
         self.handler.head_request = False
         mock_vrh = mock.Mock(return_value=True)
         self.handler.verify_request_headers = mock_vrh
-        response = None
+        response = (None , 0)
         mock_get_handler = mock.Mock(return_value=shared.make_future(response))
         self.handler.get_handler = mock_get_handler
         mock_mrh = mock.Mock()
@@ -1566,7 +1570,7 @@ class TestSearchUnit(shared.TestHandler):
         '''
         Ensure the kwargs are passed along properly.
         '''
-        expected = 'five'
+        expected = ('five', 5)
         mock_get_handler.return_value = shared.make_future(expected)
         self.handler.hparams['search_query'] = 'feast:celery genre:tasty'
         # what's sent on to get_handler()
@@ -1639,7 +1643,7 @@ class TestSearchUnit(shared.TestHandler):
         search_handler() returns None; return None
         '''
         mock_vrh.return_value = True
-        mock_search_handler.return_value = shared.make_future(None)
+        mock_search_handler.return_value = shared.make_future((None, 0))
         actual = yield self.handler.search()
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
@@ -1657,12 +1661,12 @@ class TestSearchUnit(shared.TestHandler):
         self.handler.hparams['include_resources'] = False
         self.handler.head_request = True
         mock_vrh.return_value = True
-        mock_search_handler.return_value = shared.make_future([1, 2, 3])
+        mock_search_handler.return_value = shared.make_future(([1, 2, 3], 42))
         actual = yield self.handler.search()
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
         self.assertEqual(0, mock_write.call_count)
-        mock_mrh.assert_called_once_with(True, 3)
+        mock_mrh.assert_called_once_with(True, 42)
 
     @mock.patch('abbot.simple_handler.SimpleHandler.make_response_headers')
     @mock.patch('abbot.simple_handler.SimpleHandler.write')
@@ -1677,12 +1681,12 @@ class TestSearchUnit(shared.TestHandler):
         self.handler.hparams['include_resources'] = True
         self.handler.head_request = False
         mock_vrh.return_value = True
-        mock_search_handler.return_value = shared.make_future([1, 2, 3, 'resources'])
+        mock_search_handler.return_value = shared.make_future(([1, 2, 3, 'resources'], 42))
         actual = yield self.handler.search()
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
         mock_write.assert_called_once_with([1, 2, 3, 'resources'])
-        mock_mrh.assert_called_once_with(True, 3)
+        mock_mrh.assert_called_once_with(True, 42)
 
 
 class TestSendError(shared.TestHandler):

@@ -344,11 +344,11 @@ class SimpleHandler(web.RequestHandler):
             fetch the appropriate amount of resources with arbitrary "id".
         :param str query: The "query" to send to Solr. If this argument is provided, ``resource_id``
             will be ignored.
-        :returns: A dictionary that may be used as the response body. There will always be at least
-            one member, ``"resources"``, although when there are no other records it will simply be
-            an empty dict. Returns ``None`` when there are no results, and sends the required
-            status code.
-        :rtype: dict or NoneType
+        :returns: A dictionary that may be used as the response body, and the number of resources in
+            the response. The dictionary will always have at least one key, ``"resources"``, although
+            when there are no other records it will simply be an empty dict. Returns ``None`` when
+            there are no results, after sending the appropriate response to the user agent.
+        :rtype: (dict, int) or ``(NoneType, 0)``
         '''
 
         # prepare the query -------------------------------
@@ -383,10 +383,11 @@ class SimpleHandler(web.RequestHandler):
             elif query:  # assume this is a SEARCH request
                 self.send_error(404, reason=_NO_SEARCH_RESULTS)
             else:
-                self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
-            return
+                self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))
+            return None, 0
         else:
             post = {record['id']: self.format_record(record) for record in resp}
+            number_of_records = len(post)
             post['sort_order'] = [record['id'] for record in resp]
 
         # for the X-Cantus-Total-Results header
@@ -399,19 +400,18 @@ class SimpleHandler(web.RequestHandler):
                 if drupal_path:
                     post[record['id']]['drupal_path'] = drupal_path
 
-        return post
+        return post, number_of_records
 
     @gen.coroutine
     def get_handler(self, resource_id=None, query=None):
         '''
         Abstraction layer between :meth:`get` and :meth:`basic_get`. In :class:`SimpleHandler` this
         simply returns the result of :meth:`basic_get`, but :class:`ComplexHandler` does many other
-        things here. This abstraction layer allows both handlers to share common header functionality
-        in :meth:`basic_get` and response body formatting functionality in :meth:`get`.
+        things here. This abstraction layer allows both handlers to share common functionality.
 
-        :param str resource_id: If provided, this is the resource ID requested by the user agent.
-        :param str query: If provided, this is the ``"query"`` string submitted by a user agent,
-            representing their search request.
+        :param resource_id: As per :meth:`basic_get`.
+        :param query:
+        :returns: As per :meth:`basic_get`.
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
@@ -626,7 +626,7 @@ class SimpleHandler(web.RequestHandler):
 
         # run the more specific GET request handler
         try:
-            response = yield self.get_handler(resource_id)
+            response, num_results = yield self.get_handler(resource_id)
             if response is None:
                 return
         except pysolrtornado.SolrError:
@@ -635,10 +635,7 @@ class SimpleHandler(web.RequestHandler):
             return
 
         # finally, prepare the response headers
-        num_records = len(response) - 1
-        if self.hparams['include_resources']:
-            num_records -= 1
-        self.make_response_headers(is_browse_request, num_records)
+        self.make_response_headers(is_browse_request, num_results)
 
         if not self.head_request:
             self.write(response)
@@ -717,14 +714,19 @@ class SimpleHandler(web.RequestHandler):
     @gen.coroutine
     def search_handler(self):
         '''
-        Prepare a basic response to a search query. This method should be overridden in subclasses,
-        if required, to modify the search behaviour.
+        Conduct a search query for a :class:`SimpleHandler`.
+
+        :returns: As per :meth:`get_handler`.
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
         .. note:: This method returns ``None`` in some situations when an error has been returned
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
+
+        .. note:: The query string is obtained from the "search_query" header parameter.
+
+        You may override this method in sublcasses to modify the search behaviour.
         '''
 
         # NOTE: this method is very similar to ComplexHandler.search_handler() *except* this method
@@ -770,7 +772,7 @@ class SimpleHandler(web.RequestHandler):
 
         # run the more specific SEARCH request handler
         try:
-            response = yield self.search_handler()
+            response, num_results = yield self.search_handler()
             if response is None:
                 return
         except pysolrtornado.SolrError:
@@ -779,8 +781,7 @@ class SimpleHandler(web.RequestHandler):
             return
 
         # finally, prepare the response headers
-        num_records = (len(response) - 1) if self.hparams['include_resources'] else len(response)
-        self.make_response_headers(is_browse_request, num_records)
+        self.make_response_headers(is_browse_request, num_results)
 
         if not self.head_request:
             self.write(response)
