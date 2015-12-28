@@ -231,13 +231,17 @@ class ComplexHandler(simple_handler.SimpleHandler):
         '''
         Process GET requests for complex record types.
 
+        :param resource_id: As per :meth:`SimpleHandler.get_handler`
+        :param query: As per :meth:`SimpleHandler.get_handler`
+        :returns: As per :meth:`SimpleHandler.get_handler`
+
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
         .. note:: This method returns ``None`` in some situations when an error has been returned
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
         '''
-        results = yield self.basic_get(resource_id=resource_id, query=query)
+        results, num_results = yield self.basic_get(resource_id=resource_id, query=query)
         if results is None:
             return
 
@@ -262,7 +266,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
             # fill in extra fields, like descriptions, when relevant
             post[record] = yield self.make_extra_fields(post[record], results[record])
 
-        return post
+        return post, num_results
 
     def verify_request_headers(self, is_browse_request):
         '''
@@ -317,15 +321,18 @@ class ComplexHandler(simple_handler.SimpleHandler):
     @gen.coroutine
     def search_handler(self):
         '''
-        Process SEARCH requests for complex record types.
+        Conduct a search query for a :class:`ComplexHandler`.
+
+        :returns: As per :meth:`SimpleHandler.get_handler`.
 
         .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
 
         .. note:: This method returns ``None`` in some situations when an error has been returned
             to the client. In those situations, callers of this method must not call :meth:`write()`
             or similar.
-        '''
 
+        .. note:: The query string is obtained from the "search_query" header parameter.
+        '''
         # NOTE: this method is very similar to SimpleHandler.search_handler() *except* that method
         #       doesn't call util.run_subqueries() because they don't exist for simple resources.
         #       However, they should be kept "in sync" whenever possible.

@@ -590,7 +590,7 @@ class TestSearchUnit(shared.TestHandler):
         '''
         Ensure the kwargs are passed along properly.
         '''
-        expected = 'five'
+        expected = ('five', 5)
         mock_get_handler.return_value = shared.make_future(expected)
         self.handler.hparams['search_query'] = 'feast:celery genre:tasty'
         mock_rs.return_value = shared.make_future([('feast', 'celery'), ('genre', 'tasty')])
