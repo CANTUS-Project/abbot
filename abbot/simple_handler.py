@@ -379,7 +379,7 @@ class SimpleHandler(web.RequestHandler):
         if not resp:
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
-                self.send_error(400, reason=_TOO_LARGE_PAGE)
+                self.send_error(409, reason=_TOO_LARGE_PAGE)
             elif query:  # assume this is a SEARCH request
                 self.send_error(404, reason=_NO_SEARCH_RESULTS)
             else:

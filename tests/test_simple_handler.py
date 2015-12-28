@@ -380,7 +380,7 @@ class TestBasicGetUnit(shared.TestHandler):
     @testing.gen_test
     def test_basic_get_unit_5(self, mock_ask_solr):
         '''
-        - when the Solr response is empty and self.hparams['page'] is too high (returns 400)
+        - when the Solr response is empty and self.hparams['page'] is too high (returns 409)
         '''
         resource_id = '123'
         self.handler.hparams['page'] = 1
@@ -395,7 +395,7 @@ class TestBasicGetUnit(shared.TestHandler):
 
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
         self.assertIsNone(actual)
-        self.handler.send_error.assert_called_once_with(400, reason=exp_reason)
+        self.handler.send_error.assert_called_once_with(409, reason=exp_reason)
 
     @mock.patch('abbot.util.search_solr')
     @testing.gen_test
@@ -735,7 +735,7 @@ class TestGetIntegration(shared.TestHandler):
         mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=90,
                                               rows=10, sort=None)
         self.check_standard_header(actual)
-        self.assertEqual(400, actual.code)
+        self.assertEqual(409, actual.code)
         self.assertEqual(simple_handler._TOO_LARGE_PAGE, actual.reason)
 
     @mock.patch('abbot.util.ask_solr_by_id')
