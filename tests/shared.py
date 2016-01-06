@@ -53,13 +53,13 @@ def make_future(with_this):
 
 def make_results(docs):
     '''
-    Create a new :class:`pysolrtornado.Results` with the ``docs`` argument as the :attr:`docs`
-    attribute.
+    Create a new :class:`pysolrtornado.Results` instance with the ``docs`` argument as the
+    :attr:`docs` attribute. This also sets the proper "hits" attribute.
 
     :param docs: The actual results returned from Solr.
     :type docs: list of dict
     '''
-    return pysolrtornado.Results(docs, len(docs))
+    return pysolrtornado.Results({'response': {'numFound': len(docs), 'docs': docs}})
 
 
 class TestHandler(testing.AsyncHTTPTestCase):
