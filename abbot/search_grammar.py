@@ -38,10 +38,12 @@ GRAMMAR_STRING = '''
     characters = character+
     space = ' '
     star = '*'
+    qmark = '?'
+    qmarks = qmark+
     characters_or_spaces = (character / space)*
 
-    text = (characters? star characters?) / characters
-    quoted_text = '"' ((characters_or_spaces? star characters_or_spaces?) / characters_or_spaces) '"'
+    text = (characters? star characters?) / (characters? qmarks characters?) / characters
+    quoted_text = '"' ((characters_or_spaces? star characters_or_spaces?) / (characters_or_spaces? qmarks characters_or_spaces?) / characters_or_spaces) '"'
 
     field_name = (~"[A-Za-z_]")+
 

@@ -468,6 +468,14 @@ class TestParseQuery(TestCase):
         with pytest.raises(util.InvalidQueryError) as excinfo:
             util.parse_query('drink:Dunkel**')
         assert util._INVALID_QUERY in str(excinfo.value)
+        #
+        actual = util.parse_query('"in ?" genre:?phon')
+        expected = [('default', '"in ?"'), ('genre', '?phon')]
+        assert expected == actual
+        #
+        actual = util.parse_query('genre:???iphon')
+        expected = [('genre', '???iphon')]
+        assert expected == actual
 
 
 class TestQueryParserSync(TestCase):

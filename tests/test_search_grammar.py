@@ -90,3 +90,32 @@ class TestWildcardTokens(object):
         assert not it_parses('field:"as**"')
         assert not it_parses('field:"**df"')
         assert not it_parses('field:"as**f"')
+
+    def test_qmark(self):
+        assert it_parses('?')
+        assert it_parses('field:?')
+        assert it_parses('field:as?')
+        assert it_parses('field:?df')
+        assert it_parses('field:as?f')
+
+    def test_double_qmark(self):
+        "Double question mark should be fine; it means two wildcard characters."
+        assert it_parses('??')
+        assert it_parses('field:??')
+        assert it_parses('field:as??')
+        assert it_parses('field:??df')
+        assert it_parses('field:as??f')
+
+    def test_quoted_qmark(self):
+        assert it_parses('"?"')
+        assert it_parses('field:"?"')
+        assert it_parses('field:"as?"')
+        assert it_parses('field:"?df"')
+        assert it_parses('field:"as?f"')
+
+    def test_quoted_double_qmark(self):
+        assert it_parses('"??"')
+        assert it_parses('field:"??"')
+        assert it_parses('field:"as??"')
+        assert it_parses('field:"??df"')
+        assert it_parses('field:"as??f"')
