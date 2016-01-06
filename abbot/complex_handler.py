@@ -166,38 +166,6 @@ class ComplexHandler(simple_handler.SimpleHandler):
         return post, resources
 
     @gen.coroutine
-    def fill_from_cantusid(self, record):
-        '''
-        For records (chants) with a "cantusid" entry, check if they're missing a field that can be
-        filled in with data from the cantusid record. Currently the following fields are filled:
-        ``'genre_id'``.
-
-        .. note:: The ``record`` *must* have a "cantusid" key or a :exc:`KeyError` will be raised.
-
-        :param dict record: A record with a "cantusid" key.
-        :returns: The record amended with additional fields as possible.
-        :rtype: dict
-        '''
-        if self.hparams['no_xref']:
-            return record
-
-        # TODO: decide if genre is truly the only thing we can fill
-        # TODO: test this method
-        #if 'full_text' in self.returned_fields and 'full_text' not in record:
-            #resp = yield util.ask_solr_by_id('cantusid', record['cantus_id'])
-            #if len(resp) > 0 and 'full_text' in resp[0]:
-                #record['full_text'] = resp[0]['full_text']
-
-        if 'genre_id' in self.returned_fields and 'genre' not in record:
-            resp = yield util.ask_solr_by_id('cantusid', record['cantus_id'])
-            if len(resp) > 0 and 'genre_id' in resp[0]:
-                resp = yield util.ask_solr_by_id('genre', resp[0]['genre_id'])
-                if len(resp) > 0 and 'name' in resp[0]:
-                    record['genre'] = resp[0]['name']
-
-        return record
-
-    @gen.coroutine
     def make_extra_fields(self, record, orig_record):
         '''
         For cross-reference records that require more than one field from the cross-referenced
@@ -258,10 +226,6 @@ class ComplexHandler(simple_handler.SimpleHandler):
             if self.hparams['include_resources']:
                 for key, value in xreffed[1].items():
                     post['resources'][record][key] = value
-
-            # (for Chant) if missing "full_text" or "genre_id" entry, get them from cantusid
-            if 'cantus_id' in post[record]:
-                post[record] = yield self.fill_from_cantusid(post[record])
 
             # fill in extra fields, like descriptions, when relevant
             post[record] = yield self.make_extra_fields(post[record], results[record])
