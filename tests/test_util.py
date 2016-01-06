@@ -423,9 +423,57 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         some.send_error.assert_called_once_with(500, reason='Programmer Error')
 
 
+class TestParseQuery(TestCase):
+    '''
+    Tests for util.parse_query().
+    '''
+
+    def test_basics(self):
+        '''
+        Basics:
+        - can it differentiate fields?
+        - can it differentiate default and named fields?
+        - can it deal with quoted field values?
+        - can it deal with a single field?
+        - can it deal with several fields?
+        '''
+        actual = util.parse_query('antiphon')
+        expected = [('default', 'antiphon')]
+        assert expected == actual
+        #
+        actual = util.parse_query('genre:antiphon')
+        expected = [('genre', 'antiphon')]
+        assert expected == actual
+        #
+        actual = util.parse_query('"in taberna" genre:antiphon')
+        expected = [('default', '"in taberna"'), ('genre', 'antiphon')]
+        assert expected == actual
+        # Invalid: named field doesn't have a value.
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('size: drink:Dunkelweiß')
+        assert util._INVALID_QUERY in str(excinfo.value)
+
+    def test_wildcards(self):
+        '''
+        Wildcards:
+        - both * and ?
+        - can it deal with a single wildcard?
+        - does it say consecutive * is invalid?
+        - does it accept consecutive ?
+        '''
+        actual = util.parse_query('"in *" genre:*phon')
+        expected = [('default', '"in *"'), ('genre', '*phon')]
+        assert expected == actual
+        # Invalid: consecutive * wildcards.
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('drink:Dunkel**')
+        assert util._INVALID_QUERY in str(excinfo.value)
+
+
 class TestQueryParserSync(TestCase):
     '''
-    Tests for the synchronous (non-coroutine) SEARCH request query-string parsing functions.
+    Tests for the synchronous (non-coroutine) SEARCH request query-string parsing functions except
+    util.parse_query().
     '''
 
     def test_collect_terms_1(self):
@@ -485,42 +533,6 @@ class TestQueryParserSync(TestCase):
         expected = [root]
         actual = util._collect_terms(root)
         assert expected == actual
-
-    def test_parse_1(self):
-        "Single default field."
-        expected = [('default', 'antiphon')]
-        actual = util.parse_query('antiphon')
-        assert expected == actual
-
-    def test_parse_2(self):
-        "Single named field."
-        expected = [('genre', 'antiphon')]
-        actual = util.parse_query('genre:antiphon')
-        assert expected == actual
-
-    def test_parse_3(self):
-        "One default field, one named field."
-        expected = [('default', '"in taberna"'), ('genre', 'antiphon')]
-        actual = util.parse_query('"in taberna" genre:antiphon')
-        assert expected == actual
-
-    def test_parse_4(self):
-        "Invalid: named field without corresponding value."
-        with pytest.raises(util.InvalidQueryError) as excinfo:
-            util.parse_query('size: drink:Dunkelweiß')
-        assert util._INVALID_QUERY in str(excinfo.value)
-
-    def test_parse_5(self):
-        "One default field, one named field, each with * wildcard."
-        expected = [('default', '"in *"'), ('genre', '*phon')]
-        actual = util.parse_query('"in *" genre:*phon')
-        assert expected == actual
-
-    def test_parse_6(self):
-        "Invalid: consecutive * wildcards."
-        with pytest.raises(util.InvalidQueryError) as excinfo:
-            util.parse_query('drink:Dunkel**')
-        assert util._INVALID_QUERY in str(excinfo.value)
 
     def test_assemble_query_1(self):
         '''
