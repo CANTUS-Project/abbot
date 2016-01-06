@@ -32,125 +32,61 @@ from abbot.search_grammar import it_parses
 class TestWhetherItParses(object):
     "Simple tests using the it_parses() function."
 
-    # single field --------------------
-    # default field
-    def test_single_1(self):
+    def test_default_field(self):
         assert it_parses('asdf')
-
-    def test_single_2(self):
         assert it_parses('"asdf"')
-
-    def test_single_3(self):
         assert it_parses('"as df"')
 
-    # named field
-    def test_single_4(self):
+    def test_named_field(self):
         assert it_parses('key:value')
-
-    def test_single_5(self):
         assert it_parses('key:"value"')
-
-    def test_single_6(self):
         assert it_parses('key:"val ue"')
-
-    def test_single_6_bis(self):
         assert it_parses('ke_ey:"val ue"')
-
-    def test_single_7(self):
         assert not it_parses('"key":"value"')
-
-    def test_single_8(self):
         assert not it_parses('"ke y":value')
-
-    def test_single_9(self):
         assert not it_parses('key:"value')
-
-    def test_single_10(self):
         assert not it_parses(':value"')
-
-    def test_single_11(self):
         assert not it_parses(':value')
-
-    def test_single_12(self):
         assert not it_parses('key:')
 
-    # many fields ---------------------
-    def test_many_1(self):
+    def test_many_fields(self):
         assert it_parses('as df')
-
-    def test_many_2(self):
         assert it_parses('one:two three:four')
-
-    def test_many_3(self):
         assert it_parses('one:"tw o" three:"fo ur"')
-
-    def test_many_4(self):
         assert it_parses('as two:five one:"four teen" df')
-
-    def test_many_5(self):
         assert not it_parses('one: two:three')
 
 
 class TestWildcardTokens(object):
-    "Tests for the wildcard operators * and ?"
+    """
+    Tests for the wildcard operators * and ?
+    These are both often used in the same situations.
+    """
 
-    # wildcard * ----------------------
-    def test_star_1(self):
+    def test_star(self):
         assert it_parses('*')
-
-    def test_star_2(self):
         assert it_parses('field:*')
-
-    def test_star_3(self):
         assert it_parses('field:as*')
-
-    def test_star_4(self):
         assert it_parses('field:*df')
-
-    def test_star_5(self):
         assert it_parses('field:as*f')
 
-    def test_double_star_1(self):
+    def test_double_star(self):
         assert not it_parses('**')
-
-    def test_double_star_2(self):
         assert not it_parses('field:**')
-
-    def test_double_star_3(self):
         assert not it_parses('field:as**')
-
-    def test_double_star_4(self):
         assert not it_parses('field:**df')
-
-    def test_double_star_5(self):
         assert not it_parses('field:as**f')
 
-    def test_quoted_star_1(self):
+    def test_quoted_star(self):
         assert it_parses('"*"')
-
-    def test_quoted_star_2(self):
         assert it_parses('field:"*"')
-
-    def test_quoted_star_3(self):
         assert it_parses('field:"as*"')
-
-    def test_quoted_star_4(self):
         assert it_parses('field:"*df"')
-
-    def test_quoted_star_5(self):
         assert it_parses('field:"as*f"')
 
-    def test_quoted_double_star_1(self):
+    def test_quoted_double_star(self):
         assert not it_parses('"**"')
-
-    def test_quoted_double_star_2(self):
         assert not it_parses('field:"**"')
-
-    def test_quoted_double_star_3(self):
         assert not it_parses('field:"as**"')
-
-    def test_quoted_double_star_4(self):
         assert not it_parses('field:"**df"')
-
-    def test_quoted_double_star_5(self):
         assert not it_parses('field:"as**f"')
