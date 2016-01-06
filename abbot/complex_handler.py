@@ -317,36 +317,3 @@ class ComplexHandler(simple_handler.SimpleHandler):
         '''
         yield super(ComplexHandler, self).options(resource_id=resource_id)
         self.add_header('X-Cantus-No-Xref', 'allow')
-
-    @gen.coroutine
-    def search_handler(self):
-        '''
-        Conduct a search query for a :class:`ComplexHandler`.
-
-        :returns: As per :meth:`SimpleHandler.get_handler`.
-
-        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
-
-        .. note:: This method returns ``None`` in some situations when an error has been returned
-            to the client. In those situations, callers of this method must not call :meth:`write()`
-            or similar.
-
-        .. note:: The query string is obtained from the "search_query" header parameter.
-        '''
-        # NOTE: this method is very similar to SimpleHandler.search_handler() *except* that method
-        #       doesn't call util.run_subqueries() because they don't exist for simple resources.
-        #       However, they should be kept "in sync" whenever possible.
-
-        query = 'type:{type} {query}'.format(type=self.type_name, query=self.hparams['search_query'])
-
-        try:
-            query = util.parse_query(query)
-        except util.InvalidQueryError:
-            self.send_error(400, reason=simple_handler._INVALID_SEARCH_QUERY)
-        else:
-            try:
-                query = util.assemble_query((yield util.run_subqueries(query)))
-            except util.InvalidQueryError as iqe:
-                self.send_error(404, reason=simple_handler._NO_SEARCH_RESULTS)
-            else:
-                return (yield self.get_handler(query=query))

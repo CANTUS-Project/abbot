@@ -38,6 +38,7 @@ import pysolrtornado
 from abbot import __main__ as main
 from abbot.complex_handler import ComplexHandler
 from abbot import simple_handler
+from abbot import util
 SimpleHandler = simple_handler.SimpleHandler
 import shared
 
@@ -1564,29 +1565,48 @@ class TestSearchUnit(shared.TestHandler):
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
         self.handler.hparams['search_query'] = 'some query'
 
+    @mock.patch('abbot.util.run_subqueries')
     @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
     @testing.gen_test
-    def test_search_handler_1(self, mock_get_handler):
+    def test_search_handler_1(self, mock_get_handler, mock_rs):
         '''
         Ensure the kwargs are passed along properly.
         '''
         expected = ('five', 5)
         mock_get_handler.return_value = shared.make_future(expected)
         self.handler.hparams['search_query'] = 'feast:celery genre:tasty'
-        # what's sent on to get_handler()
-        expected_final_query = 'type:century AND feast:celery AND genre:tasty'
+        mock_rs.return_value = shared.make_future([('feast', 'celery'), ('genre', 'tasty')])
+        expected_final_query = 'feast:celery AND genre:tasty'  # what's sent on to get_handler()
 
         actual = yield self.handler.search_handler()
 
         assert expected == actual
         mock_get_handler.assert_called_once_with(query=expected_final_query)
 
-    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
+    @mock.patch('abbot.util.run_subqueries')
     @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
     @testing.gen_test
-    def test_search_handler_2(self, mock_get_handler, mock_senderr):
+    def test_search_handler_2(self, mock_senderr, mock_get_handler, mock_rs):
         '''
-        When given an invalid query string, search_handler() returns a 400.
+        Ensure a 404 error when a subquery has no results.
+
+        This is a regression test for GitHub issue #55.
+        '''
+        mock_rs.side_effect = util.InvalidQueryError
+
+        actual = yield self.handler.search_handler()
+
+        mock_senderr.assert_called_once_with(404, reason=simple_handler._NO_SEARCH_RESULTS)
+        assert 0 == mock_get_handler.call_count
+        assert actual is None
+
+    @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
+    @testing.gen_test
+    def test_search_handler_3(self, mock_senderr, mock_get_handler):
+        '''
+        Ensure a 400 error when given an invalid query string.
 
         This is a regression test for GitHub issue #74.
         '''

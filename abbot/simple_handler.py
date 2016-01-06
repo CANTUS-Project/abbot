@@ -714,7 +714,7 @@ class SimpleHandler(web.RequestHandler):
     @gen.coroutine
     def search_handler(self):
         '''
-        Conduct a search query for a :class:`SimpleHandler`.
+        Conduct a search query.
 
         :returns: As per :meth:`get_handler`.
 
@@ -726,20 +726,23 @@ class SimpleHandler(web.RequestHandler):
 
         .. note:: The query string is obtained from the "search_query" header parameter.
 
-        You may override this method in sublcasses to modify the search behaviour.
+        This method works for :class:`ComplexHandler` too, where there may be "subqueries" that refer
+        to cross-referenced fields.
         '''
 
-        # NOTE: this method is very similar to ComplexHandler.search_handler() *except* this method
-        #       doesn't call util.run_subqueries() because they don't exist for simple resources.
-        #       However, they should be kept "in sync" whenever possible.
-
         query = 'type:{type} {query}'.format(type=self.type_name, query=self.hparams['search_query'])
+
         try:
-            query = util.assemble_query(util.parse_query(query))
+            query = util.parse_query(query)
         except util.InvalidQueryError:
             self.send_error(400, reason=_INVALID_SEARCH_QUERY)
         else:
-            return (yield self.get_handler(query=query))
+            try:
+                query = util.assemble_query((yield util.run_subqueries(query)))
+            except util.InvalidQueryError as iqe:
+                self.send_error(404, reason=_NO_SEARCH_RESULTS)
+            else:
+                return (yield self.get_handler(query=query))
 
     @util.request_wrapper
     @gen.coroutine
