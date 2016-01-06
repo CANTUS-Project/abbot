@@ -55,7 +55,6 @@ class TestRootHandler(shared.TestHandler):
         "basic test"
         server_name = options.options.server_name
         all_plural_resources = [
-            'cantusids',
             'centuries',
             'chants',
             'feasts',
@@ -88,7 +87,6 @@ class TestRootHandler(shared.TestHandler):
         "integration test for test_root_1()"
         server_name = options.options.server_name
         all_plural_resources = [
-            'cantusids',
             'centuries',
             'chants',
             'feasts',

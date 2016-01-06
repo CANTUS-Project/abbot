@@ -53,7 +53,6 @@ class RootHandler(web.RequestHandler):
         server_name = options.options.server_name[:-1]
 
         all_plural_resources = [
-            'cantusids',
             'centuries',
             'chants',
             'feasts',
