@@ -104,8 +104,7 @@ def singular_resource_to_plural(singular):
     >>> singular_resource_to_plural('source_status')
     'source_statii'
     '''
-    conversions = {'cantusid': 'cantusids',
-                   'century': 'centuries',
+    conversions = {'century': 'centuries',
                    'chant': 'chants',
                    'feast': 'feasts',
                    'genre': 'genres',

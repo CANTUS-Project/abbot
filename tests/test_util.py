@@ -53,7 +53,7 @@ class TestSingularResourceToPlural(TestCase):
 
     def test_singular_resource_to_plural_1(self):
         "When the singular form has a corresponding pural."
-        self.assertEqual('cantusids', util.singular_resource_to_plural('cantusid'))
+        assert 'feasts' == util.singular_resource_to_plural('feast')
 
     @given(strats.text())
     def test_singular_resource_to_plural_2(self, convert_me):
