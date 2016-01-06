@@ -300,8 +300,6 @@ class SimpleHandler(web.RequestHandler):
         'http://cantus2.uwaterloo.ca/feast/2360'
         >>> feasts.make_drupal_url('123610', 'source')
         'http://cantus2.uwaterloo.ca/source/123610'
-        >>> feasts.make_drupal_url('830303', 'cantusid')
-        ''
         '''
 
         drupal_url = options.drupal_url

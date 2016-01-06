@@ -20,8 +20,6 @@ DEBUG = False
 # - chants
 # - sources
 #
-# NOTE: "CantusID" records require using the "chants_to_cantusids.py" script
-#
 # NOTE:
 # If an element has a @text attribute, that will be used as the text of the outputted <field>
 #    element rather than the text of the input element. It's slightly faster to build the input

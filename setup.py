@@ -44,7 +44,6 @@ setup(
     tests_require = ['pytest'],
 
     scripts = [
-        'scripts/chants_to_cantusids.py',
         'scripts/drupal_xml_to_solr_xml.py',
     ],
 

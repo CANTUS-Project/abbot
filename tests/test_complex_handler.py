@@ -336,7 +336,7 @@ class TestGetIntegration(shared.TestHandler):
             "mock version of ask_solr_by_id()"
             records = {'357679': [record],
                        '161': [{'name': 'V', 'description': 'Responsory Verse'}],
-                       '600482a': [],  # empty until we decide on fill_from_cantusid()
+                       '600482a': [],
                        '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
                       }
             return shared.make_future(shared.make_results(records[q_id]))
@@ -348,7 +348,6 @@ class TestGetIntegration(shared.TestHandler):
         mock_ask_solr.assert_any_call('chant', '357679')
         mock_ask_solr.assert_any_call('genre', '161')
         mock_ask_solr.assert_any_call('feast', '2378')
-        # right now, the "cantusid" won't be looked up unless "feast_id" is missing
         self.assertEqual(expected, escape.json_decode(actual.body))
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
 
@@ -373,7 +372,7 @@ class TestGetIntegration(shared.TestHandler):
             "mock version of ask_solr_by_id()"
             records = {'*': [record_a, record_b],
                        '161': [{'name': 'V', 'description': 'Responsory Verse'}],
-                       '600482a': [],  # empty until we decide on fill_from_cantusid()
+                       '600482a': [],
                        '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
                       }
             return shared.make_future(shared.make_results(records[q_id]))
@@ -418,7 +417,6 @@ class TestGetIntegration(shared.TestHandler):
 
         self.check_standard_header(actual)
         mock_ask_solr.assert_called_once_with('chant', '357679')
-        # right now, the "cantusid" won't be looked up unless "feast_id" is missing
         self.assertEqual(expected, escape.json_decode(actual.body))
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())

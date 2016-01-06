@@ -51,7 +51,6 @@ drupal_url = None
 # use Abbot's singular resource type name. Resource types that map to ``None`` will not produce
 # a drupal_path link. This value is ignored if "drupal_url" is ``None``.
 drupal_type_map = {
-    'cantusid': None,
     'portfolio': None,
     'siglum': 'rism',
     'source_status': 'source-status',
