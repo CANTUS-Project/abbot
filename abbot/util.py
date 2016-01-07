@@ -314,6 +314,7 @@ def search_solr(query, start=None, rows=None, sort=None):
     if sort:
         extra_params['sort'] = sort
 
+    log.debug('util.search_solr() submits "{}"'.format(query))
     return (yield SOLR.search(query, df='default_search', **extra_params))
 
 
@@ -455,6 +456,7 @@ def parse_query(query):
     '''
 
     if isinstance(query, str):
+        log.debug('util.parse_query() begins "{}"'.format(query))
         try:
             parsed = search_grammar.parse(query)
         except RuntimeError:

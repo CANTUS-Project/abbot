@@ -375,6 +375,7 @@ class SimpleHandler(web.RequestHandler):
 
         # format the query --------------------------------
         if not resp:
+            log.debug('SimpleHandler.basic_get() had no results; resource_id="{0}" and query="{1}"'.format(resource_id, query))
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
                 self.send_error(409, reason=_TOO_LARGE_PAGE)
