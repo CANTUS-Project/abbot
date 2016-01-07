@@ -211,7 +211,7 @@ class ComplexHandler(simple_handler.SimpleHandler):
         '''
         results, num_results = yield self.basic_get(resource_id=resource_id, query=query)
         if results is None:
-            return
+            return results, num_results
 
         post = {'sort_order': results['sort_order']}
         if self.hparams['include_resources']:
