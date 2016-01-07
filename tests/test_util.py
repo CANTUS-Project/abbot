@@ -598,7 +598,7 @@ class TestQueryParserSync(TestCase):
         With a single query component.
         '''
         components = [('feast_id', '123')]
-        expected = 'feast_id:123'
+        expected = 'feast_id:123 '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
@@ -607,7 +607,7 @@ class TestQueryParserSync(TestCase):
         With several query components.
         '''
         components = [('feast_id', '123'), ('name', '"Danceathon Smith"')]
-        expected = 'feast_id:123 AND name:"Danceathon Smith"'
+        expected = 'feast_id:123 name:"Danceathon Smith" '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
@@ -616,7 +616,7 @@ class TestQueryParserSync(TestCase):
         With a single query component with the "default" field.
         '''
         components = [('default', '"Deus Rex"')]
-        expected = '"Deus Rex"'
+        expected = '"Deus Rex" '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
@@ -625,7 +625,17 @@ class TestQueryParserSync(TestCase):
         With several query components, including some with the "default" field.
         '''
         components = [('feast_id', '123'), ('name', '"Danceathon Smith"'), ('default', '"Deus Rex"')]
-        expected = 'feast_id:123 AND name:"Danceathon Smith" AND "Deus Rex"'
+        expected = 'feast_id:123 name:"Danceathon Smith" "Deus Rex" '
+        actual = util.assemble_query(components)
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_5(self):
+        '''
+        With several query components and some "joining elements."
+        '''
+        components = ['+', ('feast_id', '123'), 'AND', '(', ('name', '"Danceathon Smith"'), 'OR',
+            ('default', '"Deus Rex"'), ')']
+        expected = ' +feast_id:123  AND  ( name:"Danceathon Smith"  OR "Deus Rex"  ) '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
@@ -755,3 +765,20 @@ class TestQueryParserAsync(shared.TestHandler):
             mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
         else:
             raise AssertionError('InvalidQueryError not raised')
+
+    @mock.patch('abbot.util.search_solr')
+    @testing.gen_test
+    def test_run_subqueries_7(self, mock_ask_solr):
+        '''
+        No cross-referenced fields, but there are two "joining elements."
+        '''
+
+        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        components = ['!', ('name', 'Jeffrey'), 'AND', ('occupation', 'composer')]
+        expected = ['!', ('name', 'Jeffrey'), 'AND', ('occupation', 'composer')]
+
+        actual = yield util.run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(0, mock_ask_solr.call_count)

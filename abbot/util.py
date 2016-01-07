@@ -480,16 +480,15 @@ def parse_query(query):
 
 @gen.coroutine
 def run_subqueries(components):
-    # TODO: refactor this to deal with parse_query() new return format
     '''
     From the output of :func:`parse_query_components`, run cross-reference subqueries on the relevant
     fields. Returns the query components with cross-referenced fields substituted with the subquery
     result determined most relevant by Solr.
 
     :param components: The output of :func:`parse_query_components`.
-    :type components: list of 2-tuple of str
+    :type components: list of str and 2-tuple of str
     :returns: The cross-referenced. query components (see below).
-    :rtype: list of 2-tuple of str
+    :rtype: list of str and 2-tuple of str
     :raises: :exc:`InvalidQueryError` if a cross-referenced field yields no results.
 
     .. note:: This function is a Tornado coroutine, so you must call it with a ``yield`` statement.
@@ -513,8 +512,8 @@ def run_subqueries(components):
 
     >>> run_subqueries([('default', 'antiphon')])
     [('default', 'antiphon')]
-    >>> run_subqueries([('genre': 'antiphon')])
-    [('genre_id': '123')]
+    >>> run_subqueries([('default', 'Fassbänder'), '!', ('genre': 'antiphon')])
+    [('default', 'Fassbänder'), '!', ('genre_id': '123')]
     >>> run_subqueries([('filling': 'marzipan')])
     [('default', '(filling_id:529^2 OR filling_id:532^1)')]
 
@@ -557,17 +556,22 @@ def assemble_query(components):
     submission to Solr.
 
     :param components: The output of :func:`run_subqueries`.
-    :type components: list of 2-tuple of str
+    :type components: list of str and 2-tuple of str
     :returns: The query string to submit to Solr.
     :rtype: str
     '''
     def helper(comp):
         "Prepare a single field:value pair."
-        if comp[0] == 'default':
-            return comp[1]
+        if isinstance(comp, str):
+            if comp in ('+', '-', '!'):
+                return ' {}'.format(comp)
+            else:
+                return ' {} '.format(comp)
+        elif comp[0] == 'default':
+            return '{} '.format(comp[1])
         else:
-            return '{field}:{value}'.format(field=comp[0], value=comp[1])
+            return '{field}:{value} '.format(field=comp[0], value=comp[1])
 
     components = [helper(component) for component in components]
 
-    return ' AND '.join(components)
+    return ''.join(components)
