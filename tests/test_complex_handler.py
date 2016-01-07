@@ -7,7 +7,7 @@
 # Filename:               tests/test_complex_handler.py
 # Purpose:                Tests for the Abbot server's ComplexHandler.
 #
-# Copyright (C) 2015 Christopher Antila
+# Copyright (C) 2015, 2016 Christopher Antila
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as

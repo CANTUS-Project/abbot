@@ -7,7 +7,7 @@
 # Filename:               tests/shared.py
 # Purpose:                Shared classes and functions for Abbot's automated test suite.
 #
-# Copyright (C) 2015 Christopher Antila
+# Copyright (C) 2015, 2016 Christopher Antila
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
