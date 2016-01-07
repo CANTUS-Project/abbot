@@ -1575,8 +1575,8 @@ class TestSearchUnit(shared.TestHandler):
         expected = ('five', 5)
         mock_get_handler.return_value = shared.make_future(expected)
         self.handler.hparams['search_query'] = 'feast:celery genre:tasty'
-        mock_rs.return_value = shared.make_future([('feast', 'celery'), ('genre', 'tasty')])
-        expected_final_query = 'feast:celery AND genre:tasty'  # what's sent on to get_handler()
+        mock_rs.return_value = shared.make_future([('feast', 'celery'), 'AND', ('genre', 'tasty')])
+        expected_final_query = 'feast:celery  AND genre:tasty '  # what's sent on to get_handler()
 
         actual = yield self.handler.search_handler()
 
