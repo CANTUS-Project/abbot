@@ -73,6 +73,8 @@ class TestWhetherItParses(object):
         assert not it_parses(':value"')
         assert not it_parses(':value')
         assert not it_parses('key:')
+        assert not it_parses('key:value:again')
+        assert not it_parses('key:"value":again')
 
     def test_many_fields(self):
         assert it_parses('as df')
