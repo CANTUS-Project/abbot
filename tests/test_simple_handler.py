@@ -796,6 +796,28 @@ class TestGetIntegration(shared.TestHandler):
 
     @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
+    def test_get_integration_6(self, mock_ask_solr):
+        """
+        Returns 404 when the resource ID is not found.
+        Regression test for GitHub issue #87.
+        """
+        mock_solr_response = shared.make_results([])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        resource_id = '34324242343423423423423'
+        expected_reason = simple_handler._ID_NOT_FOUND.format(self.handler.type_name, resource_id)
+        request_url = self.get_url('/centuries/{}/'.format(resource_id))
+
+        actual = yield self.http_client.fetch(request_url,
+                                              method='GET',
+                                              raise_error=False)
+
+        mock_ask_solr.assert_called_once_with(self.handler.type_name, resource_id)
+        self.check_standard_header(actual)
+        assert 404 == actual.code
+        assert expected_reason == actual.reason
+
+    @mock.patch('abbot.util.ask_solr_by_id')
+    @testing.gen_test
     def test_terminating_slash(self, mock_ask_solr):
         '''
         Check that the results returned from the root URL are the same when the URL ends with a

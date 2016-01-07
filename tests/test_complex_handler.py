@@ -421,6 +421,29 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())
 
+    @mock.patch('abbot.util.ask_solr_by_id')
+    @testing.gen_test
+    def test_get_integration_6(self, mock_ask_solr):
+        """
+        Returns 404 when the resource ID is not found.
+        Regression test for GitHub issue #87.
+        Named in honour of the test_get_integration_6() for SimpleHandler.
+        """
+        mock_solr_response = shared.make_results([])
+        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        resource_id = '34324242343423423423423'
+        expected_reason = simple_handler._ID_NOT_FOUND.format('chant', resource_id)
+        request_url = self.get_url('/chants/{}/'.format(resource_id))
+
+        actual = yield self.http_client.fetch(request_url,
+                                              method='GET',
+                                              raise_error=False)
+
+        mock_ask_solr.assert_called_once_with('chant', resource_id)
+        self.check_standard_header(actual)
+        assert 404 == actual.code
+        assert expected_reason == actual.reason
+
 
 class TestOptionsIntegration(shared.TestHandler):
     '''
