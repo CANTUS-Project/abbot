@@ -426,11 +426,15 @@ def parse_query(query):
         term = term.children[0]
 
         if term.expr_name == 'named_field':
-            term = term.children[0]  # idk why
+            if term.children[0].expr_name != 'field_name' or term.children[2].expr_name != 'field_value':
+                raise InvalidQueryError(_INVALID_QUERY)
             post.append((term.children[0].text, term.children[2].text))
 
-        else:  # default field
-            post.append(('default', term.children[0].text))
+        elif term.expr_name == 'default_field' or term.expr_name == 'field_value':
+            post.append(('default', term.text))
+
+        else:  # ???
+            raise InvalidQueryError(_INVALID_QUERY)
 
     return post
 

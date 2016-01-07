@@ -43,15 +43,18 @@ GRAMMAR_STRING = '''
     star = '*'
     qmark = '?'
     qmarks = qmark+
-    characters_or_spaces = (character / space)*
+    characters_or_spaces = (character / space)+
 
-    text = (characters? star characters?) / (characters? qmarks characters?) / characters
-    quoted_text = '"' ((characters_or_spaces? star characters_or_spaces?) / (characters_or_spaces? qmarks characters_or_spaces?) / characters_or_spaces) '"'
+    wildcard = star / qmarks
 
-    field_name = (~"[A-Za-z_]")+
+    text = (characters? wildcard characters?) / characters
+    quoted_text = '"' ((characters_or_spaces? wildcard characters_or_spaces?) / characters_or_spaces) '"'
 
-    default_field = quoted_text / text
-    named_field = (field_name ':' quoted_text) / (field_name ':' text)
+    field_name = letter+
+    field_value = quoted_text / text
+
+    default_field = field_value
+    named_field = field_name ':' field_value
 
     term = named_field / default_field
     term_list = (space* term) (space+ term)*
