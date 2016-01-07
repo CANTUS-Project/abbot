@@ -48,18 +48,21 @@ GRAMMAR_STRING = '''
     wildcard = star / qmarks
     boolean_singleton = "!" / "+" / "-"
     boolean_infix = "AND" / "OR" / "NOT" / "&&" / "||"
+    group_start = "("
+    group_end = ")"
 
     text = (characters? wildcard characters?) / characters
     quoted_text = '"' ((characters_or_spaces? wildcard characters_or_spaces?) / characters_or_spaces) '"'
 
     field_name = letter+
-    field_value = !boolean_infix (quoted_text / text)
+    field_value = (!boolean_infix (quoted_text / text)) / grouped_term_list
 
     default_field = field_value
     named_field = field_name ':' field_value
 
-    term = boolean_singleton? (named_field / default_field)
+    term = (boolean_singleton? (named_field / default_field)) / grouped_term_list
     term_list = (space* term) ((space+ boolean_infix)* space+ term)*
+    grouped_term_list = group_start term_list group_end
 '''
 
 SEARCH_GRAMMAR = grammar.Grammar(GRAMMAR_STRING)

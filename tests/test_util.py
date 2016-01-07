@@ -587,6 +587,50 @@ class TestParseQuery(TestCase):
             util.parse_query('meal:lunch OR!dish:pizza')
         assert util._INVALID_QUERY in str(excinfo.value)
 
+    def test_term_grouping_easy(self):
+        '''
+        Grouping a "term list" with single ( and ).
+        '''
+        actual = util.parse_query('(forcefield)')
+        expected = ['(', ('default', 'forcefield'), ')']
+        assert expected == actual
+        #
+        actual = util.parse_query('(force field)')
+        expected = ['(', ('default', 'force'), ('default', 'field'), ')']
+        assert expected == actual
+        #
+        actual = util.parse_query('(force OR field)')
+        expected = ['(', ('default', 'force'), 'OR', ('default', 'field'), ')']
+        assert expected == actual
+        #
+        actual = util.parse_query('force AND (field OR broccoli)')
+        expected = [('default', 'force'), 'AND', '(', ('default', 'field'), 'OR', ('default', 'broccoli'), ')']
+        assert expected == actual
+        #
+        actual = util.parse_query('(force && place:field) || (flavour:"ginger" && basis:"bread") NOT activity:baking')
+        expected = [
+            '(', ('default', 'force'), '&&', ('place', 'field'), ')',
+            '||',
+            '(', ('flavour', '"ginger"'), '&&', ('basis', '"bread"'), ')',
+            'NOT',
+            ('activity', 'baking')
+        ]
+        assert expected == actual
+        #
+        actual = util.parse_query('type:(chant OR feast)')
+        expected = [
+            ('type', ''),
+            '(', ('default', 'chant'), 'OR', ('default', 'feast'), ')',
+        ]
+        assert expected == actual
+        #
+        actual = util.parse_query('+type:(name:feast OR name:chant)')
+        expected = [
+            '+', ('type', ''),
+            '(', ('name', 'feast'), 'OR', ('name', 'chant'), ')'
+        ]
+        assert expected == actual
+
 
 class TestQueryParserSync(TestCase):
     '''
@@ -695,6 +739,38 @@ class TestQueryParserSync(TestCase):
         components = ['+', ('feast_id', '123'), 'AND', '(', ('name', '"Danceathon Smith"'), 'OR',
             ('default', '"Deus Rex"'), ')']
         expected = ' +feast_id:123  AND  ( name:"Danceathon Smith"  OR "Deus Rex"  ) '
+        actual = util.assemble_query(components)
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_6(self):
+        '''
+        Complicated thing formed from this search query:
+
+        '(force && place:field) || (flavour:"ginger" && basis:"bread") NOT activity:baking'
+        '''
+        components = [
+            '(', ('default', 'force'), '&&', ('place', 'field'), ')',
+            '||',
+            '(', ('flavour', '"ginger"'), '&&', ('basis', '"bread"'), ')',
+            'NOT',
+            ('activity', 'baking')
+        ]
+        expected = ' ( force  && place:field  )  ||  ( flavour:"ginger"  && basis:"bread"  )  NOT activity:baking '
+        actual = util.assemble_query(components)
+        self.assertEqual(expected, actual)
+
+    def test_assemble_query_7(self):
+        '''
+        Complicated thing formed from this search query:
+
+        '+type:(name:feast OR name:chant)'
+        '''
+        components = [
+            '+', ('type', ''),
+            '(', ('name', 'feast'), 'OR', ('name', 'chant'), ')'
+        ]
+        # NB: you might not guess, but the extra spaces, even here, don't matter to Solr
+        expected = ' +type:  ( name:feast  OR name:chant  ) '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 

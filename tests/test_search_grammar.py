@@ -208,3 +208,77 @@ class TestBooleans(object):
         assert not it_parses('type:appetizer &&!name:soup')
         assert not it_parses('type:appetizer &&NOT  name:soup')
         assert not it_parses('type:appetizer &&& name:soup')
+
+
+class TestParentheses(object):
+    '''
+    Tests for term grouping with parentheses.
+    '''
+
+    def test_single_parens_valid(self):
+        "When there's only one ( and one ) in a valid query."
+        assert it_parses('(forcefield)')
+        assert it_parses('(force field)')
+        assert it_parses('(force OR field)')
+        assert it_parses('force AND (field OR broccoli)')
+        assert it_parses('(force AND field) OR cheese')
+        assert it_parses('(force && field) || (ginger && bread) NOT baking')
+        assert it_parses('("force field")')
+        assert it_parses('once:force AND ("fi eld" OR broccoli)')
+        assert it_parses('(once:force AND field) OR variety:cheese')
+        assert it_parses('(force && place:field) || (flavour:"ginger" && basis:"bread") NOT activity:baking')
+        assert it_parses('type:(chant OR feast)')
+        assert it_parses('left:"right" AND well_spring:("front and centre" OR groundswell)')
+        # I don't know why somebody would do this, and it will return no results, but Solr accepts
+        # it so we might as well accept it too!
+        assert it_parses('+type:(name:feast OR name:chant)')
+
+    def test_single_parens_invalid(self):
+        "When there's only one ( and one ) in an invalid query."
+        # NOTE: these look similar to the valid queries, but they are not the same!
+        assert not it_parses('(force field')
+        assert not it_parses('force field)')
+        assert not it_parses('(force NOT field')
+        assert not it_parses('force AND (field OR broccoli')
+        assert not it_parses(')forcce field(')
+        assert not it_parses('(')
+        assert not it_parses(')')
+        assert not it_parses('()')
+        assert not it_parses('(    )')
+        assert not it_parses('( ) force OR field')
+        assert not it_parses('force NOT (  ) field')
+
+    def test_many_parens_valid(self):
+        "When there are many ( and ) in a valid query."
+        assert it_parses('(force) (field)')
+        assert it_parses('(force) AND (field)')
+        assert it_parses('(force OR field) AND ("long onions" OR "green onions")')
+        assert it_parses('title:("desperate macaroni" OR *macaroni) OR (category:"silly food")')
+        assert it_parses('((one OR field:two) AND (two OR field:one)) NOT body:hatchback')
+        assert it_parses('((one OR field:two) AND (two OR field:one) AND twist:asdf) NOT body:hatchback')
+        assert it_parses('(((((a OR b) OR c) OR d) OR d) OR e) AND "lots of parentheses there"')
+        # assert it_parses('')
+        # assert it_parses('')
+        # assert it_parses('')
+        # assert it_parses('')
+        # assert it_parses('')
+        # assert it_parses('')
+
+    def test_many_parens_invalid(self):
+        "When there are many ( and ) in an invalid query."
+        # NOTE: these look similar to the valid queries, but they are not the same!
+        assert not it_parses('(force (field)')
+        assert not it_parses('((')
+        assert not it_parses('())()(()(()())())))(')
+        assert not it_parses('(laser AND (beams OR tractor:beams) NOT (field:one field:two)')
+        assert not it_parses('when (in OR place:"Rome"))')
+        assert not it_parses(')))')
+        assert not it_parses(')())')
+        assert not it_parses(') b ( f ) g ) e')
+        # assert not it_parses('')
+        # assert not it_parses('')
+        # assert not it_parses('')
+        # assert not it_parses('')
+        # assert not it_parses('')
+        # assert not it_parses('')
+        # assert not it_parses('')

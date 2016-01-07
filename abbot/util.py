@@ -454,10 +454,13 @@ def parse_query(query):
     ]
     '''
 
-    try:
-        parsed = search_grammar.parse(query)
-    except RuntimeError:
-        raise InvalidQueryError(_INVALID_QUERY)
+    if isinstance(query, str):
+        try:
+            parsed = search_grammar.parse(query)
+        except RuntimeError:
+            raise InvalidQueryError(_INVALID_QUERY)
+    else:
+        parsed = query
 
     post = []
 
@@ -466,6 +469,7 @@ def parse_query(query):
             post.append(term.text)
 
         elif term.expr_name == 'term':
+            term = term.children[0]
             # each "term" contains an optional "boolean_singleton" then "default_field" or "named_field"
             if len(term.children[0].children) > 0:
                 boolean_singleton = term.children[0].children[0]
@@ -480,10 +484,24 @@ def parse_query(query):
             if field.expr_name == 'named_field':
                 if field.children[0].expr_name != 'field_name' or field.children[2].expr_name != 'field_value':
                     raise InvalidQueryError(_INVALID_QUERY)
-                post.append((field.children[0].text, field.children[2].text))
+                if field.children[2].children[0].expr_name == 'grouped_term_list':
+                    post.append((field.children[0].text, ''))
+                    post.append('(')
+                    post.extend(parse_query(field.children[2]))
+                    post.append(')')
+                else:
+                    post.append((field.children[0].text, field.children[2].text))
 
-            elif field.expr_name == 'default_field' or field.expr_name == 'field_value':
+            elif field.expr_name == 'default_field':
                 post.append(('default', field.text))
+
+            elif field.expr_name == 'field_value':
+                if field.children[0].expr_name == 'grouped_term_list':
+                    post.append('(')
+                    post.extend(parse_query(field))
+                    post.append(')')
+                else:
+                    post.append(('default', field.text))
 
             else:  # ???
                 raise InvalidQueryError(_INVALID_QUERY)
