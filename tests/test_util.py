@@ -432,6 +432,7 @@ class TestParseQuery(TestCase):
         '''
         Basics:
         - can it differentiate fields?
+        - same with some accented characters?
         - can it differentiate default and named fields?
         - can it deal with quoted field values?
         - can it deal with a single field?
@@ -439,6 +440,10 @@ class TestParseQuery(TestCase):
         '''
         actual = util.parse_query('antiphon')
         expected = [('default', 'antiphon')]
+        assert expected == actual
+        #
+        actual = util.parse_query('ántìphÖn')
+        expected = [('default', 'ántìphÖn')]
         assert expected == actual
         #
         actual = util.parse_query('genre:antiphon')

@@ -37,6 +37,31 @@ class TestWhetherItParses(object):
         assert it_parses('"asdf"')
         assert it_parses('"as df"')
 
+    def test_characters_with_accents(self):
+        lowercase_vowels = [
+            'á', 'à', 'ä', 'â',
+            'é', 'è', 'ë', 'ê',
+            'í', 'ì', 'ï', 'î',
+            'ó', 'ò', 'ö','ô',
+            'ú','ù','ü','û',
+        ]
+        for letter in lowercase_vowels:
+            assert it_parses(letter)
+
+        uppercase_vowels = [
+            'Á', 'À', 'Ä', 'Â',
+            'É', 'È', 'Ë', 'Ê',
+            'Í', 'Ì', 'Ï', 'Î',
+            'Ó', 'Ò', 'Ö', 'Ô',
+            'Ú', 'Ù', 'Ü', 'Û',
+        ]
+        for letter in uppercase_vowels:
+            assert it_parses(letter)
+
+        others = ['ß', 'Ç', 'ç']
+        for letter in others:
+            assert it_parses(letter)
+
     def test_named_field(self):
         assert it_parses('key:value')
         assert it_parses('key:"value"')

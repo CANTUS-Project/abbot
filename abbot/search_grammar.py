@@ -34,7 +34,10 @@ GRAMMAR_STRING = '''
     query = term_list
 
     empty = ''
-    character = ~"[A-Za-z0-9]"
+    accented_letter = ~"[áàäâéèëêíìïîóòöôúùüûÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛßÇç]"
+    letter = ~"[A-Za-z_]"
+    number = ~"[0-9]"
+    character = letter / number / accented_letter
     characters = character+
     space = ' '
     star = '*'
