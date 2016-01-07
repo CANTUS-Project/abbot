@@ -46,6 +46,7 @@ GRAMMAR_STRING = '''
     characters_or_spaces = (character / space)+
 
     wildcard = star / qmarks
+    boolean_singleton = "!" / "+" / "-"
 
     text = (characters? wildcard characters?) / characters
     quoted_text = '"' ((characters_or_spaces? wildcard characters_or_spaces?) / characters_or_spaces) '"'
@@ -56,7 +57,7 @@ GRAMMAR_STRING = '''
     default_field = field_value
     named_field = field_name ':' field_value
 
-    term = named_field / default_field
+    term = boolean_singleton? (named_field / default_field)
     term_list = (space* term) (space+ term)*
 '''
 

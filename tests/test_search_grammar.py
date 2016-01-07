@@ -144,3 +144,38 @@ class TestWildcardTokens(object):
         assert it_parses('field:"as??"')
         assert it_parses('field:"??df"')
         assert it_parses('field:"as??f"')
+
+
+class TestBooleans(object):
+    '''
+    Tests for the boolean operators:
+    - AND and &&
+    - OR and ||
+    - NOT and !
+    - +
+    - -
+    '''
+
+    def test_plus(self):
+        assert it_parses('+type:genre')
+        assert it_parses('type:"gen re" +blink:four')
+        assert it_parses('+type:"gen re" +blink:four')
+        assert it_parses('+fabulous')
+        assert it_parses('once +fabulous')
+        assert it_parses('+once +fabulous')
+
+    def test_minus(self):
+        assert it_parses('-type:genre')
+        assert it_parses('type:"gen re" -blink:four')
+        assert it_parses('-type:"gen re" -blink:four')
+        assert it_parses('-fabulous')
+        assert it_parses('once -fabulous')
+        assert it_parses('-once -fabulous')
+
+    def test_exclamation(self):
+        assert it_parses('!type:genre')
+        assert it_parses('type:"gen re" !blink:four')
+        assert it_parses('!type:"gen re" !blink:four')
+        assert it_parses('!fabulous')
+        assert it_parses('once !fabulous')
+        assert it_parses('!once !fabulous')

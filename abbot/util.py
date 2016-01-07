@@ -396,22 +396,53 @@ def parse_query(query):
     :rtype: list of 2-tuple of str
     :raises: :exc:`InvalidQueryError` when SOMETHING SOMETHING SOMETHING
 
+
     **Return Value**
 
-    This function produces a list of 2-tuples of strings. In each 2-tuple, the first element is a
-    field name, and the second element is the field value. If the user's provided query string does
-    not specify a field name for some values, the field name "default" is used in the output.
+    This function produces a list where elements are either a string or a 2-tuple of strings.
 
-    **Examples**
+    For elements that are a 2-tuple, the first element is a field name (or ``'default'`` if the
+    query string does not use an explicit field name) and teh second element is the field's value.
+    You can see this easily in the "Simple Examples" below.
+
+    For elements that are a string, this is a "joining element" that helps shape the query in some
+    way (like parentheses, the boolean operator ``'AND'``, or the boolean operator ``'-'``). You
+    can see this less easily in the "Joining Element Examples" below.
+
+
+    **Simple Examples**
+
+    These examples do not contain any "joining elements."
 
     >>> parse_query('antiphon')
     [('default', 'antiphon')]
+
     >>> parse_query('genre:antiphon')
     [('genre', 'antiphon')]
+
     >>> parse_query('"in taberna" genre:antiphon')
     [('default', '"in taberna"'), ('genre', 'antiphon')]
+
     >>> parse_query('size: drink:Dunkelweiß')
     (raises InvalidQueryError)
+
+
+    **Joining Element Examples**
+
+    These examples do contain "joining elements."
+
+    >>> parse_query('genre:antiphon AND incipit:Deus*')
+    [('genre', 'antiphon'), 'AND', ('incipit', 'Deus*')]
+
+    >>> parse_query('genre:antiphon AND (incipit:Deus* OR incipit:Gloria*)')
+    [('genre', 'antiphon'),
+     'AND',
+     '(',
+     ('incipit', 'Deus*'),
+     'OR',
+     ('incipit', 'Gloria*'),
+     ')'
+    ]
     '''
 
     try:
@@ -422,16 +453,24 @@ def parse_query(query):
     post = []
 
     for term in _collect_terms(parsed):
-        # each "term" contains either a single "default_field" or "named_field"
-        term = term.children[0]
+        # each "term" contains an optional "boolean_singleton" then "default_field" or "named_field"
+        if len(term.children[0].children) > 0:
+            boolean_singleton = term.children[0].children[0]
+        else:
+            boolean_singleton = None
 
-        if term.expr_name == 'named_field':
-            if term.children[0].expr_name != 'field_name' or term.children[2].expr_name != 'field_value':
+        if boolean_singleton and boolean_singleton.expr_name == 'boolean_singleton':
+            post.append(boolean_singleton.text)
+
+        field = term.children[1].children[0]
+
+        if field.expr_name == 'named_field':
+            if field.children[0].expr_name != 'field_name' or field.children[2].expr_name != 'field_value':
                 raise InvalidQueryError(_INVALID_QUERY)
-            post.append((term.children[0].text, term.children[2].text))
+            post.append((field.children[0].text, field.children[2].text))
 
-        elif term.expr_name == 'default_field' or term.expr_name == 'field_value':
-            post.append(('default', term.text))
+        elif field.expr_name == 'default_field' or field.expr_name == 'field_value':
+            post.append(('default', field.text))
 
         else:  # ???
             raise InvalidQueryError(_INVALID_QUERY)
@@ -441,6 +480,7 @@ def parse_query(query):
 
 @gen.coroutine
 def run_subqueries(components):
+    # TODO: refactor this to deal with parse_query() new return format
     '''
     From the output of :func:`parse_query_components`, run cross-reference subqueries on the relevant
     fields. Returns the query components with cross-referenced fields substituted with the subquery

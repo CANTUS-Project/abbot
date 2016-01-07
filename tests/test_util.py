@@ -482,6 +482,52 @@ class TestParseQuery(TestCase):
         expected = [('genre', '???iphon')]
         assert expected == actual
 
+    def test_plus_and_minus(self):
+        '''
+        Boolean + and - operators:
+        - works before a named field
+        - works after quoted field
+        - works on the default field
+        '''
+        # plus
+        actual = util.parse_query('+type:salad +name:Caesar')
+        expected = ['+', ('type', 'salad'), '+', ('name', 'Caesar')]
+        assert expected == actual
+        #
+        actual = util.parse_query('+type:"sal ad" +name:Caesar')
+        expected = ['+', ('type', '"sal ad"'), '+', ('name', 'Caesar')]
+        assert expected == actual
+        #
+        actual = util.parse_query('+type:salad +Caesar')
+        expected = ['+', ('type', 'salad'), '+', ('default', 'Caesar')]
+        assert expected == actual
+
+        # minus
+        actual = util.parse_query('-type:salad -name:Caesar')
+        expected = ['-', ('type', 'salad'), '-', ('name', 'Caesar')]
+        assert expected == actual
+        #
+        actual = util.parse_query('-type:"sal ad" -name:Caesar')
+        expected = ['-', ('type', '"sal ad"'), '-', ('name', 'Caesar')]
+        assert expected == actual
+        #
+        actual = util.parse_query('-type:salad -Caesar')
+        expected = ['-', ('type', 'salad'), '-', ('default', 'Caesar')]
+        assert expected == actual
+
+        # exclamation
+        actual = util.parse_query('!type:salad !name:Caesar')
+        expected = ['!', ('type', 'salad'), '!', ('name', 'Caesar')]
+        assert expected == actual
+        #
+        actual = util.parse_query('!type:"sal ad" !name:Caesar')
+        expected = ['!', ('type', '"sal ad"'), '!', ('name', 'Caesar')]
+        assert expected == actual
+        #
+        actual = util.parse_query('!type:salad !Caesar')
+        expected = ['!', ('type', 'salad'), '!', ('default', 'Caesar')]
+        assert expected == actual
+
 
 class TestQueryParserSync(TestCase):
     '''
