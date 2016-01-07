@@ -361,7 +361,8 @@ def request_wrapper(func):
 
 def _collect_terms(root):
     '''
-    Collect all the "term" nodes from the "root" of a parsed search query.
+    Collect all the relevant nodes from the "root" of a parsed search query. See below for a list of
+    the node types that are currently collected.
 
     :param root: The "root" outputted from parsing a search query with our Parsimonious grammar.
     :type root: :class:`parsimonious.nodes.Node`
@@ -374,11 +375,19 @@ def _collect_terms(root):
         produced list depends on what a "term" node holds.
 
     .. note:: This function does not look for "term" nodes in "term" nodes.
+
+
+    **List of Collected Nodes**
+
+    - term
+    - boolean_infix
     '''
+
+    interesting_nodes = ('term', 'boolean_infix')
 
     post = []
 
-    if root.expr_name == 'term':
+    if root.expr_name in interesting_nodes:
         post.append(root)
         return post
     else:
@@ -453,24 +462,31 @@ def parse_query(query):
     post = []
 
     for term in _collect_terms(parsed):
-        # each "term" contains an optional "boolean_singleton" then "default_field" or "named_field"
-        if len(term.children[0].children) > 0:
-            boolean_singleton = term.children[0].children[0]
-        else:
-            boolean_singleton = None
+        if term.expr_name == 'boolean_infix':
+            post.append(term.text)
 
-        if boolean_singleton and boolean_singleton.expr_name == 'boolean_singleton':
-            post.append(boolean_singleton.text)
+        elif term.expr_name == 'term':
+            # each "term" contains an optional "boolean_singleton" then "default_field" or "named_field"
+            if len(term.children[0].children) > 0:
+                boolean_singleton = term.children[0].children[0]
+            else:
+                boolean_singleton = None
 
-        field = term.children[1].children[0]
+            if boolean_singleton and boolean_singleton.expr_name == 'boolean_singleton':
+                post.append(boolean_singleton.text)
 
-        if field.expr_name == 'named_field':
-            if field.children[0].expr_name != 'field_name' or field.children[2].expr_name != 'field_value':
+            field = term.children[1].children[0]
+
+            if field.expr_name == 'named_field':
+                if field.children[0].expr_name != 'field_name' or field.children[2].expr_name != 'field_value':
+                    raise InvalidQueryError(_INVALID_QUERY)
+                post.append((field.children[0].text, field.children[2].text))
+
+            elif field.expr_name == 'default_field' or field.expr_name == 'field_value':
+                post.append(('default', field.text))
+
+            else:  # ???
                 raise InvalidQueryError(_INVALID_QUERY)
-            post.append((field.children[0].text, field.children[2].text))
-
-        elif field.expr_name == 'default_field' or field.expr_name == 'field_value':
-            post.append(('default', field.text))
 
         else:  # ???
             raise InvalidQueryError(_INVALID_QUERY)

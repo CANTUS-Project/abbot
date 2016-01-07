@@ -179,3 +179,30 @@ class TestBooleans(object):
         assert it_parses('!fabulous')
         assert it_parses('once !fabulous')
         assert it_parses('!once !fabulous')
+
+    def test_boolean_infix_1(self):
+        "These are some usual things."
+        operators = ('AND', 'OR', 'NOT', '&&', '||')
+        for operator in operators:
+            assert not it_parses('{} branch'.format(operator))
+            assert not it_parses('{} tree:branch'.format(operator))
+            assert not it_parses('{} once:"in a lifetime"'.format(operator))
+            assert not it_parses('branch {}'.format(operator))
+            assert not it_parses('tree:branch {}'.format(operator))
+            assert not it_parses('once:"in a lifetime" {}'.format(operator))
+            assert it_parses('branch {} tree'.format(operator))
+            assert it_parses('branch:tree {} your:mom'.format(operator))
+            assert it_parses('once:"in a lifetime" {} what:"a great opportunity"'.format(operator))
+            assert it_parses('branch {} you:mom {} what:"in a lifetime"'.format(operator, operator))
+
+    def test_boolean_infix_2(self):
+        "These are some weird things."
+        assert it_parses('type:appetizer AND NOT name:soup')
+        assert it_parses('type:appetizer AND !name:soup')
+        assert it_parses('type:appetizer && !name:soup')
+        assert it_parses('type:appetizer &&  NOT  name:soup')
+        assert not it_parses('type:appetizer ANDNOT name:soup')
+        assert not it_parses('type:appetizer AND!name:soup')
+        assert not it_parses('type:appetizer &&!name:soup')
+        assert not it_parses('type:appetizer &&NOT  name:soup')
+        assert not it_parses('type:appetizer &&& name:soup')

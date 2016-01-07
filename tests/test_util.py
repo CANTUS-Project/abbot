@@ -528,6 +528,65 @@ class TestParseQuery(TestCase):
         expected = ['!', ('type', 'salad'), '!', ('default', 'Caesar')]
         assert expected == actual
 
+    def test_boolean_infix(self):
+        '''
+        Boolean infix operators:
+        - AND
+        - OR
+        - NOT
+        - &&
+        - ||
+        '''
+        actual = util.parse_query('soup OR salad')
+        expected = [('default', 'soup'), 'OR', ('default', 'salad')]
+        assert expected == actual
+        #
+        actual = util.parse_query('type:appetizer AND name:soup')
+        expected = [('type', 'appetizer'), 'AND', ('name', 'soup')]
+        assert expected == actual
+        #
+        actual = util.parse_query('type:appetizer AND NOT name:soup')
+        expected = [('type', 'appetizer'), 'AND', 'NOT', ('name', 'soup')]
+        assert expected == actual
+        ####
+        actual = util.parse_query('soup || salad')
+        expected = [('default', 'soup'), '||', ('default', 'salad')]
+        assert expected == actual
+        #
+        actual = util.parse_query('type:appetizer && name:soup')
+        expected = [('type', 'appetizer'), '&&', ('name', 'soup')]
+        assert expected == actual
+        #
+        actual = util.parse_query('type:appetizer && !name:soup')
+        expected = [('type', 'appetizer'), '&&', '!', ('name', 'soup')]
+        assert expected == actual
+
+        # invalid queries
+        #
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('AND branch')
+        assert util._INVALID_QUERY in str(excinfo.value)
+        #
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('quince OR')
+        assert util._INVALID_QUERY in str(excinfo.value)
+        #
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('jeremy ANDOR broccoli')
+        assert util._INVALID_QUERY in str(excinfo.value)
+        #
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('meal:lunch   NOTANDOR  &&  dish:pizza')
+        assert util._INVALID_QUERY in str(excinfo.value)
+        #
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('meal:lunch &&& dish:pizza')
+        assert util._INVALID_QUERY in str(excinfo.value)
+        #
+        with pytest.raises(util.InvalidQueryError) as excinfo:
+            util.parse_query('meal:lunch OR!dish:pizza')
+        assert util._INVALID_QUERY in str(excinfo.value)
+
 
 class TestQueryParserSync(TestCase):
     '''
@@ -543,7 +602,7 @@ class TestQueryParserSync(TestCase):
             <wonderful>
                 <term B>
                 <beautiful>
-                    <term C>
+                    <boolean_infix C>
                 <term D>
             <meili>
             <perfect>
@@ -551,16 +610,16 @@ class TestQueryParserSync(TestCase):
         '''
         term_a = parsimonious.nodes.Node('term', 'A', 0, 1)
         term_b = parsimonious.nodes.Node('term', 'B', 0, 1)
-        term_c = parsimonious.nodes.Node('term', 'C', 0, 1)
+        bool_c = parsimonious.nodes.Node('boolean_infix', 'C', 0, 1)
         term_d = parsimonious.nodes.Node('term', 'D', 0, 1)
         term_e = parsimonious.nodes.Node('term', 'E', 0, 1)
-        beautiful = parsimonious.nodes.Node('beautiful', '', 0, 1, [term_c])
+        beautiful = parsimonious.nodes.Node('beautiful', '', 0, 1, [bool_c])
         wonderful = parsimonious.nodes.Node('wonderful', '', 0, 1, [term_b, beautiful, term_d])
         meili = parsimonious.nodes.Node('meili', '', 0, 1)
         perfect = parsimonious.nodes.Node('perfect', '', 0, 1, [term_e])
         query = parsimonious.nodes.Node('query', '', 0, 1, [term_a, wonderful, meili, perfect])
 
-        expected = [term_a, term_b, term_c, term_d, term_e]
+        expected = [term_a, term_b, bool_c, term_d, term_e]
         actual = util._collect_terms(query)
         assert expected == actual
 
