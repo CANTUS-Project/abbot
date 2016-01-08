@@ -61,3 +61,49 @@ class TestTestHandler(shared.TestHandler):
             yield util.SOLR.optimize(123)
         with pytest.raises(AssertionError):
             yield util.SOLR.extract(123)
+
+
+class TestSolrSideEffect(shared.TestHandler):
+    '''
+    Tests for :class:`shared.SolrMethodSideEffect`.
+
+    The tests are the three examples shown in the docstring for that class.
+    '''
+
+    @testing.gen_test
+    def test_example_1(self):
+        se = shared.SolrMethodSideEffect()
+        se.add('id:1', {'id': '1'})
+        se.add('id:2', {'id': '2'})
+        assert [{'id': '1'}] == (yield se('id:1')).docs
+        assert [{'id': '2'}] == (yield se('id:2')).docs
+        assert [{'id': '1'}] == (yield se('type:chant AND id:1')).docs
+        assert [] == (yield se('type:chant AND id:3')).docs
+        # for the following, the order can change arbitrarily because of dict iteration
+        expected = [{'id': '1'}, {'id': '2'}]
+        actual = (yield se('id:1 OR id:2')).docs
+        assert expected[0] in actual
+        assert expected[1] in actual
+
+    @testing.gen_test
+    def test_example_2(self):
+        se = shared.SolrMethodSideEffect()
+        se.add('*', {'id': '1'})
+        se.add('*', {'id': '2'})
+        # the order here should be the same as the order they were added in
+        assert [{'id': '1'}, {'id': '2'}] == (yield se('*')).docs
+
+    def test_counter_example_1(self):
+        se = shared.SolrMethodSideEffect()
+        with pytest.raises(TypeError):
+            se.add(4, {'id': '4'})
+        with pytest.raises(TypeError):
+            se.add('id:4', 'broccoli')
+
+    @testing.gen_test
+    def test_counter_example_2(self):
+        se = shared.SolrMethodSideEffect()
+        se.add('1', {'id': '1'})
+        assert [{'id': '1'}] == (yield se('1')).docs
+        with pytest.raises(RuntimeError):
+            se.add('2', {'id': '2'})

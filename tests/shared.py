@@ -143,3 +143,126 @@ class TestHandler(testing.AsyncHTTPTestCase):
         self._simple_options_patcher.stop()
         self._solr_patcher.stop()
         super(TestHandler, self).tearDown()
+
+
+class SolrMethodSideEffect(object):
+    '''
+    The "side effect" of a mock on a ``pysolr-tornado`` instance method.
+
+    This class is very strict, intended to survive only a single test, and it tries to make sure you
+    don't misconfigure it.
+
+    Instantiate it, add values, call the class. You cannot add values after you call the class,
+    which is a sign you should be using more than one test.
+
+    Only the first argument to :meth:`__call__` is used, and the rest are discarded. When you call
+    the class, all the "added" keys are iterated and, if the "key" is "in" the first argument, then
+    the associated "value" becomes part of what's returned. Do be careful about your expectations
+    here: ``id:1 AND id:2``, ``id:1 OR id:2``, and ``id:1 NOT id:2`` all return the same because
+    there is no intelligence involved---just an "in" test!
+
+    .. note:: Because the follwing examples produce Tornado :class:`Future` objects, they must be
+        used with the ``yield`` keyword. Therefore they must be used within a function, so the
+        :class:`SolrMethodSideEffect` (exactly like ``pysolr-tornado``) cannot be experimented with
+        arbitrarily.
+
+    .. note:: Once yielded, the functions actually return a :class:`pysolrtornado.Results` object.
+
+    **Example 1**
+
+    >>> se = SolrMethodSideEffect()
+    >>> se.add('id:1', {'id': '1'})
+    >>> se.add('id:2', {'id': '2'})
+    >>> yield se('id:1').docs
+    [{'id': '1'}]
+    >>> yield se('id:2').docs
+    [{'id': '2'}]
+    >>> yield se('id:1 OR id:2').docs
+    [{'id': '1'}, {'id': '2'}]
+    >>> yield se('type:chant AND id:1').docs
+    [{'id': '1'}]
+    >>> yield se('type:chant AND id:3').docs
+    []
+
+    **Example 2**
+
+    You can arrange for multiple records to be returned for a single "key."
+
+    >>> se = SolrMethodSideEffect()
+    >>> se.add('*', {'id': '1'})
+    >>> se.add('*', {'id': '2'})
+    >>> yield se('*').docs
+    [{'id': '1'}, {'id': '2'}]
+
+    **Counter Example 1**
+
+    The :meth:`add` method checks the types of its arguments.
+
+    >>> se = SolrMethodSideEffect()
+    >>> yield se.add(4, {'id': '4'}).docs
+    (raises TypeError because 4 is not a string)
+    >>> yield se.add('id:4', 'broccoli').docs
+    (raises TypeError because 'broccoli' is not a dict)
+
+    **Counter Example 2**
+
+    The :meth:`add` method cannot be called after you call the class.
+
+    >>> se = SolrMethodSideEffect()
+    >>> se.add('1', {'id': '1'})
+    >>> yield se('1').docs
+    [{'id': '1'}]
+    >>> se.add('2', {'id': '2'})
+    (raises RuntimeError because you already called the class)
+    '''
+
+    def __init__(self):
+        "Initialize an empty :class:`SolrMethodSideEffect`."
+        self._we_were_called = False
+        self._records = {}
+
+    def add(self, key, value):
+        '''
+        Add a key/value pair to the method.
+
+        :param str key: If this is "in" the first argument to :meth:`__call__`, then ``value`` will
+            be part of that method's return value.
+        :param dict key: This will be returned by :meth:`__call__` when appropriate.
+        :returns: ``None``
+        :raises: :exc:`TypeError` when ``key`` or ``value`` are not the proper type.
+        :raises: :exc:`RuntimeError` if the class has already been called.
+
+        .. note:: If they "key" has already been added to this mock, the new ``value`` and all
+            previous ``value`` are returned.
+        '''
+        if self._we_were_called:
+            raise RuntimeError('You cannot call add() after calling the class.')
+        if not isinstance(key, str):
+            raise TypeError('The first argument must be a string.')
+        if not isinstance(value, dict):
+            raise TypeError('The second argument must be a dict.')
+
+        if key in self._records:
+            self._records[key].append(value)
+        else:
+            self._records[key] = [value]
+
+    def __call__(self, query, *args, **kwargs):
+        '''
+        Check all the "keys" added to this class. If the key is "in" ``query``, the associated
+        ``value`` will be part of the list returned by this function.
+
+        :param str query: A query string to check against "added" keys.
+        :param any args: Ignored.
+        :param any kwargs: Ignored.
+        :returns: The associated "value" dicts.
+        :rtype: list of dict
+        '''
+        self._we_were_called = True
+
+        post = []
+        for key in self._records.keys():
+            if key in query:
+                post.extend(self._records[key])
+
+        return make_future(make_results(post))
