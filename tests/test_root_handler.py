@@ -136,6 +136,8 @@ class TestRootHandler(shared.TestHandler):
         self.assertEqual(slash.reason, noslash.reason)
         self.assertEqual(slash.headers, noslash.headers)
         self.assertEqual(slash.body, noslash.body)
+        self.check_standard_header(slash)
+        self.check_standard_header(noslash)
 
 
 class TestCanonicalHandler(shared.TestHandler):
@@ -153,6 +155,7 @@ class TestCanonicalHandler(shared.TestHandler):
                                               follow_redirects=False, raise_error=False)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
+        self.check_standard_header(actual)
 
     @testing.gen_test
     def test_head(self):
@@ -163,6 +166,7 @@ class TestCanonicalHandler(shared.TestHandler):
                                               follow_redirects=False, raise_error=False)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
+        self.check_standard_header(actual)
 
     @testing.gen_test
     def test_options(self):
@@ -173,6 +177,7 @@ class TestCanonicalHandler(shared.TestHandler):
                                               follow_redirects=False, raise_error=False)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
+        self.check_standard_header(actual)
 
     @testing.gen_test
     def test_search(self):
@@ -184,6 +189,7 @@ class TestCanonicalHandler(shared.TestHandler):
                                               allow_nonstandard_methods=True)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
+        self.check_standard_header(actual)
 
 
 class TestEverythingElseHandler(shared.TestHandler):
