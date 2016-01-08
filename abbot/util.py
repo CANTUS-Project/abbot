@@ -54,6 +54,9 @@ _INVALID_FIELD_NAME = '{} is not a valid field name'
 # error message for parse_query()
 _INVALID_QUERY = 'Invalid search query.'
 
+# error message for _verify_resource_id()
+_INVALID_ID = 'Invalid resource ID for the Cantus API.'
+
 # Used by prepare_formatted_sort() and parse_query_components(). Put here, they might be used by
 # other methods to check whether they have proper values for these things.
 ALLOWED_CHARS = ',;_'
@@ -257,6 +260,28 @@ def do_dict_transfer(from_here, translations):
     return to_here
 
 
+def _verify_resource_id(q_id):
+    '''
+    Verify that a string is a valid resource ID for the Cantus API.
+
+    :param str q_id: Possible "id" field of a resource.
+    :returns: Nothing.
+    :raises: :exc:`ValueError` when `q_id` is not a valid resource ID.
+    '''
+    if q_id == '*':
+        return
+
+    only_in_middle = tuple('-_')
+    permitted = tuple('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-_')
+
+    if len(q_id) < 1 or q_id[0] in only_in_middle or q_id[-1] in only_in_middle:
+        raise ValueError(_INVALID_ID)
+
+    for char in q_id:
+        if char not in permitted:
+            raise ValueError(_INVALID_ID)
+
+
 @gen.coroutine
 def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     '''
@@ -272,7 +297,8 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     :param rows: As described in :func:`search_solr`.
     :param sort: As described in :func:`search_solr`.
     :returns: As described in :func:`search_solr`.
-    :raises: As described in :func:`search_solr`.
+    :raises: :exc:`pysolrtornado.SolrError` as described in :func:`search_solr`.
+    :raises: :exc:`ValueError` when the `q_id` is invalid as per the Cantus API.
 
     **Example**
 
@@ -285,6 +311,7 @@ def ask_solr_by_id(q_type, q_id, start=None, rows=None, sort=None):
     >>> func()
     <pysolrtornado results thing>
     '''
+    _verify_resource_id(q_id)
     return (yield search_solr('+type:{} +id:{}'.format(q_type, q_id), start=start, rows=rows, sort=sort))
 
 

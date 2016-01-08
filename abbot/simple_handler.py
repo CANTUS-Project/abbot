@@ -81,6 +81,8 @@ _SOLR_502_ERROR = 'Bad Gateway (Problem with Solr Server)'
 _NO_SEARCH_RESULTS = 'SEARCH query returned no results'
 # when the search query itself is improperly formatted
 _INVALID_SEARCH_QUERY = 'SEARCH query is malformed'
+# when the resource ID is invalid
+_INVALID_ID = util._INVALID_ID
 
 
 class SimpleHandler(web.RequestHandler):
@@ -371,7 +373,12 @@ class SimpleHandler(web.RequestHandler):
                                              rows=self.hparams['per_page'], sort=self.hparams['sort'])
         else:
             # "view" URLs
-            resp = yield util.ask_solr_by_id(self.type_name, resource_id)
+            try:
+                resp = yield util.ask_solr_by_id(self.type_name, resource_id)
+            except ValueError:
+                # this means the Cantus ID was invalid
+                self.send_error(422, reason=_INVALID_ID)
+                return None, 0
 
         # format the query --------------------------------
         if not resp:

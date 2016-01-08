@@ -917,3 +917,45 @@ class TestQueryParserAsync(shared.TestHandler):
 
         self.assertEqual(expected, actual)
         self.assertEqual(0, mock_ask_solr.call_count)
+
+
+class TestVerifyResourceId(object):
+    '''
+    Tests for util._verify_resource_id().
+    '''
+
+    @given(strats.lists(
+        elements=strats.sampled_from('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-_'),
+        min_size=1,
+        average_size=6,
+        ))
+    def test_valid_ids(self, res_id):
+        res_id = ''.join(res_id)
+        if res_id[0] == '-' or res_id[0] == '_' or res_id[-1] == '-' or res_id[-1] == '_':
+            with pytest.raises(ValueError) as excinfo:
+                util._verify_resource_id(res_id)
+            assert util._INVALID_ID in str(excinfo.value)
+        else:
+            assert None is util._verify_resource_id(res_id)
+
+    def test_star(self):
+        "If the id is '*' that's okay too."
+        assert None is util._verify_resource_id('*')
+
+    def test_invalid_ids(self):
+        "We need to make sure we test these every time."
+        with pytest.raises(ValueError) as excinfo:
+            util._verify_resource_id('')
+        assert util._INVALID_ID in str(excinfo.value)
+        #
+        with pytest.raises(ValueError) as excinfo:
+            util._verify_resource_id('-')
+        assert util._INVALID_ID in str(excinfo.value)
+        #
+        with pytest.raises(ValueError) as excinfo:
+            util._verify_resource_id('_-')
+        assert util._INVALID_ID in str(excinfo.value)
+        #
+        with pytest.raises(ValueError) as excinfo:
+            util._verify_resource_id('_ejlk2458')
+        assert util._INVALID_ID in str(excinfo.value)

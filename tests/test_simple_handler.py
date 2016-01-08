@@ -458,6 +458,21 @@ class TestBasicGetUnit(shared.TestHandler):
                                               rows=10, sort=None)
         assert (expected, exp_num) == actual
 
+    @testing.gen_test
+    def test_basic_get_unit_8(self):
+        '''
+        - when a GET request has an invalid resource ID
+        NOTE: ask_solr_by_id() is unmocked
+        '''
+        resource_id = '-888_'
+        self.handler.send_error = mock.Mock()
+        expected_reason = simple_handler._INVALID_ID
+
+        actual = yield self.handler.basic_get(resource_id)
+
+        self.handler.send_error.assert_called_once_with(422, reason=expected_reason)
+        assert (None, 0) == actual
+
 
 class TestGetUnit(shared.TestHandler):
     '''
