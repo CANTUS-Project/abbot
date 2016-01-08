@@ -693,15 +693,15 @@ class TestGetIntegration(shared.TestHandler):
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+        self.solr = self.setUpSolr()
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_1(self, mock_ask_solr):
+    def test_get_integration_1(self):
         "test_basic_get_unit_1() but through the whole App infrastructure (thus using get())"
         simple_handler.options.drupal_url = 'http://drp'
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'},
-                                                  {'id': '2', 'name': 'two', 'type': 'century'},
-                                                  {'id': '3', 'name': 'three', 'type': 'century'}])
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'century'})
         expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
                     '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
                     '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
@@ -710,13 +710,11 @@ class TestGetIntegration(shared.TestHandler):
                                   '3': {'self': 'https://cantus.org/centuries/3/'}},
                     'sort_order': ['1', '2', '3'],
         }
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         expected_fields = ['id', 'name', 'type']
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
-                                              rows=10, sort=None)
+        self.solr.search.assert_called_once_with('+type:century +id:*', df='default_search', rows=10)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -726,45 +724,38 @@ class TestGetIntegration(shared.TestHandler):
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_2(self, mock_ask_solr):
+    def test_get_integration_2(self):
         "returns 400 when X-Cantus-Per-Page is set improperly"
         actual = yield self.http_client.fetch(self.get_url('/centuries/'),
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Per-Page': 'force'})
 
-        self.assertEqual(0, mock_ask_solr.call_count)
+        assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(simple_handler._INVALID_PER_PAGE, actual.reason)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_3(self, mock_ask_solr):
+    def test_get_integration_3(self):
         "returns 400 when X-Cantus-Page is set too high"
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
-
         actual = yield self.http_client.fetch(self.get_url('/centuries/'),
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Page': '10'})
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=90,
-                                              rows=10, sort=None)
+        self.solr.search.assert_called_with('+type:century +id:*', start=90, rows=10, df='default_search')
         self.check_standard_header(actual)
         self.assertEqual(409, actual.code)
         self.assertEqual(simple_handler._TOO_LARGE_PAGE, actual.reason)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_4(self, mock_ask_solr):
+    def test_get_integration_4(self):
         "ensure the X-Cantus-Fields request header works"
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'},
-                                                  {'id': '2', 'name': 'two', 'type': 'century'},
-                                                  {'id': '3', 'name': 'three', 'type': 'century'}])
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'century'})
         expected = {'1': {'id': '1', 'type': 'century'},
                     '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'},
@@ -773,7 +764,6 @@ class TestGetIntegration(shared.TestHandler):
                                   '3': {'self': 'https://cantus.org/centuries/3/'}},
                     'sort_order': ['1', '2', '3'],
         }
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         expected_fields = ['id', 'type']
         request_header = 'id, type'
 
@@ -781,8 +771,7 @@ class TestGetIntegration(shared.TestHandler):
                                               method='GET',
                                               headers={'X-Cantus-Fields': request_header})
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
-                                              rows=10, sort=None)
+        self.solr.search.assert_called_once_with('+type:century +id:*', df='default_search', rows=10)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
@@ -792,32 +781,25 @@ class TestGetIntegration(shared.TestHandler):
         actual = escape.json_decode(actual.body)
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_5(self, mock_ask_solr):
+    def test_get_integration_5(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
-
         actual = yield self.http_client.fetch(self.get_url('/centuries/'),
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Fields': 'id, type,price'})
 
-        self.assertEqual(0, mock_ask_solr.call_count)
+        assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(simple_handler._INVALID_FIELDS, actual.reason)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_6(self, mock_ask_solr):
+    def test_get_integration_6(self):
         """
         Returns 404 when the resource ID is not found.
         Regression test for GitHub issue #87.
         """
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         resource_id = '34324242343423423423423'
         expected_reason = simple_handler._ID_NOT_FOUND.format(self.handler.type_name, resource_id)
         request_url = self.get_url('/centuries/{}/'.format(resource_id))
@@ -826,22 +808,20 @@ class TestGetIntegration(shared.TestHandler):
                                               method='GET',
                                               raise_error=False)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, resource_id)
+        self.solr.search.assert_called_with('+type:century +id:{}'.format(resource_id), df='default_search')
         self.check_standard_header(actual)
         assert 404 == actual.code
         assert expected_reason == actual.reason
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_terminating_slash(self, mock_ask_solr):
+    def test_terminating_slash(self):
         '''
         Check that the results returned from the root URL are the same when the URL ends with a
         slash and when it doesn't. This test doesn't check whether the results are correct.
 
         Ultimately this is a test of the __main__ module's URL configuration, but that's okay.
         '''
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'}])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
 
         slash = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET', raise_error=False)
         noslash = yield self.http_client.fetch(self.get_url('/centuries'), method='GET', raise_error=False)
