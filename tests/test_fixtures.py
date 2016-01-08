@@ -39,6 +39,9 @@ class TestTestHandler(shared.TestHandler):
 
     By default, :class:`TestHandler` should install a simple mock that blocks requests from hitting
     ``pysolr-tornado`` in the :mod:`util` module.
+
+    :class:`TestHandler optionally configures a complicated mock on the ``pysolr-tornado`` object
+    that allows setting dynamic return values and suchlike.
     '''
 
     @testing.gen_test
@@ -61,6 +64,16 @@ class TestTestHandler(shared.TestHandler):
             yield util.SOLR.optimize(123)
         with pytest.raises(AssertionError):
             yield util.SOLR.extract(123)
+
+    @testing.gen_test
+    def test_featureful_mock(self):
+        solr = self.setUpSolr()
+        solr.search_se.add('1', {'1': '1'})
+        actual = yield util.ask_solr_by_id('chant', '1')
+        assert [{'1': '1'}] == actual.docs
+        #
+        actual = yield util.ask_solr_by_id('chant', '4')
+        assert 0 == actual.hits
 
 
 class TestSolrSideEffect(shared.TestHandler):

@@ -115,8 +115,8 @@ class TestHandler(testing.AsyncHTTPTestCase):
         - server_name: 'https://cantus.org/'
         - cors_allow_origin: 'https://cantus.org:5733/'
 
-        The mock on Solr simply raises an AssertionError. If you want to use Solr in a test, you
-        must configure it yourself.
+        The mock on Solr simply raises an AssertionError. If you want to use Solr in a test, call
+        the :meth:`setUpSolr` method.
         '''
         super(TestHandler, self).setUp()
         self._simple_options_patcher = mock.patch('abbot.simple_handler.options')
@@ -135,6 +135,23 @@ class TestHandler(testing.AsyncHTTPTestCase):
         self._solr.commit = mock.Mock(side_effect=_solr_side_effect)
         self._solr.optimize = mock.Mock(side_effect=_solr_side_effect)
         self._solr.extract = mock.Mock(side_effect=_solr_side_effect)
+
+    def setUpSolr(self):
+        '''
+        Set up a :class:`SolrMock` instance instead of the default (which always raises an
+        :exc:`AssertionError`). The :class:`SolrMock` is returned so you can do test-specific setup
+        of the "side effect" functions.
+
+        :returns: A fresh, clean :class:`SolrMock` function for your enjoyment while the test lasts.
+        '''
+        # first remove the default
+        self._solr_patcher.stop()
+        del self._solr
+        # now set up the new one
+        self._solr_patcher = mock.patch('abbot.util.SOLR', new=SolrMock)
+        self._solr = self._solr_patcher.start()
+        SolrMock.__init__(self._solr)  # apparently mock.patch() won't call __init__() for us
+        return self._solr
 
     def tearDown(self):
         '''
