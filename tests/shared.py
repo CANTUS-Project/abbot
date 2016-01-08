@@ -38,6 +38,7 @@ from tornado.options import options
 import pysolrtornado
 import abbot
 from abbot import __main__ as main
+from abbot import util
 
 # ensure we have a consistent "server_name" for all the tests
 options.server_name = 'https://cantus.org/'
@@ -60,6 +61,15 @@ def make_results(docs):
     :type docs: list of dict
     '''
     return pysolrtornado.Results({'response': {'numFound': len(docs), 'docs': docs}})
+
+
+def _solr_side_effect(*args, **kwargs):
+    '''
+    A mock "side effect" for methods on the "util" module's `pysolr-tornado` instance.
+
+    Requests hitting this default mock indicate a test was misconfigured.
+    '''
+    raise AssertionError('abbot.tests.shared.TestHandler blocks access to Solr; your test is misconfigured')
 
 
 class TestHandler(testing.AsyncHTTPTestCase):
@@ -96,12 +106,17 @@ class TestHandler(testing.AsyncHTTPTestCase):
 
     def setUp(self):
         '''
-        Install a mock on the global "options" modules. The following options are mocked in the
-        :mod:`simple_handler` module:
+        Install a mock on the global "options" modules, and the "util" module's `pysolr-tornado`
+        instance.
+
+        The following options are mocked in the :mod:`simple_handler` module:
 
         - drupal_url: None
         - server_name: 'https://cantus.org/'
         - cors_allow_origin: 'https://cantus.org:5733/'
+
+        The mock on Solr simply raises an AssertionError. If you want to use Solr in a test, you
+        must configure it yourself.
         '''
         super(TestHandler, self).setUp()
         self._simple_options_patcher = mock.patch('abbot.simple_handler.options')
@@ -110,9 +125,21 @@ class TestHandler(testing.AsyncHTTPTestCase):
         self._simple_options.server_name = 'https://cantus.org/'
         self._simple_options.cors_allow_origin = 'https://cantus.org:5733/'
 
+        self._solr_patcher = mock.patch('abbot.util.SOLR')
+        self._solr = self._solr_patcher.start()
+        self._solr.search = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.add = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.delete = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.more_like_this = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.suggest_terms = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.commit = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.optimize = mock.Mock(side_effect=_solr_side_effect)
+        self._solr.extract = mock.Mock(side_effect=_solr_side_effect)
+
     def tearDown(self):
         '''
         Remove the mock from the global "options" modules.
         '''
         self._simple_options_patcher.stop()
+        self._solr_patcher.stop()
         super(TestHandler, self).tearDown()
