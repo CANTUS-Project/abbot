@@ -266,3 +266,49 @@ class SolrMethodSideEffect(object):
                 post.extend(self._records[key])
 
         return make_future(make_results(post))
+
+
+class SolrMock(object):
+    '''
+    A mock for a ``pysolr-tornado`` instance.
+
+    This class creates a Mock for each of the ``pysolr-tornado`` public API methods, along with a
+    new "side effect" instance of the :class:`SolrMethodSideEffect`.
+
+    The mocked methods are:
+
+    - :meth:`search`
+    - :meth:`add`
+    - :meth:`delete`
+    - :meth:`more_like_this`
+    - :meth:`suggest_terms`
+    - :meth:`commit`
+    - :meth:`optimize`
+    - :meth:`extract`
+
+    Access the associated "side effect" by adding ``_se`` to the method name. For example, the
+    :meth:`search` "side effect" is attached to :attr:`search_se`.
+    '''
+
+    def __init__(self):
+        "Initialize all the mock methods on a :class:`SolrMock` instance."
+        self.search_se = SolrMethodSideEffect()
+        self.add_se = SolrMethodSideEffect()
+        self.delete_se = SolrMethodSideEffect()
+        self.more_like_this_se = SolrMethodSideEffect()
+        self.suggest_terms_se = SolrMethodSideEffect()
+        self.commit_se = SolrMethodSideEffect()
+        self.optimize_se = SolrMethodSideEffect()
+        self.extract_se = SolrMethodSideEffect()
+        #
+        self.search = mock.Mock(side_effect=self.search_se)
+        self.add = mock.Mock(side_effect=self.add_se)
+        self.delete = mock.Mock(side_effect=self.delete_se)
+        self.more_like_this = mock.Mock(side_effect=self.more_like_this_se)
+        self.suggest_terms = mock.Mock(side_effect=self.suggest_terms_se)
+        self.commit = mock.Mock(side_effect=self.commit_se)
+        self.optimize = mock.Mock(side_effect=self.optimize_se)
+        self.extract = mock.Mock(side_effect=self.extract_se)
+
+    def __call__(self, *args, **kwargs):
+        raise AssertionError('There is no reason to call a pysolr-tornado instance directly...')

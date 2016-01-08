@@ -107,3 +107,81 @@ class TestSolrSideEffect(shared.TestHandler):
         assert [{'id': '1'}] == (yield se('1')).docs
         with pytest.raises(RuntimeError):
             se.add('2', {'id': '2'})
+
+
+class TestSolrMock(shared.TestHandler):
+    '''
+    Tests for :class:`shared.SolrMock`.
+    '''
+
+    @testing.gen_test
+    def test_search(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.search_se.add(key, expected)
+        assert [expected] == (yield smock.search(key)).docs
+        smock.search.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_add(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.add_se.add(key, expected)
+        assert [expected] == (yield smock.add(key)).docs
+        smock.add.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_delete(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.delete_se.add(key, expected)
+        assert [expected] == (yield smock.delete(key)).docs
+        smock.delete.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_more_like_this(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.more_like_this_se.add(key, expected)
+        assert [expected] == (yield smock.more_like_this(key)).docs
+        smock.more_like_this.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_suggest_terms(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.suggest_terms_se.add(key, expected)
+        assert [expected] == (yield smock.suggest_terms(key)).docs
+        smock.suggest_terms.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_commit(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.commit_se.add(key, expected)
+        assert [expected] == (yield smock.commit(key)).docs
+        smock.commit.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_optimize(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.optimize_se.add(key, expected)
+        assert [expected] == (yield smock.optimize(key)).docs
+        smock.optimize.assert_called_once_with(key)
+
+    @testing.gen_test
+    def test_extract(self):
+        smock = shared.SolrMock()
+        expected = {'a': 'a'}
+        key = 'a'
+        smock.extract_se.add(key, expected)
+        assert [expected] == (yield smock.extract(key)).docs
+        smock.extract.assert_called_once_with(key)
