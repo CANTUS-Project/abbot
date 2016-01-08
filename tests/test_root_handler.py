@@ -142,6 +142,7 @@ class TestCanonicalHandler(shared.TestHandler):
     '''
     Tests for the CanonicalHandler.
     '''
+    # TODO: test for the default headers
 
     @testing.gen_test
     def test_get(self):
@@ -183,3 +184,74 @@ class TestCanonicalHandler(shared.TestHandler):
                                               allow_nonstandard_methods=True)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
+
+
+class TestEverythingElseHandler(shared.TestHandler):
+    '''
+    '''
+
+    @testing.gen_test
+    def test_get(self):
+        '''
+        Ensure the 404 works properly with a GET request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='GET',
+                                              follow_redirects=False, raise_error=False)
+        assert 404 == actual.code
+        assert b'404: Not Found' == actual.body
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_head(self):
+        '''
+        Ensure the 404 works properly with a HEAD request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='HEAD',
+                                              follow_redirects=False, raise_error=False)
+        assert 404 == actual.code
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_options(self):
+        '''
+        Ensure the 404 works properly with a OPTIONS request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='OPTIONS',
+                                              follow_redirects=False, raise_error=False)
+        assert 404 == actual.code
+        assert b'404: Not Found' == actual.body
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_search(self):
+        '''
+        Ensure the 404 works properly with a SEARCH request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='SEARCH',
+                                              follow_redirects=False, raise_error=False,
+                                              allow_nonstandard_methods=True)
+        assert 404 == actual.code
+        assert b'404: Not Found' == actual.body
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_put(self):
+        '''
+        Ensure the 404 works properly with a PUT request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='PUT',
+                                              follow_redirects=False, raise_error=False,
+                                              allow_nonstandard_methods=True)
+        assert 405 == actual.code
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_put(self):
+        '''
+        Ensure the 404 works properly with a POST request.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='POST',
+                                              follow_redirects=False, raise_error=False,
+                                              allow_nonstandard_methods=True)
+        assert 405 == actual.code
+        self.check_standard_header(actual)

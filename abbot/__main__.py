@@ -35,7 +35,7 @@ from tornado.options import Error as OptionsError
 from systemdream.journal import handler as journalctl
 
 import abbot
-from abbot.handlers import CanonicalHandler, RootHandler
+from abbot.handlers import CanonicalHandler, RootHandler, EverythingElseHandler
 from abbot.simple_handler import SimpleHandler
 from abbot.complex_handler import ComplexHandler
 from abbot.systemd_http_server import SystemdHTTPServer
@@ -107,6 +107,7 @@ HANDLERS = [
                                               'editors', 'proofreaders', 'provenance_detail']}),
     web.URLSpec(r'/statii/(.*/)?', handler=SimpleHandler, name='view_source_statii',
                 kwargs={'type_name': 'source_status'}),
+    web.URLSpec(r'.*', EverythingElseHandler),  # match anything not elsewhere matched
     ]
 
 

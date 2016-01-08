@@ -121,3 +121,37 @@ class CanonicalHandler(web.RequestHandler):
 
     def search(self):
         self._do_the_redirect()
+
+
+class EverythingElseHandler(web.RequestHandler):
+    '''
+    For requests that don't match any of the other handlers, send a 404.
+
+    This separate handler ensures that :meth:`set_default_headers` will be called, and that all four
+    HTTP methods supported in the Cantus API will be, well, 404-ed.
+    '''
+
+    SUPPORTED_METHODS = ('GET', 'HEAD', 'OPTIONS', 'SEARCH')
+    # this registers the SEARCH method as something that Tornado can do
+
+    def set_default_headers(self):
+        '''
+        Use :meth:`SimpleHandler.set_default_headers` to set the default headers.
+        '''
+        SimpleHandler.set_default_headers(self)
+
+    def _do_the_error(self):
+        self.set_status(404)
+        self.write('404: Not Found')
+
+    def get(self):
+        self._do_the_error()
+
+    def head(self):
+        self._do_the_error()
+
+    def options(self):
+        self._do_the_error()
+
+    def search(self):
+        self._do_the_error()
