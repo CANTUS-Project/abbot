@@ -36,6 +36,7 @@ from unittest import mock
 import pysolrtornado
 from tornado import httpclient, testing
 
+from abbot.complex_handler import ComplexHandler
 from abbot import simple_handler
 from abbot.simple_handler import SimpleHandler
 import shared
@@ -49,195 +50,240 @@ class TestBasicGetSimple(shared.TestHandler):
     unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
     '''
 
+    def __init__(self, *args, **kwargs):
+        '''
+        If "self._complex" is False, run the tests with a SimpleHandler.
+        If "self._complex" is True, run the tests with a ComplexHandler.
+        '''
+        super(TestBasicGetSimple, self).__init__(*args, **kwargs)
+        self._complex = False
+
     def setUp(self):
         "Make a SimpleHandler instance for testing."
         super(TestBasicGetSimple, self).setUp()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+        if self._complex:
+            self.handler = ComplexHandler(self.get_app(), request, type_name='century')
+        else:
+            self.handler = SimpleHandler(self.get_app(), request, type_name='century')
         self.solr = self.setUpSolr()
 
     @testing.gen_test
-    def test_basic_get_unit_1(self):
+    def test_prep_and_run_1(self):
         '''
-        - with no resource_id and Solr response has three things
-        - self.hparams['page'] is 1 (default)
-        - self.hparams['sort'] is None
-        - options.drupal_url is 'http://drp'
+        Verify the preparation and query-running steps. Don't prepare/verify return values.
+
+        - unspecified resource_id: it becomes '*'
+        - self.hparams['page'] is defined: the appropriate "start" argument is used
+        - self.hparams['sort'] is defined: the appropriate "sort" argument is used
+        - ask_solr_by_id() is called (with proper start, rows, sort args)
         '''
-        simple_handler.options.drupal_url = 'http://drp'
-        resource_id = None
-        self.handler.hparams['page'] = 1
-        self.handler.hparams['per_page'] = 10
-        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'century'})
-        expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
-                    '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
-                    '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
-                    'resources': {'1': {'self': 'https://cantus.org/centuries/1/'},
-                                  '2': {'self': 'https://cantus.org/centuries/2/'},
-                                  '3': {'self': 'https://cantus.org/centuries/3/'}},
-                    'sort_order': ['1', '2', '3'],
-        }
-        exp_num = 3
-
-        actual = yield self.handler.basic_get(resource_id)
-
-        self.solr.search.asset_called_with('+type:century +id:*', start=0, df='default_search')
-        assert (expected, exp_num) == actual
-
-    @testing.gen_test
-    def test_basic_get_unit_2(self):
-        '''
-        - when the id ends with '/' and the Solr response is empty (returns 404)
-        - it's a browse request, so "page" and "per_page" are None
-        '''
-        resource_id = '123/'
-        self.handler.hparams['page'] = None
-        self.handler.hparams['per_page'] = None
-        self.handler.send_error = mock.Mock()
-        expected_reason = simple_handler._ID_NOT_FOUND.format('century', resource_id[:-1])
-
-        actual = yield self.handler.basic_get(resource_id)
-
-        self.solr.search.assert_called_with('+type:century +id:123', df='default_search')
-        self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
-        assert (None, 0) == actual
-
-    @testing.gen_test
-    def test_basic_get_unit_3(self):
-        '''
-        - with resource_id not ending with '/' and Solr response has one thing
-        - self.hparams['page'] is not default but self.handler.hparams['per_page'] is
-        - self.hparams['sort'] is defined
-        - options.drupal_url is defined
-        '''
-        resource_id = '888'  # such good luck
-        self.solr.search_se.add('888', {'id': '888', 'type': 'century'})
-        expected = {'888': {'id': '888', 'type': 'century'},
-                    'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}},
-                    'sort_order': ['888'],
-        }
-        self.handler.hparams['page'] = 42
-        self.handler.hparams['per_page'] = 10
-        self.handler.hparams['sort'] = 'incipit asc'
-        exp_num = 1
-
-        actual = yield self.handler.basic_get(resource_id)
-
-        self.solr.search.assert_called_with('+type:century +id:888', df='default_search')
-        assert (expected, exp_num) == actual
-
-    @testing.gen_test
-    def test_basic_get_unit_4(self):
-        '''
-        - test_basic_get_unit_1() with self.hparams['include_resources'] set to False
-        - self.hparams['page'] and self.handler.hparams['per_page'] are both set
-        '''
-        resource_id = None
-        self.solr.search_se.add('*', {'id': '1', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '2', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '3', 'type': 'century'})
-        expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
-                    '3': {'id': '3', 'type': 'century'}, 'sort_order': ['1', '2', '3']}
         self.handler.hparams['page'] = 4
-        self.handler.hparams['per_page'] = 12
-        self.handler.hparams['include_resources'] = False
-        exp_num = 3
+        self.handler.hparams['per_page'] = 5
+        self.handler.hparams['sort'] = 'roar'
 
-        actual  = yield self.handler.basic_get(resource_id)
+        yield self.handler.basic_get()
 
-        # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
-        # "start" of 0, so "page" 2 should have a "start" equal to "per_page" (12 in this test)
-        self.solr.search.assert_called_with('+type:century +id:*', start=36, rows=12, df='default_search')
-        assert (expected, exp_num) == actual
+        self.solr.search.assert_called_with('+type:century +id:*', start=15, rows=5, sort='roar',
+            df='default_search')
 
     @testing.gen_test
-    def test_basic_get_unit_5(self):
+    def test_prep_and_run_2(self):
         '''
-        - when the Solr response is empty and self.hparams['page'] is too high (returns 409)
+        Verify the preparation and query-running steps. Don't prepare/verify return values.
+
+        - if resource_id ends with "/" it gets removed before sending to Solr
+        - self.hparams['page'] is not defined; no "start" arg is given
+        - ask_solr_by_id() is called (with proper start, rows, sort args)
         '''
-        resource_id = '123'
-        self.handler.hparams['page'] = 1
-        self.handler.hparams['per_page'] = 10
-        self.handler.send_error = mock.Mock()
-        self.handler.hparams['page'] = 6000
-        exp_reason = simple_handler._TOO_LARGE_PAGE
+        resource_id = '911/'
 
-        actual = yield self.handler.basic_get(resource_id)
+        yield self.handler.basic_get(resource_id=resource_id)
 
-        self.solr.search.assert_called_with('+type:century +id:123', df='default_search')
-        self.handler.send_error.assert_called_once_with(409, reason=exp_reason)
-        assert (None, 0) == actual
+        self.solr.search.assert_called_with('+type:century +id:911', df='default_search')
 
     @testing.gen_test
-    def test_basic_get_unit_6(self):
+    def test_prep_and_run_3(self):
         '''
-        - when a SEARCH query yields no results (returns 404)
+        Verify the preparation and query-running steps. Don't prepare/verify return values.
+
+        - there is a resource_id, but also a "query", so search_solr() is called
         '''
-        query = 'find me this'
-        self.handler.hparams['page'] = 1
-        self.handler.hparams['per_page'] = 10
+        resource_id = '911/'
+        query = 'wonderful'
+
+        yield self.handler.basic_get(resource_id=resource_id, query=query)
+
+        self.solr.search.assert_called_with(query, df='default_search')
+
+    @testing.gen_test
+    def test_prep_and_run_4(self):
+        '''
+        Verify the preparation and query-running steps. Don't prepare/verify return values.
+
+        - there is a resource_id, but also a "query", so search_solr() is called
+        - same as test_prep_and_run_3() BUT adds page/per_page/sort arguments, to ensure they also
+          make it through search_solr()
+        '''
+        self.handler.hparams['page'] = 4
+        self.handler.hparams['per_page'] = 5
+        self.handler.hparams['sort'] = 'roar'
+        resource_id = '911/'
+        query = 'wonderful'
+
+        yield self.handler.basic_get(resource_id=resource_id, query=query)
+
+        self.solr.search.assert_called_with(query, start=15, rows=5, sort='roar', df='default_search')
+
+    @testing.gen_test
+    def test_prep_and_run_5(self):
+        '''
+        Verify the preparation and query-running steps. Don't prepare/verify return values.
+
+        - ask_solr_by_id() raises ValueError because of an invalid resource ID
+        - basic_get() calls send_error(422, reason=_INVALID_ID)
+        - function returns (None, 0) (yes, breaking the rules a bit)
+        - make sure Solr is not called (or it could cause problems there)
+        '''
+        resource_id = '-911'
         self.handler.send_error = mock.Mock()
-        expected_reason = simple_handler._NO_SEARCH_RESULTS
+
+        yield self.handler.basic_get(resource_id=resource_id)
+
+        assert 0 == self.solr.search.call_count
+        self.handler.send_error.assert_called_once_with(422, reason=simple_handler._INVALID_ID)
+
+    @mock.patch('abbot.simple_handler.util.search_solr')
+    @testing.gen_test
+    def test_no_results_1(self, mock_solr):
+        '''
+        Verify behaviour when Solr returns no results.
+
+        - if X-Cantus-Page is too high (this is determined when the "start" argument to Solr is
+          greater than the "hits" Solr reports for that query
+        - send 409 with _TOO_LARGE_PAGE
+        - return (None, 0)
+        '''
+        self.handler.hparams['page'] = 99999
+        self.handler.hparams['per_page'] = 5
+        self.handler.send_error = mock.Mock()
+        expected = (None, 0)
+        # this test requires something very specific, so we'll mock Solr ourselves
+        results = shared.make_results([])
+        results.hits = 4000
+        mock_solr.return_value = shared.make_future(results)
+
+        actual = yield self.handler.basic_get(query='whatever')
+
+        assert actual == expected
+        self.handler.send_error.assert_called_once_with(409, reason=simple_handler._TOO_LARGE_PAGE)
+
+    @testing.gen_test
+    def test_no_results_2(self):
+        '''
+        Verify behaviour when Solr returns no results.
+
+        - there's a "query"
+        - send 404 with _NO_SEARCH_RESULTS
+        - return (None, 0)
+        '''
+        query = 'Vasco da Gama'
+        self.handler.send_error = mock.Mock()
+        expected = (None, 0)
 
         actual = yield self.handler.basic_get(query=query)
 
-        # NOTE: shouldn't the query be '+type:century {}'.format(query) ??? No! Because the "type"
-        #       part is added by search_handler(), not by basic_get().
-        self.solr.search.assert_called_with(query, df='default_search', rows=10)
-        self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
-        assert (None, 0) == actual
+        assert actual == expected
+        self.handler.send_error.assert_called_once_with(404, reason=simple_handler._NO_SEARCH_RESULTS)
 
     @testing.gen_test
-    def test_basic_get_unit_7(self):
+    def test_no_results_3(self):
         '''
-        Inherited from test_basic_get_unit_1():
-        - with no resource_id and Solr response has three things
-        - self.hparams['page'] is 1 (default)
-        - self.hparams['sort'] is None
-        - options.drupal_url is 'http://drp'
+        Verify behaviour when Solr returns no results.
 
-        New in this test:
-        - the things returned from Solr are three different types
+        - there's a resource_id
+        - send 404 with _ID_NOT_FOUND
+        - return (None, 0)
         '''
-        simple_handler.options.drupal_url = 'http://drp'
-        resource_id = None
-        self.handler.hparams['page'] = 1
-        self.handler.hparams['per_page'] = 10
-        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'feast'})
-        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'genre'})
-        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'source'})
-        expected = {'1': {'id': '1', 'name': 'one', 'type': 'feast', 'drupal_path': 'http://drp/feast/1'},
-                    '2': {'id': '2', 'name': 'two', 'type': 'genre', 'drupal_path': 'http://drp/genre/2'},
-                    '3': {'id': '3', 'name': 'three', 'type': 'source', 'drupal_path': 'http://drp/source/3'},
-                    'resources': {'1': {'self': 'https://cantus.org/feasts/1/'},
-                                  '2': {'self': 'https://cantus.org/genres/2/'},
-                                  '3': {'self': 'https://cantus.org/sources/3/'}},
-                    'sort_order': ['1', '2', '3'],
-        }
-        exp_num = 3
-
-        actual = yield self.handler.basic_get(resource_id)
-
-        self.solr.search.assert_called_with('+type:century +id:*', rows=10, df='default_search')
-        assert (expected, exp_num) == actual
-
-    @testing.gen_test
-    def test_basic_get_unit_8(self):
-        '''
-        - when a GET request has an invalid resource ID
-        NOTE: didn't set up Solr mock
-        '''
-        resource_id = '-888_'
+        resource_id = '48839929'
         self.handler.send_error = mock.Mock()
-        expected_reason = simple_handler._INVALID_ID
+        expected = (None, 0)
+        exp_reason = simple_handler._ID_NOT_FOUND.format('century', resource_id)
 
-        actual = yield self.handler.basic_get(resource_id)
+        actual = yield self.handler.basic_get(resource_id=resource_id)
 
-        self.handler.send_error.assert_called_once_with(422, reason=expected_reason)
-        assert (None, 0) == actual
+        assert actual == expected
+        self.handler.send_error.assert_called_once_with(404, reason=exp_reason)
+
+    @testing.gen_test
+    def test_with_results_1(self):
+        '''
+        Verify behaviour when Solr does give results.
+
+        - call self.format_record() on each of the rescords
+        - verify "number_of_records" is correct (it's returned)
+        - verify "sort_order" is the same order as records in the response (it's in returned response)
+        - verify the "self.total_results" was set to the "hits" from the response
+        '''
+        self.solr.search_se.add('*', {'id': '6', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '9', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'type': 'century'})
+        exp_num_records = 3
+        exp_sort_order = ['6', '9', '2']
+        exp_total_results = 3
+
+        actual = yield self.handler.basic_get()
+
+        assert exp_num_records == actual[1]
+        assert self.handler.total_results == exp_total_results
+        assert exp_sort_order == actual[0]['sort_order']
+        for each_id in exp_sort_order:
+            assert actual[0][each_id]['id'] == each_id
+            assert actual[0][each_id]['type'] == 'century'
+
+    @testing.gen_test
+    def test_with_results_2(self):
+        '''
+        Verify behaviour when Solr does give results.
+
+        - self.hparams['include_resources'] is True
+        - each resource has its URL put in a "resources" block
+        '''
+        self.handler.hparams['include_resources'] = True
+        self.solr.search_se.add('*', {'id': '6', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '9', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'type': 'century'})
+        exp_ids = ['2', '6', '9']
+        exp_urls = ['{0}centuries/{1}/'.format(self._simple_options.server_name, x) for x in exp_ids]
+
+        actual = yield self.handler.basic_get()
+        actual = actual[0]
+
+        for i, each_id in enumerate(exp_ids):
+            assert actual['resources'][each_id]['self'] == exp_urls[i]
+
+    @testing.gen_test
+    def test_with_results_3(self):
+        '''
+        Verify behaviour when Solr does give results.
+
+        - there's a Drupal URL available
+        - each resource has a "drupal_path" member in its resource
+        '''
+        self.handler.hparams['include_resources'] = True
+        self._simple_options.drupal_url = 'http://drupal/'
+        self.solr.search_se.add('*', {'id': '6', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '9', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'type': 'century'})
+        exp_ids = ['2', '6', '9']
+        exp_urls = ['{0}century/{1}'.format(self._simple_options.drupal_url, x) for x in exp_ids]
+
+        actual = yield self.handler.basic_get()
+        actual = actual[0]
+
+        for i, each_id in enumerate(exp_ids):
+            assert actual[each_id]['drupal_path'] == exp_urls[i]
 
 
 class TestGetSimple(shared.TestHandler):
@@ -245,201 +291,136 @@ class TestGetSimple(shared.TestHandler):
     Unit tests for the SimpleHandler.get() and SimpleHandler.get_handler().
     '''
 
+    def __init__(self, *args, **kwargs):
+        '''
+        If "self._complex" is False, run the tests with a SimpleHandler.
+        If "self._complex" is True, run the tests with a ComplexHandler.
+        '''
+        super(TestGetSimple, self).__init__(*args, **kwargs)
+        self._complex = False
+
     def setUp(self):
         "Make a SimpleHandler instance for testing."
         super(TestGetSimple, self).setUp()
-        self.request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        self.request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = SimpleHandler(self.get_app(), self.request, type_name='century')
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        if self._complex:
+            self.handler = ComplexHandler(self.get_app(), request, type_name='century')
+        else:
+            self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+        # mocks specific to this class
+        self.mock_vrh = mock.Mock(return_value=True)
+        self.handler.verify_request_headers = self.mock_vrh
+        #
+        self.mock_ghandler = mock.Mock(return_value=(None, 0))
+        self.handler.get_handler = self.mock_ghandler
+        #
+        self.mock_mrh = mock.Mock()
+        self.handler.make_response_headers = self.mock_mrh
 
-    def test_normal_browse(self):
+    @testing.gen_test
+    def test_calls_vrh(self):
         '''
-        Preconditions:
-        - resource_id is None
-        - self.hparams['include_resources'] is True
-        - self.verify_request_headers() returns True
-        - self.get_handler() returns Future with three-item list
-        - self.head_request is False
+        Ensure get() calls verify_request_headers() (or "vrh").
 
-        Postconditions:
-        - is_browse_request is True
-        - self.verify_request_headers() called with True
-        - self.get_handler() called with None
-        - self.make_response_headers() called with (True, 2)
-        - self.write() is called
+        - two calls in the same test, expecting different values for "is_browse_request"
+        - also check get_handler() won't be called when "vrh" returns False
         '''
-        resource_id = None
-        self.handler.hparams['include_resources'] = True
-        self.handler.head_request = False
-        mock_vrh = mock.Mock(return_value=True)
-        self.handler.verify_request_headers = mock_vrh
-        response = ([1, 2, 3], 1900)
-        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
-        self.handler.get_handler = mock_get_handler
-        mock_mrh = mock.Mock()
-        self.handler.make_response_headers = mock_mrh
-        mock_write = mock.Mock()
-        self.handler.write = mock_write
+        self.mock_vrh.return_value = False
+        #
+        yield self.handler.get('not a browse request')
+        self.mock_vrh.assert_called_with(False)
+        #
+        yield self.handler.get()
+        self.mock_vrh.assert_called_with(True)
+        #
+        assert self.mock_ghandler.call_count == 0
 
-        self.handler.get(resource_id)
-
-        mock_vrh.assert_called_once_with(True)
-        mock_get_handler.assert_called_once_with(resource_id)
-        mock_mrh.assert_called_once_with(True, response[1])
-        mock_write.assert_called_once_with(response[0])
-
-    def test_normal_view(self):
+    @testing.gen_test
+    def test_no_results(self):
         '''
-        Preconditions:
-        - resource_id is '123'
-        - self.hparams['include_resources'] is False
-        - self.verify_request_headers() returns True
-        - self.get_handler() returns Future with one-item list
-        - self.head_request is True
+        When get_handler() returns (None, 0) there was a problem getting results.
 
-        Postconditions:
-        - is_browse_request is False
-        - self.verify_request_headers() called with False
-        - self.get_handler() called with '123'
-        - self.make_response_headers() called with (False, 1)
-        - self.write() is not called
+        - get_handler() returns (None, 0)
+        - make_response_headers() isn't called
         '''
-        resource_id = '123'
-        self.handler.hparams['include_resources'] = False
-        self.handler.head_request = True
-        mock_vrh = mock.Mock(return_value=True)
-        self.handler.verify_request_headers = mock_vrh
-        response = ([1], 42)
-        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
-        self.handler.get_handler = mock_get_handler
-        mock_mrh = mock.Mock()
-        self.handler.make_response_headers = mock_mrh
-        mock_write = mock.Mock()
-        self.handler.write = mock_write
+        yield self.handler.get()
+        assert self.mock_ghandler.call_count == 1
+        assert self.mock_mrh.call_count == 0
 
-        self.handler.get(resource_id)
-
-        mock_vrh.assert_called_once_with(False)
-        mock_get_handler.assert_called_once_with(resource_id)
-        mock_mrh.assert_called_once_with(False, response[1])
-        self.assertEqual(0, mock_write.call_count)
-
-    def test_no_resources_found(self):
-        '''
-        Preconditions:
-        - resource_id is None
-        - self.verify_request_headers() returns True
-        - self.get_handler() returns Future with None
-        - self.head_request is False
-
-        Postconditions:
-        - is_browse_request is True
-        - self.verify_request_headers() called with True
-        - self.get_handler() called with None
-        - self.make_response_headers() is not called
-        - self.write() is not called
-        '''
-        resource_id = None
-        self.handler.hparams['include_resources'] = True
-        self.handler.head_request = False
-        mock_vrh = mock.Mock(return_value=True)
-        self.handler.verify_request_headers = mock_vrh
-        response = (None , 0)
-        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
-        self.handler.get_handler = mock_get_handler
-        mock_mrh = mock.Mock()
-        self.handler.make_response_headers = mock_mrh
-        mock_write = mock.Mock()
-        self.handler.write = mock_write
-
-        self.handler.get(resource_id)
-
-        mock_vrh.assert_called_once_with(True)
-        mock_get_handler.assert_called_once_with(resource_id)
-        self.assertEqual(0, mock_mrh.call_count)
-        self.assertEqual(0, mock_write.call_count)
-
-    def test_bad_headers(self):
-        '''
-        Preconditions:
-        - resource_id is None
-        - self.verify_request_headers() returns False
-        - self.head_request is False
-
-        Postconditions:
-        - is_browse_request is True
-        - self.verify_request_headers() called with True
-        - self.get_handler() is not called
-        - self.make_response_headers() is not called
-        - self.write() is not called
-        '''
-        resource_id = None
-        self.handler.hparams['include_resources'] = True
-        self.handler.head_request = False
-        mock_vrh = mock.Mock(return_value=False)
-        self.handler.verify_request_headers = mock_vrh
-        response = None
-        mock_get_handler = mock.Mock(return_value=shared.make_future(response))
-        self.handler.get_handler = mock_get_handler
-        mock_mrh = mock.Mock()
-        self.handler.make_response_headers = mock_mrh
-        mock_write = mock.Mock()
-        self.handler.write = mock_write
-
-        self.handler.get(resource_id)
-
-        mock_vrh.assert_called_once_with(True)
-        self.assertEqual(0, mock_get_handler.call_count)
-        self.assertEqual(0, mock_mrh.call_count)
-        self.assertEqual(0, mock_write.call_count)
-
+    @testing.gen_test
     def test_solr_error(self):
         '''
-        Preconditions:
-        - resource_id is None
-        - self.verify_request_headers() returns True
-        - self.get_handler() raises pysolrtornado.SolrError
-        - self.head_request is False
+        When there's a SolrError.
 
-        Postconditions:
-        - is_browse_request is True
-        - self.verify_request_headers() called with True
-        - self.get_handler() called with None
-        - self.make_response_headers() is not called
-        - self.write() is not called
-        - self.send_error() is called with (502, reason=SimpleHandler._SOLR_502_ERROR)
+        - get_handler() raises SolrError
+        - make_response_headers() isn't called
         '''
-        resource_id = None
-        self.handler.hparams['include_resources'] = True
-        self.handler.head_request = False
-        mock_vrh = mock.Mock(return_value=True)
-        self.handler.verify_request_headers = mock_vrh
-        mock_get_handler = mock.Mock(side_effect=pysolrtornado.SolrError)
-        self.handler.get_handler = mock_get_handler
-        mock_mrh = mock.Mock()
-        self.handler.make_response_headers = mock_mrh
-        mock_write = mock.Mock()
-        self.handler.write = mock_write
-        mock_send_error = mock.Mock()
-        self.handler.send_error = mock_send_error
+        self.handler.send_error = mock.Mock()
+        self.mock_ghandler.side_effect = pysolrtornado.SolrError
+        yield self.handler.get()
+        assert self.mock_ghandler.call_count == 1
+        assert self.mock_mrh.call_count == 0
+        self.handler.send_error.assert_called_with(502, reason=simple_handler._SOLR_502_ERROR)
 
-        self.handler.get(resource_id)
-
-        mock_vrh.assert_called_once_with(True)
-        mock_get_handler.assert_called_once_with(resource_id)
-        self.assertEqual(0, mock_mrh.call_count)
-        self.assertEqual(0, mock_write.call_count)
-        mock_send_error.assert_called_once_with(502, reason=simple_handler._SOLR_502_ERROR)
-
-    @mock.patch('abbot.simple_handler.SimpleHandler.basic_get')
     @testing.gen_test
-    def test_get_handler_1(self, mock_basic_get):
+    def test_works_not_head(self):
         '''
-        Ensure the kwargs are passed along properly.
+        When the Solr request is successful, and this is not a HEAD request.
+
+        - get_handler() returns something good
+        - make_response_headers() is called properly
+        - self.write() is called
         '''
-        mock_basic_get.return_value = shared.make_future('five')
-        resource_id = '123'
-        query = 'i can haz cheezburger?'
-        actual = yield self.handler.get_handler(resource_id=resource_id, query=query)
-        self.assertEqual('five', actual)
-        mock_basic_get.assert_called_once_with(resource_id=resource_id, query=query)
+        self.handler.head_request = False
+        self.handler.write = mock.Mock()
+        self.mock_ghandler.return_value = shared.make_future(('yo', 5))
+        yield self.handler.get()
+        self.mock_mrh.assert_called_with(True, 5)
+        self.handler.write.assert_called_with('yo')
+
+    @testing.gen_test
+    def test_works_is_head(self):
+        '''
+        When the Solr request is successful, and this is a HEAD request.
+
+        - get_handler() returns something good
+        - make_response_headers() is called properly
+        - self.write() is called
+        '''
+        self.handler.head_request = True
+        self.handler.write = mock.Mock()
+        self.mock_ghandler.return_value = shared.make_future(('yo', 5))
+        yield self.handler.get()
+        self.mock_mrh.assert_called_with(True, 5)
+        assert self.handler.write.call_count == 0
+
+
+class TestBasicGetComplex(TestBasicGetSimple):
+    '''
+    Run all the TestBasicGetSimple unit tests with a ComplexHandler instead.
+
+    Because basic_get() should behave identically for SimpleHandler and ComplexHandler, copying all
+    the tests would be a worse solution. This way, differences between the two handlers should be
+    easier to run into accidentally.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        "Set self._complex to True."
+        super(TestBasicGetComplex, self).__init__(*args, **kwargs)
+        self._complex = True
+
+
+class TestGetComplex(TestBasicGetSimple):
+    '''
+    Run all the TestGetSimple unit tests with a ComplexHandler instead.
+
+    Because get() should behave identically for SimpleHandler and ComplexHandler, copying all
+    the tests would be a worse solution. This way, differences between the two handlers should be
+    easier to run into accidentally.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        "Set self._complex to True."
+        super(TestGetComplex, self).__init__(*args, **kwargs)
+        self._complex = True

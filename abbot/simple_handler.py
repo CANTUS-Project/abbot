@@ -351,6 +351,8 @@ class SimpleHandler(web.RequestHandler):
         :rtype: (dict, int) or ``(NoneType, 0)``
         '''
 
+        _NONE_ZERO = (None, 0)
+
         # prepare the query -------------------------------
         if not resource_id:
             resource_id = '*'
@@ -367,21 +369,22 @@ class SimpleHandler(web.RequestHandler):
             # SEARCH method
             resp = yield util.search_solr(query, start=start, rows=self.hparams['per_page'],
                                           sort=self.hparams['sort'])
-        elif resource_id == '*':
-            # "browse" URLs
-            resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
-                                             rows=self.hparams['per_page'], sort=self.hparams['sort'])
         else:
-            # "view" URLs
+            # "browse" and "view" URLs
             try:
-                resp = yield util.ask_solr_by_id(self.type_name, resource_id)
+                resp = yield util.ask_solr_by_id(self.type_name, resource_id, start=start,
+                                                 rows=self.hparams['per_page'], sort=self.hparams['sort'])
             except ValueError:
                 # this means the Cantus ID was invalid
                 self.send_error(422, reason=_INVALID_ID)
-                return None, 0
+                return _NONE_ZERO
 
         # format the query --------------------------------
-        if not resp:
+        if resp.docs:
+            post = {record['id']: self.format_record(record) for record in resp}
+            number_of_records = len(post)
+            post['sort_order'] = [record['id'] for record in resp]
+        else:
             log.debug('SimpleHandler.basic_get() had no results; resource_id="{0}" and query="{1}"'.format(resource_id, query))
             if start and resp.hits <= start:
                 # if we have 0 results because of a weird "X-Cantus-Page" header, return a 409
@@ -390,21 +393,16 @@ class SimpleHandler(web.RequestHandler):
                 self.send_error(404, reason=_NO_SEARCH_RESULTS)
             else:
                 self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))
-            return None, 0
-        else:
-            post = {record['id']: self.format_record(record) for record in resp}
-            number_of_records = len(post)
-            post['sort_order'] = [record['id'] for record in resp]
+            return _NONE_ZERO
 
         # for the X-Cantus-Total-Results header
         self.total_results = resp.hits
 
         if self.hparams['include_resources']:
             post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in post['sort_order']}
-            for record in resp:
-                drupal_path = self.make_drupal_url(record['id'], record['type'])
-                if drupal_path:
-                    post[record['id']]['drupal_path'] = drupal_path
+            if options.drupal_url:
+                for record in resp:
+                    post[record['id']]['drupal_path'] = self.make_drupal_url(record['id'], record['type'])
 
         return post, number_of_records
 
