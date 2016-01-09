@@ -33,12 +33,10 @@ Tests for the Abbot server's ComplexHandler.
 # That's an important part of testing! For me, at least.
 
 from unittest import mock
-from tornado import escape, httpclient, testing
+from tornado import httpclient, testing
 from abbot import __main__ as main
-from abbot import simple_handler
 from abbot import complex_handler
 ComplexHandler = complex_handler.ComplexHandler
-from abbot import util
 import shared
 
 
@@ -255,141 +253,6 @@ class TestMakeExtraFields(shared.TestHandler):
 
         assert 0 == self.solr.search.call_count
         self.assertEqual(expected, actual)
-
-
-class TestGetIntegration(shared.TestHandler):
-    '''
-    Unit tests for the ComplexHandler.get().
-    '''
-
-    def setUp(self):
-        super(TestGetIntegration, self).setUp()
-        self.solr = self.setUpSolr()
-
-    @testing.gen_test
-    def test_get_integration_1(self):
-        '''
-        With many xreffed fields; feast_description to make up; include 'resources'; and drupal_path.
-        '''
-        simple_handler.options.drupal_url = 'http://drp'
-        record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                  'mode': '2S', 'type': 'chant'}
-        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
-                               'cantus_id': '600482a', 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S',
-                               'drupal_path': 'http://drp/chant/357679', 'type': 'chant'},
-                    'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
-                                             'genre': 'https://cantus.org/genres/161/',
-                                             'feast': 'https://cantus.org/feasts/2378/'}},
-                    'sort_order': ['357679'],
-        }
-        self.solr.search_se.add('id:357679', record)
-        self.solr.search_se.add('id:161', {'name': 'V', 'description': 'Responsory Verse'})
-        self.solr.search_se.add('id:2378', {'name': 'Jacobi', 'description': 'James the Greater, Aspotle'})
-
-        actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
-
-        self.check_standard_header(actual)
-        self.assertEqual(expected, escape.json_decode(actual.body))
-        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
-
-    @testing.gen_test
-    def test_get_integration_2(self):
-        "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
-        record_a = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                    'mode': '2S', 'type': 'chant'}
-        record_b = {'id': '111222', 'genre_id': '161', 'feast_id': '2378', 'mode': '2S',
-                    'sequence': 4, 'type': 'chant'}
-        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
-                               'cantus_id': '600482a', 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
-                    '111222': {'id': '111222', 'type': 'chant', 'genre': 'Responsory Verse',
-                               'sequence': 4, 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
-                    'sort_order': ['357679', '111222'],
-        }
-        self.solr.search_se.add('*', record_a)
-        self.solr.search_se.add('*', record_b)
-        self.solr.search_se.add('161', {'name': 'V', 'description': 'Responsory Verse'})
-        self.solr.search_se.add('2378', {'name': 'Jacobi', 'description': 'James the Greater, Aspotle'})
-        # expected header: X-Cantus-Fields
-        exp_cantus_fields = sorted(['id', 'genre', 'mode', 'feast', 'type'])
-        # expected header: X-Cantus-Extra-Fields
-        exp_extra_fields = sorted(['cantus_id', 'sequence'])
-
-        actual = yield self.http_client.fetch(self.get_url('/chants/'),
-                                              method='GET',
-                                              headers={'X-Cantus-Include-Resources': 'FalSE'})
-
-        self.assertEqual(exp_cantus_fields, sorted(actual.headers['X-Cantus-Fields'].split(',')))
-        self.assertEqual(exp_extra_fields, sorted(actual.headers['X-Cantus-Extra-Fields'].split(',')))
-        self.assertEqual('false', actual.headers['X-Cantus-Include-Resources'].lower())
-        self.assertEqual(expected, escape.json_decode(actual.body))
-
-    @testing.gen_test
-    def test_get_integration_3(self):
-        "test_get_integration_1 but with X-Cantus-No-Xref; include 'resources'"
-        record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                  'mode': '2S', 'type': 'chant'}
-        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre_id': '161',
-                               'cantus_id': '600482a', 'feast_id': '2378', 'mode': '2S'},
-                    'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
-                                             'genre': 'https://cantus.org/genres/161/',
-                                             'feast': 'https://cantus.org/feasts/2378/'}},
-                    'sort_order': ['357679'],
-        }
-        self.solr.search_se.add('357679', record)
-
-        actual = yield self.http_client.fetch(self.get_url('/chants/357679/'),
-                                              method='GET',
-                                              headers={'X-Cantus-No-Xref': 'TRUE'})
-
-        self.check_standard_header(actual)
-        self.assertEqual(expected, escape.json_decode(actual.body))
-        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
-        self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())
-
-    @testing.gen_test
-    def test_get_integration_6(self):
-        """
-        Returns 404 when the resource ID is not found.
-        Regression test for GitHub issue #87.
-        Named in honour of the test_get_integration_6() for SimpleHandler.
-        """
-        resource_id = '34324242343423423423423'
-        expected_reason = simple_handler._ID_NOT_FOUND.format('chant', resource_id)
-        request_url = self.get_url('/chants/{}/'.format(resource_id))
-
-        actual = yield self.http_client.fetch(request_url,
-                                              method='GET',
-                                              raise_error=False)
-
-        self.solr.search.assert_called_with('+type:chant +id:{}'.format(resource_id), df='default_search')
-        self.check_standard_header(actual)
-        assert 404 == actual.code
-        assert expected_reason == actual.reason
-
-
-    @testing.gen_test
-    def test_get_integration_8(self):
-        """
-        Returns 404 when the resource ID is not found.
-        Regression test for GitHub issue #87.
-        """
-        # NOTE: named after TestBasicGetUnit.test_basic_get_unit_8().
-        # NOTE: corresponds to the same-numbered test in test_simple_handler.py
-        resource_id = '-888_'
-        expected_reason = simple_handler._INVALID_ID
-        request_url = self.get_url('/chants/{}/'.format(resource_id))
-
-        actual = yield self.http_client.fetch(request_url,
-                                              method='GET',
-                                              raise_error=False)
-
-        self.check_standard_header(actual)
-        assert 0 == self.solr.search.call_count
-        assert 422 == actual.code
-        assert expected_reason == actual.reason
 
 
 class TestOptionsIntegration(shared.TestHandler):
