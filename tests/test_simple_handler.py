@@ -309,34 +309,6 @@ class TestOptionsIntegration(shared.TestHandler):
             self.assertEqual('allow', actual.headers[each_header].lower())
 
 
-class TestHeadIntegration(shared.TestHandler):
-    '''
-    Integration tests for the SimpleHandler.head().
-    '''
-
-    def setUp(self):
-        "Make a SimpleHandler instance for testing."
-        super(TestHeadIntegration, self).setUp()
-        self.solr = self.setUpSolr()
-
-    @testing.gen_test
-    def test_head_integration_1a(self):
-        "test_get_integration_1() but with the HEAD method"
-        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'century'})
-
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='HEAD')
-
-        self.solr.search.assert_called_once_with('+type:century +id:*', df='default_search', rows=10)
-        self.check_standard_header(actual)
-        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
-        self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
-        self.assertEqual('1', actual.headers['X-Cantus-Page'])
-        self.assertEqual('10', actual.headers['X-Cantus-Per-Page'])
-        self.assertEqual(0, len(actual.body))
-
-
 class TestVerifyRequestHeaders(shared.TestHandler):
     '''
     Unit tests for SimpleHandler.verify_request_headers().
