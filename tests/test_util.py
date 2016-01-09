@@ -68,37 +68,39 @@ class TestSolrAskers(shared.TestHandler):
     Tests for abbot.util.ask_solr_by_id() and search_solr().
     '''
 
-    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
+    def setUp(self):
+        super(TestSolrAskers, self).setUp()
+        self.solr = self.setUpSolr()
+
     @testing.gen_test
-    def test_search_solr_1(self, mock_solr):
+    def test_search_solr_1(self):
         "Basic test (no 'extra_params')."
         query = 'searching for this'
-        expected = 'search results'
-        mock_solr.search.return_value = shared.make_future(expected)
+        expected = {'a': 'search results'}
+        self.solr.search_se.add(query, expected)
         actual = yield util.search_solr(query)
-        assert expected == actual
-        util.SOLR.search.assert_called_once_with(query, df='default_search')
+        assert [expected] == actual.docs
+        self.solr.search.assert_called_with(query, df='default_search')
 
-    @mock.patch('abbot.util.SOLR', spec_set=pysolrtornado.Solr)
     @testing.gen_test
-    def test_search_solr_2(self, mock_solr):
+    def test_search_solr_2(self):
         "Basic test (with 'start', 'rows', and 'sort' kwargs)."
         query = 'searching for this'
-        expected = 'search results'
-        mock_solr.search.return_value = shared.make_future(expected)
+        expected = {'a': 'search results'}
+        self.solr.search_se.add(query, expected)
         actual = yield util.search_solr(query, start=5, rows=50, sort='lol')
-        assert expected == actual
-        util.SOLR.search.assert_called_once_with(query, df='default_search', start=5, rows=50, sort='lol')
+        assert [expected] == actual.docs
+        self.solr.search.assert_called_with(query, df='default_search', start=5, rows=50, sort='lol')
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_ask_solr_by_id_1(self, mock_search):
+    def test_ask_solr_by_id_1(self):
         "Ensure everything gets passed to search_solr()."
-        expected = 'search results'
-        mock_search.return_value = shared.make_future(expected)
+        expected = {'a': 'search results'}
+        self.solr.search_se.add('id:162', expected)
         actual = yield util.ask_solr_by_id('genre', '162', start=1, rows=2, sort=3)
-        assert expected == actual
-        mock_search.assert_called_with('+type:genre +id:162', start=1, rows=2, sort=3)
+        assert [expected] == actual.docs
+        self.solr.search.assert_called_with('+type:genre +id:162', start=1, rows=2, sort=3,
+            df='default_search')
 
 
 class TestFormattedSorts(TestCase):
@@ -484,7 +486,7 @@ class TestParseQuery(TestCase):
 
     def test_plus_and_minus(self):
         '''
-        Boolean + and - operators:
+        Boolean + and - and ! operators:
         - works before a named field
         - works after quoted field
         - works on the default field
@@ -780,80 +782,64 @@ class TestQueryParserAsync(shared.TestHandler):
     Tests for the asynchronous (coroutine) SEARCH request query-string parsing functions.
     '''
 
-    @mock.patch('abbot.util.search_solr')
+    def setUp(self):
+        super(TestQueryParserAsync, self).setUp()
+        self.solr = self.setUpSolr()
+
     @testing.gen_test
-    def test_run_subqueries_1(self, mock_ask_solr):
+    def test_run_subqueries_1(self):
         '''
         With a single cross-referenced field that has a single result.
         '''
 
-        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('type:genre', {'id': '123', 'name': 'antiphon', 'type': 'genre'})
         components = [('genre', 'antiphon')]
         expected = [('genre_id', '123')]
 
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
-        mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_run_subqueries_2(self, mock_ask_solr):
+    def test_run_subqueries_2(self):
         '''
         With a single cross-referenced field with three results.
         '''
 
-        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'},
-                                                  {'id': '124', 'name': 'bantiphon', 'type': 'genre'},
-                                                  {'id': '125', 'name': 'cantiphon', 'type': 'genre'}
-        ])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('type:genre', {'id': '123', 'name': 'antiphon', 'type': 'genre'})
+        self.solr.search_se.add('type:genre', {'id': '124', 'name': 'bantiphon', 'type': 'genre'})
+        self.solr.search_se.add('type:genre', {'id': '125', 'name': 'cantiphon', 'type': 'genre'})
         components = [('genre', 'antiphon')]
         expected = [('default', '(genre_id:123^3 OR genre_id:124^2 OR genre_id:125^1)')]
 
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
-        mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_run_subqueries_3(self, mock_ask_solr):
+    def test_run_subqueries_3(self):
         '''
         With a cross-referenced field (with a single result) and another field.
         '''
 
-        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('type:genre', {'id': '123', 'name': 'antiphon', 'type': 'genre'})
         components = [('name', 'Jeffrey'), ('genre', 'antiphon')]
         expected = [('name', 'Jeffrey'), ('genre_id', '123')]
 
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
-        mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_run_subqueries_4(self, mock_ask_solr):
+    def test_run_subqueries_4(self):
         '''
         With two cross-referenced fields and two other fields.
         '''
 
         # complex bit to have two different results returned
-        response_genre = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
-        response_genre = shared.make_future(response_genre)
-        response_feast = shared.make_results([{'id': '1474', 'name': 'Ad Magnificat', 'type': 'feast'},
-                                              {'id': '1499', 'name': 'Ad Subtrac', 'type': 'feast'}])
-        response_feast = shared.make_future(response_feast)
-        def returner(query):
-            if 'genre' in query:
-                return response_genre
-            else:
-                return response_feast
-        mock_ask_solr.side_effect = returner
-        #
+        self.solr.search_se.add('type:genre', {'id': '123', 'name': 'antiphon', 'type': 'genre'})
+        self.solr.search_se.add('type:feast', {'id': '1474', 'name': 'Ad Magnificat', 'type': 'feast'})
+        self.solr.search_se.add('type:feast', {'id': '1499', 'name': 'Ad Subtrac', 'type': 'feast'})
         components = [('genre', 'antiphon'), ('differentia', '3'), ('folio', '001r'),
                       ('feast', 'magnificat')]
         expected = [('genre_id', '123'), ('differentia', '3'), ('folio', '001r'),
@@ -862,61 +848,55 @@ class TestQueryParserAsync(shared.TestHandler):
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
-        mock_ask_solr.assert_any_call('type:genre AND (antiphon)')
-        mock_ask_solr.assert_any_call('type:feast AND (magnificat)')
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_run_subqueries_5(self, mock_ask_solr):
+    def test_run_subqueries_5(self):
         '''
         With no cross-referenced fields.
         '''
-
-        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         components = [('name', 'Jeffrey')]
         expected = [('name', 'Jeffrey')]
 
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
-        self.assertEqual(0, mock_ask_solr.call_count)
+        assert 0 == self.solr.search.call_count
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_run_subqueries_6(self, mock_ask_solr):
+    def test_run_subqueries_6(self):
         '''
         With a single cross-referenced field that has no results.
         '''
-
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         components = [('genre', 'antiphon')]
-
-        # we have to do this a weird way, because you can't "yield" in assertRaises()
-        try:
+        with pytest.raises(util.InvalidQueryError) as excinfo:
             yield util.run_subqueries(components)
-        except util.InvalidQueryError:
-            mock_ask_solr.assert_called_once_with('type:genre AND (antiphon)')
-        else:
-            raise AssertionError('InvalidQueryError not raised')
+        self.solr.search.assert_called_with('type:genre AND (antiphon)', df='default_search')
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_run_subqueries_7(self, mock_ask_solr):
+    def test_run_subqueries_7(self):
         '''
         No cross-referenced fields, but there are two "joining elements."
         '''
-
-        mock_solr_response = shared.make_results([{'id': '123', 'name': 'antiphon', 'type': 'genre'}])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         components = ['!', ('name', 'Jeffrey'), 'AND', ('occupation', 'composer')]
         expected = ['!', ('name', 'Jeffrey'), 'AND', ('occupation', 'composer')]
 
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
-        self.assertEqual(0, mock_ask_solr.call_count)
+        assert 0 == self.solr.search.call_count
+
+    @testing.gen_test
+    def test_run_subqueries_7(self):
+        '''
+        Several "joining elements" and a cross-referenced field.
+        '''
+        self.solr.search_se.add('type:genre', {'id': '666', 'type': 'genre', 'name': 'composer'})
+        components = ['!', ('name', 'Jeffrey'), 'AND', '(', ('genre', 'composer'), ')']
+        expected = ['!', ('name', 'Jeffrey'), 'AND', '(', ('genre_id', '666'), ')']
+
+        actual = yield util.run_subqueries(components)
+
+        self.assertEqual(expected, actual)
 
 
 class TestVerifyResourceId(object):
