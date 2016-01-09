@@ -255,58 +255,6 @@ class TestMakeExtraFields(shared.TestHandler):
         self.assertEqual(expected, actual)
 
 
-class TestOptionsIntegration(shared.TestHandler):
-    '''
-    Integration tests for the ComplexHandler.options().
-    '''
-
-    def setUp(self):
-        "Make a ComplexHandler instance for testing."
-        super(TestOptionsIntegration, self).setUp()
-        self.solr = self.setUpSolr()
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = ComplexHandler(self.get_app(), request, type_name='source',
-                                      additional_fields=['title', 'rism', 'siglum',
-                                                         'provenance_id', 'date', 'century_id',
-                                                         'notation_style_id', 'segment_id',
-                                                         'source_status_id', 'summary',
-                                                         'liturgical_occasions', 'description',
-                                                         'indexing_notes', 'indexing_date',
-                                                         'indexers', 'editors', 'proofreaders',
-                                                         'provenance_detail'])
-
-    @testing.gen_test
-    def test_options_integration_1(self):
-        "ensure the OPTIONS method works as expected ('browse' URL)"
-        # adds X-Cantus-No-Xref over the SimpleHandler tests
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
-                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort',
-                            'X-Cantus-Search-Help']
-        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Access-Control-Allow-Methods'])
-        self.assertEqual(0, len(actual.body))
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
-
-    @testing.gen_test
-    def test_options_integration_2(self):
-        "ensure the OPTIONS method works as expected ('view' URL)"
-        # adds X-Cantus-No-Xref over the SimpleHandler tests
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
-        self.solr.search_se.add('id:432', {'thing': 'Versicle'})
-        actual = yield self.http_client.fetch(self.get_url('/chants/432/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
-        self.assertEqual(0, len(actual.body))
-        self.solr.search.assert_called_with('+type:chant +id:432', df='default_search')
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
-
-
 class TestVerifyRequestHeaders(shared.TestHandler):
     '''
     Tests for the ComplexHandler.verify_request_headers().

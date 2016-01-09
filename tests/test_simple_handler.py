@@ -259,56 +259,6 @@ class TestMakeResourceUrl(shared.TestHandler):
         self.assertEqual(expected, actual)
 
 
-class TestOptionsIntegration(shared.TestHandler):
-    '''
-    Integration tests for the SimpleHandler.options().
-
-    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
-    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
-    '''
-
-    def setUp(self):
-        super(TestOptionsIntegration, self).setUp()
-        self.solr = self.setUpSolr()
-
-    @testing.gen_test
-    def test_options_integration_1a(self):
-        "ensure the OPTIONS method works as expected ('browse' URL)"
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
-                            'X-Cantus-Page', 'X-Cantus-Sort', 'X-Cantus-Search-Help']
-        actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Access-Control-Allow-Methods'])
-        self.assertEqual(0, len(actual.body))
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
-
-    @testing.gen_test
-    def test_options_integration_2a(self):
-        "OPTIONS request for non-existent resource gives 404"
-        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre/'),
-                                              method='OPTIONS',
-                                              raise_error=False)
-        self.check_standard_header(actual)
-        self.assertEqual(404, actual.code)
-        self.solr.search.assert_called_with('+type:genre +id:nogenre', df='default_search')
-
-    @testing.gen_test
-    def test_options_integration_2b(self):
-        "OPTIONS request for existing resource returns properly ('view' URL)"
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
-        self.solr.search_se.add('162', {'id': '162'})
-        actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
-        self.assertEqual(0, len(actual.body))
-        self.solr.search.assert_called_with('+type:genre +id:162', df='default_search')
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
-
-
 class TestVerifyRequestHeaders(shared.TestHandler):
     '''
     Unit tests for SimpleHandler.verify_request_headers().
