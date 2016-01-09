@@ -272,10 +272,10 @@ class TestBasicGetUnit(shared.TestHandler):
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+        self.solr = self.setUpSolr()
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_basic_get_unit_1(self, mock_ask_solr):
+    def test_basic_get_unit_1(self):
         '''
         - with no resource_id and Solr response has three things
         - self.hparams['page'] is 1 (default)
@@ -286,9 +286,9 @@ class TestBasicGetUnit(shared.TestHandler):
         resource_id = None
         self.handler.hparams['page'] = 1
         self.handler.hparams['per_page'] = 10
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'century'},
-                                                  {'id': '2', 'name': 'two', 'type': 'century'},
-                                                  {'id': '3', 'name': 'three', 'type': 'century'}])
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'century'})
         expected = {'1': {'id': '1', 'name': 'one', 'type': 'century', 'drupal_path': 'http://drp/century/1'},
                     '2': {'id': '2', 'name': 'two', 'type': 'century', 'drupal_path': 'http://drp/century/2'},
                     '3': {'id': '3', 'name': 'three', 'type': 'century', 'drupal_path': 'http://drp/century/3'},
@@ -297,18 +297,15 @@ class TestBasicGetUnit(shared.TestHandler):
                                   '3': {'self': 'https://cantus.org/centuries/3/'}},
                     'sort_order': ['1', '2', '3'],
         }
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         exp_num = 3
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
-                                              rows=10, sort=None)
+        self.solr.search.asset_called_with('+type:century +id:*', start=0, df='default_search')
         assert (expected, exp_num) == actual
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_basic_get_unit_2(self, mock_ask_solr):
+    def test_basic_get_unit_2(self):
         '''
         - when the id ends with '/' and the Solr response is empty (returns 404)
         - it's a browse request, so "page" and "per_page" are None
@@ -316,20 +313,17 @@ class TestBasicGetUnit(shared.TestHandler):
         resource_id = '123/'
         self.handler.hparams['page'] = None
         self.handler.hparams['per_page'] = None
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
         expected_reason = simple_handler._ID_NOT_FOUND.format('century', resource_id[:-1])
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
+        self.solr.search.assert_called_with('+type:century +id:123', df='default_search')
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
         assert (None, 0) == actual
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_basic_get_unit_3(self, mock_ask_solr):
+    def test_basic_get_unit_3(self):
         '''
         - with resource_id not ending with '/' and Solr response has one thing
         - self.hparams['page'] is not default but self.handler.hparams['per_page'] is
@@ -337,12 +331,11 @@ class TestBasicGetUnit(shared.TestHandler):
         - options.drupal_url is defined
         '''
         resource_id = '888'  # such good luck
-        mock_solr_response = shared.make_results([{'id': '888', 'type': 'century'}])
+        self.solr.search_se.add('888', {'id': '888', 'type': 'century'})
         expected = {'888': {'id': '888', 'type': 'century'},
                     'resources': {'888': {'self': 'https://cantus.org/centuries/888/'}},
                     'sort_order': ['888'],
         }
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.hparams['page'] = 42
         self.handler.hparams['per_page'] = 10
         self.handler.hparams['sort'] = 'incipit asc'
@@ -350,23 +343,21 @@ class TestBasicGetUnit(shared.TestHandler):
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '888')
+        self.solr.search.assert_called_with('+type:century +id:888', df='default_search')
         assert (expected, exp_num) == actual
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_basic_get_unit_4(self, mock_ask_solr):
+    def test_basic_get_unit_4(self):
         '''
         - test_basic_get_unit_1() with self.hparams['include_resources'] set to False
         - self.hparams['page'] and self.handler.hparams['per_page'] are both set
         '''
         resource_id = None
-        mock_solr_response = shared.make_results([{'id': '1', 'type': 'century'},
-                                                  {'id': '2', 'type': 'century'},
-                                                  {'id': '3', 'type': 'century'}])
+        self.solr.search_se.add('*', {'id': '1', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '3', 'type': 'century'})
         expected = {'1': {'id': '1', 'type': 'century'}, '2': {'id': '2', 'type': 'century'},
                     '3': {'id': '3', 'type': 'century'}, 'sort_order': ['1', '2', '3']}
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.hparams['page'] = 4
         self.handler.hparams['per_page'] = 12
         self.handler.hparams['include_resources'] = False
@@ -376,54 +367,48 @@ class TestBasicGetUnit(shared.TestHandler):
 
         # "start" should be 36, not 48, because the first "page" is numbered 1, which means a
         # "start" of 0, so "page" 2 should have a "start" equal to "per_page" (12 in this test)
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=36,
-                                              rows=12, sort=None)
+        self.solr.search.assert_called_with('+type:century +id:*', start=36, rows=12, df='default_search')
         assert (expected, exp_num) == actual
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_basic_get_unit_5(self, mock_ask_solr):
+    def test_basic_get_unit_5(self):
         '''
         - when the Solr response is empty and self.hparams['page'] is too high (returns 409)
         '''
         resource_id = '123'
         self.handler.hparams['page'] = 1
         self.handler.hparams['per_page'] = 10
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
         self.handler.hparams['page'] = 6000
         exp_reason = simple_handler._TOO_LARGE_PAGE
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '123')
+        self.solr.search.assert_called_with('+type:century +id:123', df='default_search')
         self.handler.send_error.assert_called_once_with(409, reason=exp_reason)
         assert (None, 0) == actual
 
-    @mock.patch('abbot.util.search_solr')
     @testing.gen_test
-    def test_basic_get_unit_6(self, mock_search_solr):
+    def test_basic_get_unit_6(self):
         '''
         - when a SEARCH query yields no results (returns 404)
         '''
         query = 'find me this'
         self.handler.hparams['page'] = 1
         self.handler.hparams['per_page'] = 10
-        mock_solr_response = shared.make_results([])
-        mock_search_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.send_error = mock.Mock()
         expected_reason = simple_handler._NO_SEARCH_RESULTS
 
         actual = yield self.handler.basic_get(query=query)
 
-        mock_search_solr.assert_called_once_with(query, sort=None, start=0, rows=10)
+        # NOTE: shouldn't the query be '+type:century {}'.format(query) ??? No! Because the "type"
+        #       part is added by search_handler(), not by basic_get().
+        self.solr.search.assert_called_with(query, df='default_search', rows=10)
         self.handler.send_error.assert_called_once_with(404, reason=expected_reason)
         assert (None, 0) == actual
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_basic_get_unit_7(self, mock_ask_solr):
+    def test_basic_get_unit_7(self):
         '''
         Inherited from test_basic_get_unit_1():
         - with no resource_id and Solr response has three things
@@ -432,15 +417,15 @@ class TestBasicGetUnit(shared.TestHandler):
         - options.drupal_url is 'http://drp'
 
         New in this test:
-        - the things returned from Solr are supposedly three different types
+        - the things returned from Solr are three different types
         '''
         simple_handler.options.drupal_url = 'http://drp'
         resource_id = None
         self.handler.hparams['page'] = 1
         self.handler.hparams['per_page'] = 10
-        mock_solr_response = shared.make_results([{'id': '1', 'name': 'one', 'type': 'feast'},
-                                                  {'id': '2', 'name': 'two', 'type': 'genre'},
-                                                  {'id': '3', 'name': 'three', 'type': 'source'}])
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'feast'})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'genre'})
+        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'source'})
         expected = {'1': {'id': '1', 'name': 'one', 'type': 'feast', 'drupal_path': 'http://drp/feast/1'},
                     '2': {'id': '2', 'name': 'two', 'type': 'genre', 'drupal_path': 'http://drp/genre/2'},
                     '3': {'id': '3', 'name': 'three', 'type': 'source', 'drupal_path': 'http://drp/source/3'},
@@ -449,20 +434,18 @@ class TestBasicGetUnit(shared.TestHandler):
                                   '3': {'self': 'https://cantus.org/sources/3/'}},
                     'sort_order': ['1', '2', '3'],
         }
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         exp_num = 3
 
         actual = yield self.handler.basic_get(resource_id)
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
-                                              rows=10, sort=None)
+        self.solr.search.assert_called_with('+type:century +id:*', rows=10, df='default_search')
         assert (expected, exp_num) == actual
 
     @testing.gen_test
     def test_basic_get_unit_8(self):
         '''
         - when a GET request has an invalid resource ID
-        NOTE: ask_solr_by_id() is unmocked
+        NOTE: didn't set up Solr mock
         '''
         resource_id = '-888_'
         self.handler.send_error = mock.Mock()
@@ -690,9 +673,6 @@ class TestGetIntegration(shared.TestHandler):
     def setUp(self):
         "Make a SimpleHandler instance for testing."
         super(TestGetIntegration, self).setUp()
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
         self.solr = self.setUpSolr()
 
     @testing.gen_test
@@ -801,7 +781,7 @@ class TestGetIntegration(shared.TestHandler):
         Regression test for GitHub issue #87.
         """
         resource_id = '34324242343423423423423'
-        expected_reason = simple_handler._ID_NOT_FOUND.format(self.handler.type_name, resource_id)
+        expected_reason = simple_handler._ID_NOT_FOUND.format('century', resource_id)
         request_url = self.get_url('/centuries/{}/'.format(resource_id))
 
         actual = yield self.http_client.fetch(request_url,
@@ -840,6 +820,10 @@ class TestOptionsIntegration(shared.TestHandler):
     unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
     '''
 
+    def setUp(self):
+        super(TestOptionsIntegration, self).setUp()
+        self.solr = self.setUpSolr()
+
     @testing.gen_test
     def test_options_integration_1a(self):
         "ensure the OPTIONS method works as expected ('browse' URL)"
@@ -853,32 +837,27 @@ class TestOptionsIntegration(shared.TestHandler):
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_options_integration_2a(self, mock_ask_solr):
+    def test_options_integration_2a(self):
         "OPTIONS request for non-existent resource gives 404"
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         actual = yield self.http_client.fetch(self.get_url('/genres/nogenre/'),
                                               method='OPTIONS',
                                               raise_error=False)
         self.check_standard_header(actual)
         self.assertEqual(404, actual.code)
-        mock_ask_solr.assert_called_once_with('genre', 'nogenre')
+        self.solr.search.assert_called_with('+type:genre +id:nogenre', df='default_search')
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_options_integration_2b(self, mock_ask_solr):
+    def test_options_integration_2b(self):
         "OPTIONS request for existing resource returns properly ('view' URL)"
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
-        mock_solr_response = shared.make_results(['Versicle'])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('162', {'id': '162'})
         actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
-        mock_ask_solr.assert_called_once_with('genre', '162')
+        self.solr.search.assert_called_with('+type:genre +id:162', df='default_search')
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
@@ -886,31 +865,23 @@ class TestOptionsIntegration(shared.TestHandler):
 class TestHeadIntegration(shared.TestHandler):
     '''
     Integration tests for the SimpleHandler.head().
-
-    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
-    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
     '''
 
     def setUp(self):
         "Make a SimpleHandler instance for testing."
         super(TestHeadIntegration, self).setUp()
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+        self.solr = self.setUpSolr()
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_head_integration_1a(self, mock_ask_solr):
+    def test_head_integration_1a(self):
         "test_get_integration_1() but with the HEAD method"
-        mock_solr_response = shared.make_results([{'id': '1', 'type': 'century'},
-                                                  {'id': '2', 'type': 'century'},
-                                                  {'id': '3', 'type': 'century'}])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '3', 'name': 'three', 'type': 'century'})
 
         actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='HEAD')
 
-        mock_ask_solr.assert_called_once_with(self.handler.type_name, '*', start=0,
-                                              rows=10, sort=None)
+        self.solr.search.assert_called_once_with('+type:century +id:*', df='default_search', rows=10)
         self.check_standard_header(actual)
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'])
         self.assertEqual('3', actual.headers['X-Cantus-Total-Results'])
