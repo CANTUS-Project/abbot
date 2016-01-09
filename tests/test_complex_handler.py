@@ -50,6 +50,7 @@ class TestLookUpXrefs(shared.TestHandler):
     def setUp(self):
         "Make a ComplexHandler instance for testing."
         super(TestLookUpXrefs, self).setUp()
+        self.solr = self.setUpSolr()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = ComplexHandler(self.get_app(), request, type_name='source',
@@ -62,73 +63,60 @@ class TestLookUpXrefs(shared.TestHandler):
                                                          'indexers', 'editors', 'proofreaders',
                                                          'provenance_detail'])
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_field_is_string_with_id(self, mock_ask_solr):
+    def test_field_is_string_with_id(self):
         "when the xreffed field is a string with an id"
         record = {'id': '123656', 'provenance_id': '3624'}
-        mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
+        self.solr.search_se.add('id:3624', {'id': '3624', 'name': 'Klosterneuburg'})
         expected = ({'id': '123656', 'provenance': 'Klosterneuburg'},
                     {'provenance': 'https://cantus.org/provenances/3624/'})
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.look_up_xrefs(record)
 
-        mock_ask_solr.assert_called_once_with('provenance', '3624')
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_field_is_list_of_string(self, mock_ask_solr):
+    def test_field_is_list_of_string(self):
         "when the xreffed field is a list of strings"
         record = {'id': '123656', 'proofreaders': ['124104']}
-        mock_solr_response = [{'id': '124104', 'display_name': 'Debra Lacoste'}]
+        self.solr.search_se.add('id:124104', {'id': '124104', 'display_name': 'Debra Lacoste'})
         expected = ({'id': '123656', 'proofreaders': ['Debra Lacoste']},
                     {'proofreaders': ['https://cantus.org/indexers/124104/']})
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.look_up_xrefs(record)
 
-        mock_ask_solr.assert_called_once_with('indexer', '124104')
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_field_not_found_1(self, mock_ask_solr):
+    def test_field_not_found_1(self):
         "when the xreffed field is a string, but it's not found in Solr"
         record = {'id': '123656', 'provenance_id': '3624'}
-        mock_solr_response = []
         expected = ({'id': '123656'},
                     {})
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.look_up_xrefs(record)
 
-        mock_ask_solr.assert_called_once_with('provenance', '3624')
+        self.solr.search.assert_called_with('+type:provenance +id:3624', df='default_search')
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_field_not_found_2(self, mock_ask_solr):
+    def test_field_not_found_2(self, ):
         "when the xreffed field is a list of strings, but nothing is ever found in Solr"
         record = {'id': '123656', 'proofreaders': ['124104']}
-        mock_solr_response = [{}]
         expected = ({'id': '123656'},
                     {})
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
 
         actual = yield self.handler.look_up_xrefs(record)
 
-        mock_ask_solr.assert_called_once_with('indexer', '124104')
+        self.solr.search.assert_called_with('+type:indexer +id:124104', df='default_search')
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_many_xreffed_fields(self, mock_ask_solr):
+    def test_many_xreffed_fields(self):
         "with many xreffed fields"
         record = {'id': '123656', 'provenance_id': '3624', 'segment_id': '4063',
                   'proofreaders': ['124104'], 'source_status_id': '4212', 'century_id': '3841'}
@@ -140,43 +128,28 @@ class TestLookUpXrefs(shared.TestHandler):
                      'proofreaders': ['https://cantus.org/indexers/124104/'],
                      'source_status': 'https://cantus.org/statii/4212/',
                      'century': 'https://cantus.org/centuries/3841/'})
-
-        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            records = {'3624': [{'id': '3624', 'name': 'Klosterneuburg'}],
-                       '4063': [{'id': '4063', 'name': 'CANTUS Database'}],
-                       '124104': [{'id': '124104', 'display_name': 'Debra Lacoste'}],
-                       '4212': [{'id': '4212', 'name': 'Published / Complete'}],
-                       '3841': [{'id': '3841', 'name': '14th century'}],
-                      }
-            return shared.make_future(records[q_id])
-        mock_ask_solr.side_effect = fake_solr
+        self.solr.search_se.add('id:3624', {'id': '3624', 'name': 'Klosterneuburg'})
+        self.solr.search_se.add('id:4063', {'id': '4063', 'name': 'CANTUS Database'})
+        self.solr.search_se.add('id:124104', {'id': '124104', 'display_name': 'Debra Lacoste'})
+        self.solr.search_se.add('id:4212', {'id': '4212', 'name': 'Published / Complete'})
+        self.solr.search_se.add('id:3841', {'id': '3841', 'name': '14th century'})
 
         actual = yield self.handler.look_up_xrefs(record)
 
-        mock_ask_solr.assert_any_call('provenance', '3624')
-        mock_ask_solr.assert_any_call('segment', '4063')
-        mock_ask_solr.assert_any_call('indexer', '124104')
-        mock_ask_solr.assert_any_call('source_status', '4212')
-        mock_ask_solr.assert_any_call('century', '3841')
-        # etc.
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_no_xref_is_true(self, mock_ask_solr):
+    def test_no_xref_is_true(self):
         "when self.hparams['no_xref'] is True"
         record = {'id': '123656', 'provenance_id': '3624'}
-        mock_solr_response = [{'id': '3624', 'name': 'Klosterneuburg'}]
         expected = ({'id': '123656', 'provenance_id': '3624'},
                     {'provenance': 'https://cantus.org/provenances/3624/'})
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         self.handler.hparams['no_xref'] = True
 
         actual = yield self.handler.look_up_xrefs(record)
 
-        self.assertEqual(0, mock_ask_solr.call_count)
+        assert 0 == self.solr.search.call_count
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
@@ -215,6 +188,7 @@ class TestMakeExtraFields(shared.TestHandler):
     def setUp(self):
         "Make a ComplexHandler instance for testing."
         super(TestMakeExtraFields, self).setUp()
+        self.solr = self.setUpSolr()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = ComplexHandler(self.get_app(), request, type_name='source',
@@ -226,74 +200,50 @@ class TestMakeExtraFields(shared.TestHandler):
                                                          'indexing_notes', 'indexing_date',
                                                          'indexers', 'editors', 'proofreaders',
                                                          'provenance_detail'])
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_both_things_to_lookup(self, mock_ask_solr):
+    def test_both_things_to_lookup(self):
         "with both a feast_id and source_status_id to look up"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
         expected = {'feast_desc': 'boiled goose and collard greens', 'source_status_desc': 'Ready'}
         self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
 
-        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            records = {'123': [{'id': '123', 'description': 'boiled goose and collard greens'}],
-                       '456': [{'id': '456', 'description': 'Ready'}],
-                      }
-            return shared.make_future(records[q_id])
-        mock_ask_solr.side_effect = fake_solr
+        self.solr.search_se.add('id:123', {'id': '123', 'description': 'boiled goose and collard greens'})
+        self.solr.search_se.add('id:456', {'id': '456', 'description': 'Ready'})
 
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
-        mock_ask_solr.assert_any_call('feast', '123')
-        mock_ask_solr.assert_any_call('source_status', '456')
-        # etc.
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_both_things_but_return_nothing(self, mock_ask_solr):
+    def test_both_things_but_return_nothing(self):
         "with both a feast_id and source_status_id to look up, but they both return nothing"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
         expected = {}
         self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
 
-        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            return shared.make_future({})
-        mock_ask_solr.side_effect = fake_solr
-
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
-        mock_ask_solr.assert_any_call('feast', '123')
-        mock_ask_solr.assert_any_call('source_status', '456')
-        # etc.
+        self.solr.search.assert_any_caled('+type:feast +id:123', df='default_search')
+        self.solr.search.assert_any_caled('+type:source_status +id:456', df='default_search')
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_nothing_to_lookup(self, mock_ask_solr):
+    def test_nothing_to_lookup(self):
         "with neither a feast_id nor a source_status_id to look up"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
         expected = {}
         self.handler.returned_fields = ['id']  # remove everything, so we get nothing back
 
-        def fake_solr(q_type, q_id):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            return shared.make_future({})
-        mock_ask_solr.side_effect = fake_solr
-
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
-        self.assertEqual(0, mock_ask_solr.call_count)
-        # etc.
+        assert 0 == self.solr.search.call_count
         self.assertEqual(expected, actual)
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_no_xref_is_true(self, mock_ask_solr):
+    def test_no_xref_is_true(self):
         "when self.hparams['no_xref'] is True"
         record = {}
         orig_record = {'feast_id': '123', 'source_status_id': '456'}
@@ -303,8 +253,7 @@ class TestMakeExtraFields(shared.TestHandler):
 
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
-        self.assertEqual(0, mock_ask_solr.call_count)
-        # etc.
+        assert 0 == self.solr.search.call_count
         self.assertEqual(expected, actual)
 
 
@@ -313,9 +262,12 @@ class TestGetIntegration(shared.TestHandler):
     Unit tests for the ComplexHandler.get().
     '''
 
-    @mock.patch('abbot.util.ask_solr_by_id')
+    def setUp(self):
+        super(TestGetIntegration, self).setUp()
+        self.solr = self.setUpSolr()
+
     @testing.gen_test
-    def test_get_integration_1(self, mock_ask_solr):
+    def test_get_integration_1(self):
         '''
         With many xreffed fields; feast_description to make up; include 'resources'; and drupal_path.
         '''
@@ -331,29 +283,18 @@ class TestGetIntegration(shared.TestHandler):
                                              'feast': 'https://cantus.org/feasts/2378/'}},
                     'sort_order': ['357679'],
         }
-
-        def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            records = {'357679': [record],
-                       '161': [{'name': 'V', 'description': 'Responsory Verse'}],
-                       '600482a': [],
-                       '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
-                      }
-            return shared.make_future(shared.make_results(records[q_id]))
-        mock_ask_solr.side_effect = fake_solr
+        self.solr.search_se.add('id:357679', record)
+        self.solr.search_se.add('id:161', {'name': 'V', 'description': 'Responsory Verse'})
+        self.solr.search_se.add('id:2378', {'name': 'Jacobi', 'description': 'James the Greater, Aspotle'})
 
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
 
         self.check_standard_header(actual)
-        mock_ask_solr.assert_any_call('chant', '357679')
-        mock_ask_solr.assert_any_call('genre', '161')
-        mock_ask_solr.assert_any_call('feast', '2378')
         self.assertEqual(expected, escape.json_decode(actual.body))
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_2(self, mock_ask_solr):
+    def test_get_integration_2(self):
         "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
         record_a = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
                     'mode': '2S', 'type': 'chant'}
@@ -367,16 +308,10 @@ class TestGetIntegration(shared.TestHandler):
                                'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
                     'sort_order': ['357679', '111222'],
         }
-
-        def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            records = {'*': [record_a, record_b],
-                       '161': [{'name': 'V', 'description': 'Responsory Verse'}],
-                       '600482a': [],
-                       '2378': [{'name': 'Jacobi', 'description': 'James the Greater, Aspotle'}],
-                      }
-            return shared.make_future(shared.make_results(records[q_id]))
-        mock_ask_solr.side_effect = fake_solr
+        self.solr.search_se.add('*', record_a)
+        self.solr.search_se.add('*', record_b)
+        self.solr.search_se.add('161', {'name': 'V', 'description': 'Responsory Verse'})
+        self.solr.search_se.add('2378', {'name': 'Jacobi', 'description': 'James the Greater, Aspotle'})
         # expected header: X-Cantus-Fields
         exp_cantus_fields = sorted(['id', 'genre', 'mode', 'feast', 'type'])
         # expected header: X-Cantus-Extra-Fields
@@ -391,9 +326,8 @@ class TestGetIntegration(shared.TestHandler):
         self.assertEqual('false', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual(expected, escape.json_decode(actual.body))
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_3(self, mock_ask_solr):
+    def test_get_integration_3(self):
         "test_get_integration_1 but with X-Cantus-No-Xref; include 'resources'"
         record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
                   'mode': '2S', 'type': 'chant'}
@@ -404,33 +338,24 @@ class TestGetIntegration(shared.TestHandler):
                                              'feast': 'https://cantus.org/feasts/2378/'}},
                     'sort_order': ['357679'],
         }
-
-        def fake_solr(q_type, q_id, **kwargs):  # pylint: disable=unused-argument
-            "mock version of ask_solr_by_id()"
-            records = {'357679': [record]}
-            return shared.make_future(shared.make_results(records[q_id]))
-        mock_ask_solr.side_effect = fake_solr
+        self.solr.search_se.add('357679', record)
 
         actual = yield self.http_client.fetch(self.get_url('/chants/357679/'),
                                               method='GET',
                                               headers={'X-Cantus-No-Xref': 'TRUE'})
 
         self.check_standard_header(actual)
-        mock_ask_solr.assert_called_once_with('chant', '357679')
         self.assertEqual(expected, escape.json_decode(actual.body))
         self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
         self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_get_integration_6(self, mock_ask_solr):
+    def test_get_integration_6(self):
         """
         Returns 404 when the resource ID is not found.
         Regression test for GitHub issue #87.
         Named in honour of the test_get_integration_6() for SimpleHandler.
         """
-        mock_solr_response = shared.make_results([])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
         resource_id = '34324242343423423423423'
         expected_reason = simple_handler._ID_NOT_FOUND.format('chant', resource_id)
         request_url = self.get_url('/chants/{}/'.format(resource_id))
@@ -439,7 +364,7 @@ class TestGetIntegration(shared.TestHandler):
                                               method='GET',
                                               raise_error=False)
 
-        mock_ask_solr.assert_called_once_with('chant', resource_id)
+        self.solr.search.assert_called_with('+type:chant +id:{}'.format(resource_id), df='default_search')
         self.check_standard_header(actual)
         assert 404 == actual.code
         assert expected_reason == actual.reason
@@ -453,6 +378,7 @@ class TestOptionsIntegration(shared.TestHandler):
     def setUp(self):
         "Make a ComplexHandler instance for testing."
         super(TestOptionsIntegration, self).setUp()
+        self.solr = self.setUpSolr()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
         self.handler = ComplexHandler(self.get_app(), request, type_name='source',
@@ -480,20 +406,18 @@ class TestOptionsIntegration(shared.TestHandler):
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
-    @mock.patch('abbot.util.ask_solr_by_id')
     @testing.gen_test
-    def test_options_integration_2(self, mock_ask_solr):
+    def test_options_integration_2(self):
         "ensure the OPTIONS method works as expected ('view' URL)"
         # adds X-Cantus-No-Xref over the SimpleHandler tests
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
-        mock_solr_response = shared.make_results(['Versicle'])
-        mock_ask_solr.return_value = shared.make_future(mock_solr_response)
+        self.solr.search_se.add('id:432', {'thing': 'Versicle'})
         actual = yield self.http_client.fetch(self.get_url('/chants/432/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
-        mock_ask_solr.assert_called_once_with('chant', '432')
+        self.solr.search.assert_called_with('+type:chant +id:432', df='default_search')
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
