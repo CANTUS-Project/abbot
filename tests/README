@@ -1,0 +1,43 @@
+Abbot Test Suite README
+=======================
+
+Test Module Organization
+------------------------
+
+The test suite contains the following modules. They goal was to strike a balance between making it
+easy to find the test for a component, while also making it easy to ensure that corresponding aspects
+of similar components are tested similarly. (For example, to ensure a 404 is tested in GET requests
+for both SimpleHandler and ComplexHandler).
+
+Request-based tests in SimpleHandler and ComplexHandler:
+
+- test_get_unit.py for basic_get(), get_handler(), and get() in both handlers
+- test_get_integration.py for GET requests in both handlers
+- test_search_unit.py for search_handler(), and search() in both handlers
+- test_search_integration.py for SEARCH requests in both handlers
+- test_head.py for head() and HEAD requests in both handlers
+- test_options.py for options() and OPTIONS requests in both handlers
+
+Module- and class-level methods and functions:
+
+- test_simple_handler.py for SimpleHandler (e.g., TestFormatRecord)
+- test_complex_handler.py for ComplexHandler (e.g., TestLookUpXrefs)
+
+Other modules:
+
+- test_fixtures.py for the test fixtures themselves, which are held in shared.py
+- test_holy_orders.py for HolyOrders
+- test_root_handler.py for the the "abbot.handlers" module
+- test_search_grammar.py for the "abbot.search_grammar" module
+- test_util.py for the "abbot.util" module
+
+Testing Approach
+----------------
+
+TODO: I'll write about how I test. Specifically I'll talk about the things I call "unit tests" in
+comparison to "integration tests," and clarify that (at the moment?) none of them integrate the full
+system (i.e., none of them include Solr) which I might say is an "acceptance test," or whatever. I
+also have to offer a brief overview of how to use the TestHandler fixture, especially the Solr mock,
+and whatever else I come up with there.
+
+This will be part of GitHub issue #84.
