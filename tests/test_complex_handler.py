@@ -370,6 +370,28 @@ class TestGetIntegration(shared.TestHandler):
         assert expected_reason == actual.reason
 
 
+    @testing.gen_test
+    def test_get_integration_8(self):
+        """
+        Returns 404 when the resource ID is not found.
+        Regression test for GitHub issue #87.
+        """
+        # NOTE: named after TestBasicGetUnit.test_basic_get_unit_8().
+        # NOTE: corresponds to the same-numbered test in test_simple_handler.py
+        resource_id = '-888_'
+        expected_reason = simple_handler._INVALID_ID
+        request_url = self.get_url('/chants/{}/'.format(resource_id))
+
+        actual = yield self.http_client.fetch(request_url,
+                                              method='GET',
+                                              raise_error=False)
+
+        self.check_standard_header(actual)
+        assert 0 == self.solr.search.call_count
+        assert 422 == actual.code
+        assert expected_reason == actual.reason
+
+
 class TestOptionsIntegration(shared.TestHandler):
     '''
     Integration tests for the ComplexHandler.options().
