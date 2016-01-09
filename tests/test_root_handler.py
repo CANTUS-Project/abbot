@@ -25,16 +25,12 @@
 '''
 Tests for the Abbot server's RootHandler.
 '''
-# NOTE: so long as no call is made into the "pysolrtornado" library, which happens when functions
-#       "in front of" pysolrtornado are replaced by mocks, the test classes needn't use tornado's
-#       asynchronous TestCase classes.
 
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
 from unittest import mock
 from tornado import escape, httpclient, options, testing
-from abbot import __main__ as main
 from abbot import handlers
 import shared
 
@@ -144,7 +140,6 @@ class TestCanonicalHandler(shared.TestHandler):
     '''
     Tests for the CanonicalHandler.
     '''
-    # TODO: test for the default headers
 
     @testing.gen_test
     def test_get(self):
@@ -194,6 +189,7 @@ class TestCanonicalHandler(shared.TestHandler):
 
 class TestEverythingElseHandler(shared.TestHandler):
     '''
+    Tests for the EverythingElseHandler, for requests that don't match another handler.
     '''
 
     @testing.gen_test
