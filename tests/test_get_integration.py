@@ -32,6 +32,7 @@ Integration tests for GET requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
+import pysolrtornado
 from tornado import escape, testing
 import unittest
 
@@ -322,6 +323,20 @@ class TestSimple(shared.TestHandler):
         assert 'Access-Control-Allow-Headers' not in actual.headers
         assert 'Access-Control-Expose-Headers' not in actual.headers
         assert 'Access-Control-Allow-Origin' not in actual.headers
+
+    @testing.gen_test
+    def test_solr_unavailable(self):
+        '''
+        - view request
+        - Solr is unavailable, so pysolr-tornado raises a SolrError
+        '''
+        self.solr.search.side_effect = pysolrtornado.SolrError
+        url = self.get_url('/{0}/7/'.format(self._type[1]))
+        actual = yield self.http_client.fetch(url, method='GET', raise_error=False)
+
+        self.check_standard_header(actual)
+        assert actual.code == 502
+        assert actual.reason == simple_handler._SOLR_502_ERROR
 
 
 class TestComplex(TestSimple):
