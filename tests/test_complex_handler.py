@@ -346,3 +346,109 @@ class TestVerifyRequestHeaders(shared.TestHandler):
                            expected=False,
                            exp_send_error_count=1)
         self.handler.send_error.assert_called_once_with(400, reason=complex_handler._INVALID_NO_XREF)
+
+
+class TestGetHandler(shared.TestHandler):
+    '''
+    Tests for ComplexHandler.get_handler().
+    '''
+
+    def setUp(self):
+        super(TestGetHandler, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source',
+                                      additional_fields=['title', 'rism', 'siglum',
+                                                         'provenance_id', 'date', 'century_id',
+                                                         'notation_style_id', 'segment_id',
+                                                         'source_status_id', 'summary',
+                                                         'liturgical_occasions', 'description',
+                                                         'indexing_notes', 'indexing_date',
+                                                         'indexers', 'editors', 'proofreaders',
+                                                         'provenance_detail'])
+
+    @mock.patch('abbot.complex_handler.ComplexHandler.basic_get')
+    @testing.gen_test
+    def test_no_results(self, mock_basic):
+        '''
+        A request that returns no results from Solr.
+
+        - it calls basic_get() with proper resource_id and query
+        - when basic_get() returns (None, 0), it also returns (None, 0)
+        '''
+        mock_basic.return_value = shared.make_future((None, 0))
+        resource_id = '123'
+        query = 'what do?'
+
+        actual = yield self.handler.get_handler(resource_id, query)
+
+        assert actual == (None, 0)
+        mock_basic.assert_called_with(resource_id=resource_id, query=query)
+
+    @mock.patch('abbot.complex_handler.ComplexHandler.make_extra_fields')
+    @mock.patch('abbot.complex_handler.ComplexHandler.look_up_xrefs')
+    @mock.patch('abbot.complex_handler.ComplexHandler.basic_get')
+    @testing.gen_test
+    def test_normal_behaviour(self, mock_basic, mock_xrefs, mock_extra):
+        '''
+        A request that goes normally.
+
+        - self.hparams['include_resources'] is False
+        - output doesn't include "resources"
+        - self.look_up_xrefs() is called with every record
+        - self.make_extra_fields() is called with the output of look_up_xrefs()
+        - a returned resource is whatever make_extra_fields() returns
+        '''
+        self.handler.hparams['include_resources'] = False
+        mock_basic.return_value = shared.make_future(({
+            '1': 'resource 1',
+            '2': 'resource 2',
+            '3': 'resource 3',
+            'sort_order': ['1', '2', '3']
+        }, 23))
+        # returns like ('resource 1x', {})
+        mock_xrefs.side_effect = lambda x: shared.make_future(('{}x'.format(x), {}))
+        # returns lik 'resource 1xe'
+        mock_extra.side_effect = lambda x, y: shared.make_future('{}e'.format(x))
+
+        actual = yield self.handler.get_handler()
+
+        assert actual[1] == 23
+        actual = actual[0]
+        assert len(actual) == 4
+        assert actual['sort_order'] == ['1', '2', '3']
+        assert 'resources' not in actual
+        for each_id in actual['sort_order']:
+            assert actual[each_id] == 'resource {}xe'.format(each_id)
+
+    @mock.patch('abbot.complex_handler.ComplexHandler.make_extra_fields')
+    @mock.patch('abbot.complex_handler.ComplexHandler.look_up_xrefs')
+    @mock.patch('abbot.complex_handler.ComplexHandler.basic_get')
+    @testing.gen_test
+    def test_include_resources(self, mock_basic, mock_xrefs, mock_extra):
+        '''
+        A request that goes normally.
+
+        - self.hparams['include_resources'] is True
+        - output includes "resources"
+        - each record has its URL in "resources"
+        - cross-referenced fields also have URLs in "resources"
+        '''
+        self.handler.hparams['include_resources'] = True
+        mock_basic.return_value = shared.make_future(({
+            '1': 'resource 1',
+            '2': 'resource 2',
+            '3': 'resource 3',
+            'sort_order': ['1', '2', '3'],
+            'resources': {'1': {'self': '1'}, '2': {'self': '2'}, '3': {'self': '3'}},
+        }, 23))
+        # returns like ('resource 1x', {'a': 'b'})
+        mock_xrefs.side_effect = lambda x: shared.make_future(('{}x'.format(x), {'a': 'b'}))
+        # returns lik 'resource 1xe'
+        mock_extra.side_effect = lambda x, y: shared.make_future('{}e'.format(x))
+
+        actual = yield self.handler.get_handler()
+
+        actual = actual[0]
+        for each_id in ('1', '2', '3'):
+            assert actual['resources'][each_id] == {'a': 'b', 'self': each_id}
