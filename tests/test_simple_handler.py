@@ -306,6 +306,10 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - sort = 'data'
             - exp_sort = 'data'
 
+        Those "canary" values must be reset to ``None`` after verify_request_headers() runs. If the
+        values are allowed to stay, other parts of Abbot may interpret them as legitimate values,
+        even though they are supposed to be ignored for "view" requests.
+
         ------------------------
 
         The following kwargs also exist:
@@ -370,9 +374,14 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         self.assertEqual(kwargs['expected'], actual)
         if kwargs['expected'] is True:
             self.assertEqual(kwargs['exp_fields'], self.handler.returned_fields)
-            self.assertEqual(kwargs['exp_per_page'], self.handler.hparams['per_page'])
-            self.assertEqual(kwargs['exp_page'], self.handler.hparams['page'])
-            self.assertEqual(kwargs['exp_sort'], self.handler.hparams['sort'])
+            if kwargs['is_browse_request']:
+                self.assertEqual(kwargs['exp_per_page'], self.handler.hparams['per_page'])
+                self.assertEqual(kwargs['exp_page'], self.handler.hparams['page'])
+                self.assertEqual(kwargs['exp_sort'], self.handler.hparams['sort'])
+            else:
+                assert self.handler.hparams['per_page'] is None
+                assert self.handler.hparams['page'] is None
+                assert self.handler.hparams['sort'] is None
             self.assertEqual(kwargs['exp_include_resources'], self.handler.hparams['include_resources'])
         if isinstance(self.handler.send_error, mock.Mock):
             self.assertEqual(kwargs['send_error_count'], self.handler.send_error.call_count)

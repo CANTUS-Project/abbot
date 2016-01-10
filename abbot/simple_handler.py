@@ -504,6 +504,13 @@ class SimpleHandler(web.RequestHandler):
                     error_messages.append(_UNKNOWN_FIELD)
                     all_is_well = False
 
+        else:
+            # This is a "view" request, so we should obliterate the sort/page/per_page settings,
+            # just in case they might otherwise cause problems for us.
+            self.hparams['page'] = None
+            self.hparams['per_page'] = None
+            self.hparams['sort'] = None
+
         if self.hparams['include_resources'] is not True:
             # This looks a little weird; True is the defalt value, and if it's been changed, then
             # we need to find "true" or "false" in the string that it's been set to from the request
