@@ -666,7 +666,16 @@ class SimpleHandler(web.RequestHandler):
 
             if resource_id.endswith('/') and len(resource_id) > 1:
                 resource_id = resource_id[:-1]
-            resp = yield util.ask_solr_by_id(self.type_name, resource_id)
+
+            try:
+                resp = yield util.ask_solr_by_id(self.type_name, resource_id)
+            except ValueError:
+                self.send_error(422, reason=_INVALID_ID)
+                return
+            except pysolrtornado.SolrError:
+                self.send_error(502, reason=_SOLR_502_ERROR)
+                return
+
             if not resp:
                 self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
 

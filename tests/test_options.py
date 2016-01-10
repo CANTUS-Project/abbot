@@ -32,8 +32,10 @@ Tests for OPTIONS requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
+import pysolrtornado
 from tornado import testing
 
+from abbot import simple_handler
 import shared
 
 
@@ -50,8 +52,10 @@ class TestSimpleIntegration(shared.TestHandler):
         self.solr = self.setUpSolr()
 
     @testing.gen_test
-    def test_options_integration_1a(self):
-        "ensure the OPTIONS method works as expected ('browse' URL)"
+    def test_browse_works(self):
+        '''
+        ensure the OPTIONS method works as expected ('browse' URL)
+        '''
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
                             'X-Cantus-Page', 'X-Cantus-Sort', 'X-Cantus-Search-Help']
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
@@ -63,18 +67,10 @@ class TestSimpleIntegration(shared.TestHandler):
             self.assertEqual('allow', actual.headers[each_header].lower())
 
     @testing.gen_test
-    def test_options_integration_2a(self):
-        "OPTIONS request for non-existent resource gives 404"
-        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre/'),
-                                              method='OPTIONS',
-                                              raise_error=False)
-        self.check_standard_header(actual)
-        self.assertEqual(404, actual.code)
-        self.solr.search.assert_called_with('+type:genre +id:nogenre', df='default_search')
-
-    @testing.gen_test
-    def test_options_integration_2b(self):
-        "OPTIONS request for existing resource returns properly ('view' URL)"
+    def test_view_works(self):
+        '''
+        OPTIONS request for existing resource returns properly ('view' URL)
+        '''
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
         self.solr.search_se.add('162', {'id': '162'})
         actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
@@ -86,43 +82,56 @@ class TestSimpleIntegration(shared.TestHandler):
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
+    @testing.gen_test
+    def test_nonexistent_resource(self):
+        '''
+        OPTIONS request for non-existent resource gives 404
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre/'),
+                                              method='OPTIONS',
+                                              raise_error=False)
+        self.check_standard_header(actual)
+        self.assertEqual(404, actual.code)
+        self.solr.search.assert_called_with('+type:genre +id:nogenre', df='default_search')
 
-class TestComplexIntegration(shared.TestHandler):
+    @testing.gen_test
+    def test_invalid_resource(self):
+        '''
+        OPTIONS request for an invalid resource ID gives 422
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre-/'),
+                                              method='OPTIONS',
+                                              raise_error=False)
+        self.check_standard_header(actual)
+        self.assertEqual(422, actual.code)
+        self.assertEqual(simple_handler._INVALID_ID, actual.reason)
+        assert self.solr.search.call_count == 0
+
+    @testing.gen_test
+    def test_solr_unavailable(self):
+        '''
+        OPTIONS request for a valid resource ID when Solr is unavailable gives 502
+        '''
+        self.solr.search.side_effect = pysolrtornado.SolrError
+        actual = yield self.http_client.fetch(self.get_url('/genres/162/'),
+                                              method='OPTIONS',
+                                              raise_error=False)
+        self.check_standard_header(actual)
+        self.assertEqual(502, actual.code)
+        self.assertEqual(simple_handler._SOLR_502_ERROR, actual.reason)
+        assert self.solr.search.call_count == 1
+
+
+class TestComplexIntegration(TestSimpleIntegration):
     '''
     Integration tests for the ComplexHandler.options().
     '''
 
-    def setUp(self):
-        "Make a ComplexHandler instance for testing."
-        super(TestComplexIntegration, self).setUp()
-        self.solr = self.setUpSolr()
-
     @testing.gen_test
-    def test_options_integration_1(self):
-        "ensure the OPTIONS method works as expected ('browse' URL)"
-        # adds X-Cantus-No-Xref over the SimpleHandler tests
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref',
-                            'X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Sort',
-                            'X-Cantus-Search-Help']
+    def test_noxref_for_complex(self):
+        '''
+        Check the -No-Xrefs CANTUS header is "allowed" for complex resources.
+        '''
+        header = 'X-Cantus-No-Xref'
         actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Access-Control-Allow-Methods'])
-        self.assertEqual(0, len(actual.body))
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
-
-    @testing.gen_test
-    def test_options_integration_2(self):
-        "ensure the OPTIONS method works as expected ('view' URL)"
-        # adds X-Cantus-No-Xref over the SimpleHandler tests
-        expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-No-Xref']
-        self.solr.search_se.add('id:432', {'thing': 'Versicle'})
-        actual = yield self.http_client.fetch(self.get_url('/chants/432/'), method='OPTIONS')
-        self.check_standard_header(actual)
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
-        self.assertEqual(0, len(actual.body))
-        self.solr.search.assert_called_with('+type:chant +id:432', df='default_search')
-        for each_header in expected_headers:
-            self.assertEqual('allow', actual.headers[each_header].lower())
+        assert actual.headers[header].lower() == 'allow'
