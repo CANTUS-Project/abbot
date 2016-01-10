@@ -36,6 +36,7 @@ from tornado import escape, testing
 import unittest
 
 import abbot
+from abbot import complex_handler
 from abbot import simple_handler
 import shared
 
@@ -437,29 +438,40 @@ class TestComplex(shared.TestHandler):
 class TestBadRequestHeadersSimple(shared.TestHandler):
     '''
     Tests for when one of the HTTP headers in the request is invalid or improper or broken.
+
+    NOTE: the URL used for requests is set in __init__() and used by every test. If you want to
+          modify the test for use with ComplexHandler, just set "self._type" to a 2-tuple with the
+          singular and plural form of the resource type to test. (E.g., ``('chant', 'chants')``).
+
+    NOTE: you can use "self._browse_url" to access the browse URL for the assigned type.
     '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestBadRequestHeadersSimple, self).__init__(*args, **kwargs)
+        self._type = ('century', 'centuries')
 
     def setUp(self):
         super(TestBadRequestHeadersSimple, self).setUp()
         self.solr = self.setUpSolr()
+        self._browse_url = self.get_url('/{}/'.format(self._type[1]))
 
     @testing.gen_test
     def test_per_page_1(self):
         "returns 400 when X-Cantus-Per-Page is set improperly"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Per-Page': 'force'})
 
         assert 0 == self.solr.search.call_count
-        self.check_standard_header(actual)
+        # self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(simple_handler._INVALID_PER_PAGE, actual.reason)
 
     @testing.gen_test
     def test_per_page_2(self):
         "returns 507 when X-Cantus-Per-Page is greater than 100"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Per-Page': '101'})
@@ -472,7 +484,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     @testing.gen_test
     def test_per_page_2(self):
         "returns 507 when X-Cantus-Per-Page is less than 0"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Per-Page': '-5'})
@@ -485,12 +497,13 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     @testing.gen_test
     def test_page_1(self):
         "returns 400 when X-Cantus-Page is set too high"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Page': '10'})
 
-        self.solr.search.assert_called_with('+type:century +id:*', start=90, rows=10, df='default_search')
+        self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), start=90, rows=10,
+            df='default_search')
         self.check_standard_header(actual)
         self.assertEqual(409, actual.code)
         self.assertEqual(simple_handler._TOO_LARGE_PAGE, actual.reason)
@@ -498,7 +511,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     @testing.gen_test
     def test_page_2(self):
         "returns 400 when X-Cantus-Page is less than 0"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Page': '-2'})
@@ -511,7 +524,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     @testing.gen_test
     def test_fields_1(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Fields': 'id, type,price'})
@@ -524,7 +537,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     @testing.gen_test
     def test_incl_resources_1(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Include-Resources': 'maybe'})
@@ -537,7 +550,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     @testing.gen_test
     def test_sort_1(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               raise_error=False,
                                               headers={'X-Cantus-Sort': 'fuzz^ball'})
@@ -553,10 +566,34 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
         - -Page, -Per-Page, and -Sort request headers are all invalid
         - but it's a "view" request, so the API says they should be ignored
         '''
-        self.solr.search_se.add('id:7', {'id': '7', 'type': 'century'})
+        self.solr.search_se.add('id:7', {'id': '7', 'type': self._type[0]})
         headers = {'X-Cantus-Page': 'jj', 'X-Cantus-Per-Page': 'ww', 'X-Cantus-Sort': 'm_l'}
-        actual = yield self.http_client.fetch(self.get_url('/centuries/7/'), method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self.get_url('/{}/7/'.format(self._type[1])), method='GET',
+            headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
         assert '7' in actual
+
+
+class TestBadRequestHeadersComplex(TestBadRequestHeadersSimple):
+    '''
+    Runs the TestBadRequestHeadersSimple tests with a ComplexHandler.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestBadRequestHeadersComplex, self).__init__(*args, **kwargs)
+        self._type = ('source', 'sources')
+
+    @testing.gen_test
+    def test_noxref_1(self):
+        "returns 400 when X-Cantus-No-Xref isn't a boolean setting"
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='GET',
+                                              raise_error=False,
+                                              headers={'X-Cantus-No-Xref': 'please'})
+
+        assert 0 == self.solr.search.call_count
+        self.check_standard_header(actual)
+        self.assertEqual(400, actual.code)
+        self.assertEqual(complex_handler._INVALID_NO_XREF, actual.reason)
