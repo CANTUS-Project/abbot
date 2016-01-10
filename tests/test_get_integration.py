@@ -45,22 +45,30 @@ class TestSimple(shared.TestHandler):
     '''
     Integration tests for the SimpleHandler.get().
 
-    NOTE: although it ought to be tested with the rest of the SimpleHandler, the get() method has
-    unit tests with the rest of ComplexHandler, since parts of that method use ComplexHandler.LOOKUP
+    NOTE: the URL used for requests is set in __init__() and used by every test. If you want to
+          modify the test for use with ComplexHandler, just set "self._type" to a 2-tuple with the
+          singular and plural form of the resource type to test. (E.g., ``('chant', 'chants')``).
+
+    NOTE: you can use "self._browse_url" to access the browse URL for the assigned type.
     '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestSimple, self).__init__(*args, **kwargs)
+        self._type = ('century', 'centuries')
 
     def setUp(self):
         "Make a SimpleHandler instance for testing."
         super(TestSimple, self).setUp()
         self.solr = self.setUpSolr()
+        self._browse_url = self.get_url('/{}/'.format(self._type[1]))
 
-    def standard_centuries(self):
+    def add_default_resources(self):
         '''
         Send the three "default" testing records to Solr.
         '''
-        self.solr.search_se.add('*', {'id': '6', 'name': 'six', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '9', 'name': 'nine', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '6', 'name': 'six', 'type': self._type[0]})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': self._type[0]})
+        self.solr.search_se.add('*', {'id': '9', 'name': 'nine', 'type': self._type[0]})
 
     @testing.gen_test
     def test_browse_request(self):
@@ -71,16 +79,16 @@ class TestSimple(shared.TestHandler):
         - it returns properly-formatted output
         - the default "resources" behaviour is checked later
         '''
-        self.standard_centuries()
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
+        self.add_default_resources()
+        actual = yield self.http_client.fetch(self._browse_url, method='GET')
 
         self.check_standard_header(actual)
         assert actual.headers['X-Cantus-Total-Results'] == '3'
         actual = escape.json_decode(actual.body)
         assert ['6', '2', '9'] == actual['sort_order']
-        assert {'id': '6', 'name': 'six', 'type': 'century'} == actual['6']
-        assert {'id': '2', 'name': 'two', 'type': 'century'} == actual['2']
-        assert {'id': '9', 'name': 'nine', 'type': 'century'} == actual['9']
+        assert {'id': '6', 'name': 'six', 'type': self._type[0]} == actual['6']
+        assert {'id': '2', 'name': 'two', 'type': self._type[0]} == actual['2']
+        assert {'id': '9', 'name': 'nine', 'type': self._type[0]} == actual['9']
 
     @testing.gen_test
     def test_pagination_and_sort(self):
@@ -95,16 +103,16 @@ class TestSimple(shared.TestHandler):
               actually include proper results... but I can still check that all the parameters were
               given to Solr as required
         '''
-        self.standard_centuries()
+        self.add_default_resources()
         headers = {'X-Cantus-Page': '2', 'X-Cantus-Per-Page': '4', 'X-Cantus-Sort': 'id,desc'}
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
 
         self.check_standard_header(actual)
         assert actual.headers['X-Cantus-Page'] == '2'
         assert actual.headers['X-Cantus-Per-Page'] == '4'
         assert actual.headers['X-Cantus-Sort'] == 'id,desc'
-        self.solr.search.assert_called_with('+type:century +id:*', sort='id desc', start=4, rows=4,
-            df='default_search')
+        self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), sort='id desc',
+            start=4, rows=4, df='default_search')
 
     @testing.gen_test
     def test_view_request(self):
@@ -112,16 +120,17 @@ class TestSimple(shared.TestHandler):
         - view request
         - -Include-Resources request header is False, and no "resources" part is returned
         '''
-        self.standard_centuries()
-        self.solr.search_se.add('id:7', {'id': '7', 'type': 'century'})
+        self.add_default_resources()
+        self.solr.search_se.add('id:7', {'id': '7', 'type': self._type[0]})
         headers = {'X-Cantus-Include-Resources': 'false'}
-        actual = yield self.http_client.fetch(self.get_url('/centuries/7/'), method='GET', headers=headers)
+        url = self.get_url('/{0}/7/'.format(self._type[1]))
+        actual = yield self.http_client.fetch(url, method='GET', headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
         assert '7' in actual
         assert 'resources' not in actual
-        assert {'id': '7', 'type': 'century'} == actual['7']
+        assert {'id': '7', 'type': self._type[0]} == actual['7']
 
     @testing.gen_test
     def test_resources_1(self):
@@ -129,10 +138,10 @@ class TestSimple(shared.TestHandler):
         - -Include-Resources request header is omitted (defaults to True)
         - each resource has its thing in the "resources" block
         '''
-        self.standard_centuries()
+        self.add_default_resources()
         exp_ids = ('6', '2', '9')
-        exp_urls = ['{0}centuries/{1}/'.format(self._simple_options.server_name, x) for x in exp_ids]
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET')
+        exp_urls = ['{0}{1}/{2}/'.format(self._simple_options.server_name, self._type[1], x) for x in exp_ids]
+        actual = yield self.http_client.fetch(self._browse_url, method='GET')
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -150,11 +159,11 @@ class TestSimple(shared.TestHandler):
         - each resource has its "drupal_path" set
         '''
         self._simple_options.drupal_url = 'http://drupal/'
-        self.standard_centuries()
+        self.add_default_resources()
         exp_ids = ('6', '2', '9')
-        exp_urls = ['{0}century/{1}'.format(self._simple_options.drupal_url, x) for x in exp_ids]
+        exp_urls = ['{0}{1}/{2}'.format(self._simple_options.drupal_url, self._type[0], x) for x in exp_ids]
         headers = {'X-Cantus-Include-Resources': 'true'}
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -170,29 +179,45 @@ class TestSimple(shared.TestHandler):
         - run a "browse" request
         - check the -Fields and -Extra-Fields response headers
 
-        NOTE: this test can't use the "century" URL because it has no extra fields
+        NOTE: this test includes both "simple" and "complex" tests
         '''
-        self.standard_centuries()
-        self.solr.search_se.add('*', {'id': '14', 'type': 'indexer', 'name': 'Bob', 'country': 'CA'})
-        exp_fields = ('id', 'type', 'name')
+        # NOTE: this test includes both "simple" and "complex" tests, to avoid fragmentation
+        self.add_default_resources()
 
-        actual = yield self.http_client.fetch(self.get_url('/indexers/'), method='GET')
+        if self._type[0] == 'century':
+            # simple resource
+            self.solr.search_se.add('*', {'id': '14', 'type': 'indexer', 'name': 'Bob', 'country': 'CA'})
+            exp_fields = ('id', 'type', 'name')
 
-        self.check_standard_header(actual)
-        self.assertCountEqual(exp_fields, actual.headers['X-Cantus-Fields'].split(','))
-        assert 'country' in actual.headers['X-Cantus-Extra-Fields']
+            actual = yield self.http_client.fetch(self.get_url('/indexers/'), method='GET')
+
+            self.check_standard_header(actual)
+            self.assertCountEqual(exp_fields, actual.headers['X-Cantus-Fields'].split(','))
+            assert 'country' in actual.headers['X-Cantus-Extra-Fields']
+
+        else:
+            # complex resource
+            self.solr.search_se.add('*', {'id': '14', 'type': 'chant', 'incipit': 'Zzz...'})
+            exp_fields = ('id', 'type')
+            exp_extra_fields = ('incipit', 'name')
+
+            actual = yield self.http_client.fetch(self.get_url('/chants/'), method='GET')
+
+            self.check_standard_header(actual)
+            self.assertCountEqual(exp_fields, actual.headers['X-Cantus-Fields'].split(','))
+            self.assertCountEqual(exp_extra_fields, actual.headers['X-Cantus-Extra-Fields'].split(','))
 
     @testing.gen_test
     def test_fields_request(self):
         '''
         Ensure the X-Cantus-Fields request header works.
         '''
-        self.standard_centuries()
+        self.add_default_resources()
         exp_order = ('6', '2', '9')
         exp_fields = ['id', 'type']
         request_header = 'id, type'
 
-        actual = yield self.http_client.fetch(self.get_url('/centuries/'),
+        actual = yield self.http_client.fetch(self._browse_url,
                                               method='GET',
                                               headers={'X-Cantus-Fields': request_header}
         )
@@ -210,14 +235,14 @@ class TestSimple(shared.TestHandler):
         Regression test for GitHub issue #87.
         """
         resource_id = '34324242343423423423423'
-        expected_reason = simple_handler._ID_NOT_FOUND.format('century', resource_id)
-        request_url = self.get_url('/centuries/{}/'.format(resource_id))
+        expected_reason = simple_handler._ID_NOT_FOUND.format(self._type[0], resource_id)
+        request_url = self.get_url('/{0}/{1}/'.format(self._type[1], resource_id))
 
         actual = yield self.http_client.fetch(request_url,
                                               method='GET',
                                               raise_error=False)
 
-        self.solr.search.assert_called_with('+type:century +id:{}'.format(resource_id), df='default_search')
+        self.solr.search.assert_called_with('+type:{0} +id:{1}'.format(self._type[0], resource_id), df='default_search')
         self.check_standard_header(actual)
         assert 404 == actual.code
         assert expected_reason == actual.reason
@@ -231,7 +256,7 @@ class TestSimple(shared.TestHandler):
         # NOTE: named after TestBasicGetUnit.test_basic_get_unit_8().
         resource_id = '-888_'
         expected_reason = simple_handler._INVALID_ID
-        request_url = self.get_url('/centuries/{}/'.format(resource_id))
+        request_url = self.get_url('/{0}/{1}/'.format(self._type[1], resource_id))
 
         actual = yield self.http_client.fetch(request_url,
                                               method='GET',
@@ -250,10 +275,10 @@ class TestSimple(shared.TestHandler):
 
         Ultimately this is a test of the __main__ module's URL configuration, but that's okay.
         '''
-        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': self._type[0]})
 
-        slash = yield self.http_client.fetch(self.get_url('/centuries/'), method='GET', raise_error=False)
-        noslash = yield self.http_client.fetch(self.get_url('/centuries'), method='GET', raise_error=False)
+        slash = yield self.http_client.fetch(self._browse_url, method='GET', raise_error=False)
+        noslash = yield self.http_client.fetch(self._browse_url, method='GET', raise_error=False)
 
         self.assertEqual(slash.code, noslash.code)
         self.assertEqual(slash.reason, noslash.reason)
@@ -266,13 +291,13 @@ class TestSimple(shared.TestHandler):
         - set "Origin" request header to the same as "cors_allow_origin" setting
         - it's returned successfully
         '''
-        self.standard_centuries()
+        self.add_default_resources()
         exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
         exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
         exp_allow_origin = self._simple_options.cors_allow_origin
         headers = {'Origin': self._simple_options.cors_allow_origin}
 
-        actual = yield self.http_client.fetch(self.get_url('/genres/'), method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
 
         assert exp_allow_headers == actual.headers['Access-Control-Allow-Headers']
         assert exp_expose_headers == actual.headers['Access-Control-Expose-Headers']
@@ -283,156 +308,159 @@ class TestSimple(shared.TestHandler):
     @testing.gen_test
     def test_cors_failure(self):
         '''
-        - set "Origin" request header to the somethign arbitrary
+        - set "Origin" request header to the something arbitrary
         - the CORS headers are missing
         '''
-        self.standard_centuries()
+        self.add_default_resources()
         exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
         exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
         exp_allow_origin = self._simple_options.cors_allow_origin
         headers = {'Origin': self._simple_options.cors_allow_origin}
 
-        actual = yield self.http_client.fetch(self.get_url('/genres/'), method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
 
         assert 'Access-Control-Allow-Headers' not in actual.headers
         assert 'Access-Control-Expose-Headers' not in actual.headers
         assert 'Access-Control-Allow-Origin' not in actual.headers
 
 
-class TestComplex(shared.TestHandler):
+class TestComplex(TestSimple):
     '''
-    Unit tests for the ComplexHandler.get().
+    A version of TestSimple that's modified to run the tests with a ComplexHandler.
+
+    This test class also adds tests for functionality that's part of complex but not simple. In
+    other words, this class also tests cross-referenced fields.
     '''
-    # TODO: figure out how to get all the SimpleHandler tests available for ComplexHandler
 
-    def setUp(self):
-        super(TestComplex, self).setUp()
-        self.solr = self.setUpSolr()
+    def __init__(self, *args, **kwargs):
+        super(TestComplex, self).__init__(*args, **kwargs)
+        self._type = ('source', 'sources')
 
-    @testing.gen_test
-    def test_get_integration_1(self):
+    def add_resource_complex(self):
         '''
-        With many xreffed fields; feast_description to make up; include 'resources'; and drupal_path.
+        Add a complex of resources for use while testing the ComplexHandler.
         '''
-        simple_handler.options.drupal_url = 'http://drp'
-        record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                  'mode': '2S', 'type': 'chant'}
-        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
-                               'cantus_id': '600482a', 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S',
-                               'drupal_path': 'http://drp/chant/357679'},
-                    'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
-                                             'genre': 'https://cantus.org/genres/161/',
-                                             'feast': 'https://cantus.org/feasts/2378/'}},
-                    'sort_order': ['357679'],
+        self.solr.search_se.add('+type:source +id:*', {'id': '123', 'type': 'source', 'century_id': '61', 'indexers': ['900', '901']})
+        self.solr.search_se.add('+type:source +id:*', {'id': '234', 'type': 'source', 'century_id': '62', 'indexers': ['900', '901']})
+        self.solr.search_se.add('id:61', {'id': '61', 'type': 'century', 'name': '10th'})
+        self.solr.search_se.add('id:62', {'id': '62', 'type': 'century', 'name': '14th'})
+        self.solr.search_se.add('id:900', {'id': '900', 'type': 'indexer', 'display_name': 'Danceathon Smith'})
+        self.solr.search_se.add('id:901', {'id': '901', 'type': 'indexer', 'display_name': 'Fortitude Johnson'})
+        #
+        self.solr.search_se.add('id:678', {'id': '678', 'type': 'chant', 'feast_id': '416'})
+        self.solr.search_se.add('id:416', {'id': '416', 'type': 'feast', 'name': 'Thanksgiving', 'description': 'turkey dinner'})
+        #
+        self.solr.search_se.add('id:842', {'id': '842', 'type': 'source', 'source_status_id': '5467'})
+        self.solr.search_se.add('id:5467', {'id': '5467', 'type': 'source_status', 'name': 'Fake', 'description': 'This Source does not exist.'})
+        #
+        self.solr.search_se.add('id:498', {'id': '498', 'type': 'source', 'century_id': '8898981'})
+
+    @testing.gen_test
+    def test_xref_resources(self):
+        '''
+        - results include xreffed fields
+        - must look up an Indexer (which is xreffed as a list)
+        - must look up a Century (which is xreffed as a single ID
+        - includes "resources" block
+        '''
+        self.add_resource_complex()
+        headers = {'X-Cantus-Include-Resources': 'true'}
+        exp_ids = ['123', '234']
+
+        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        assert len(actual) == 4  # two resources, "resources", and "sort_order"
+        assert exp_ids == actual['sort_order']
+        assert actual['123'] == {'id': '123', 'type': 'source', 'century': '10th', 'indexers': ['Danceathon Smith', 'Fortitude Johnson']}
+        assert actual['234'] == {'id': '234', 'type': 'source', 'century': '14th', 'indexers': ['Danceathon Smith', 'Fortitude Johnson']}
+        assert actual['resources']['123'] == {
+            'self': 'https://cantus.org/sources/123/',
+            'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
+            'century': 'https://cantus.org/centuries/61/',
         }
-        self.solr.search_se.add('id:357679', record)
-        self.solr.search_se.add('id:161', {'name': 'V', 'description': 'Responsory Verse'})
-        self.solr.search_se.add('id:2378', {'name': 'Jacobi', 'description': 'James the Greater, Aspotle'})
-
-        actual = yield self.http_client.fetch(self.get_url('/chants/357679/'), method='GET')
-
-        self.check_standard_header(actual)
-        self.assertEqual(expected, escape.json_decode(actual.body))
-        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
-
-    @testing.gen_test
-    def test_get_integration_2(self):
-        "for the X-Cantus-Fields and X-Cantus-Extra-Fields headers; and with multiple returns"
-        record_a = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                    'mode': '2S', 'type': 'chant'}
-        record_b = {'id': '111222', 'genre_id': '161', 'feast_id': '2378', 'mode': '2S',
-                    'sequence': 4, 'type': 'chant'}
-        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre': 'Responsory Verse',
-                               'cantus_id': '600482a', 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
-                    '111222': {'id': '111222', 'type': 'chant', 'genre': 'Responsory Verse',
-                               'sequence': 4, 'feast': 'Jacobi',
-                               'feast_desc': 'James the Greater, Aspotle', 'mode': '2S'},
-                    'sort_order': ['357679', '111222'],
+        assert actual['resources']['234'] == {
+            'self': 'https://cantus.org/sources/234/',
+            'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
+            'century': 'https://cantus.org/centuries/62/',
         }
-        self.solr.search_se.add('*', record_a)
-        self.solr.search_se.add('*', record_b)
-        self.solr.search_se.add('161', {'name': 'V', 'description': 'Responsory Verse'})
-        self.solr.search_se.add('2378', {'name': 'Jacobi', 'description': 'James the Greater, Aspotle'})
-        # expected header: X-Cantus-Fields
-        exp_cantus_fields = sorted(['id', 'genre', 'mode', 'feast', 'type'])
-        # expected header: X-Cantus-Extra-Fields
-        exp_extra_fields = sorted(['cantus_id', 'sequence'])
-
-        actual = yield self.http_client.fetch(self.get_url('/chants/'),
-                                              method='GET',
-                                              headers={'X-Cantus-Include-Resources': 'FalSE'})
-
-        self.assertEqual(exp_cantus_fields, sorted(actual.headers['X-Cantus-Fields'].split(',')))
-        self.assertEqual(exp_extra_fields, sorted(actual.headers['X-Cantus-Extra-Fields'].split(',')))
-        self.assertEqual('false', actual.headers['X-Cantus-Include-Resources'].lower())
-        self.assertEqual(expected, escape.json_decode(actual.body))
 
     @testing.gen_test
-    def test_get_integration_3(self):
-        "test_get_integration_1 but with X-Cantus-No-Xref; include 'resources'"
-        record = {'id': '357679', 'genre_id': '161', 'cantus_id': '600482a', 'feast_id': '2378',
-                  'mode': '2S', 'type': 'chant'}
-        expected = {'357679': {'id': '357679', 'type': 'chant', 'genre_id': '161',
-                               'cantus_id': '600482a', 'feast_id': '2378', 'mode': '2S'},
-                    'resources': {'357679': {'self': 'https://cantus.org/chants/357679/',
-                                             'genre': 'https://cantus.org/genres/161/',
-                                             'feast': 'https://cantus.org/feasts/2378/'}},
-                    'sort_order': ['357679'],
-        }
-        self.solr.search_se.add('357679', record)
+    def test_xref_no_resources(self):
+        '''
+        Same as previous test BUT doesn't include "resources" block
+        '''
+        self.add_resource_complex()
+        headers = {'X-Cantus-Include-Resources': 'false'}
+        exp_ids = ['123', '234']
 
-        actual = yield self.http_client.fetch(self.get_url('/chants/357679/'),
-                                              method='GET',
-                                              headers={'X-Cantus-No-Xref': 'TRUE'})
+        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
 
         self.check_standard_header(actual)
-        self.assertEqual(expected, escape.json_decode(actual.body))
-        self.assertEqual('true', actual.headers['X-Cantus-Include-Resources'].lower())
-        self.assertEqual('true', actual.headers['X-Cantus-No-Xref'].lower())
+        actual = escape.json_decode(actual.body)
+        assert len(actual) == 3  # two resources and "sort_order"
+        assert exp_ids == actual['sort_order']
+        for each_id in exp_ids:
+            assert each_id in actual
 
     @testing.gen_test
-    def test_get_integration_6(self):
-        """
-        Returns 404 when the resource ID is not found.
-        Regression test for GitHub issue #87.
-        Named in honour of the test_get_integration_6() for SimpleHandler.
-        """
-        resource_id = '34324242343423423423423'
-        expected_reason = simple_handler._ID_NOT_FOUND.format('chant', resource_id)
-        request_url = self.get_url('/chants/{}/'.format(resource_id))
+    def test_xref_adding_fields(self):
+        '''
+        - ensure we'll look up the "feast_desc"
 
-        actual = yield self.http_client.fetch(request_url,
-                                              method='GET',
-                                              raise_error=False)
+        NOTE: we have to use a "chant" for this test, in order to get the proper xrefs
+        '''
+        self.add_resource_complex()
 
-        self.solr.search.assert_called_with('+type:chant +id:{}'.format(resource_id), df='default_search')
+        actual = yield self.http_client.fetch(self.get_url('/chants/678/'), method='GET')
+
         self.check_standard_header(actual)
-        assert 404 == actual.code
-        assert expected_reason == actual.reason
-
+        actual = escape.json_decode(actual.body)
+        assert actual['678']['feast_desc'] == 'turkey dinner'
 
     @testing.gen_test
-    def test_get_integration_8(self):
-        """
-        Returns 404 when the resource ID is not found.
-        Regression test for GitHub issue #87.
-        """
-        # NOTE: named after TestBasicGetUnit.test_basic_get_unit_8().
-        # NOTE: corresponds to the same-numbered test in test_simple_handler.py
-        resource_id = '-888_'
-        expected_reason = simple_handler._INVALID_ID
-        request_url = self.get_url('/chants/{}/'.format(resource_id))
+    def test_xref_adding_fields(self):
+        '''
+        - ensure we'll look up the "source_status_desc"
+        '''
+        self.add_resource_complex()
 
-        actual = yield self.http_client.fetch(request_url,
-                                              method='GET',
-                                              raise_error=False)
+        actual = yield self.http_client.fetch(self.get_url('/sources/842/'), method='GET')
 
         self.check_standard_header(actual)
-        assert 0 == self.solr.search.call_count
-        assert 422 == actual.code
-        assert expected_reason == actual.reason
+        actual = escape.json_decode(actual.body)
+        assert actual['842']['source_status_desc'] == 'This Source does not exist.'
+
+    @testing.gen_test
+    def test_xref_noxref(self):
+        '''
+        - the -No-Xref header is set to "true"
+        - the xreffable fields aren't xreffed
+        '''
+        self.add_resource_complex()
+        headers = {'X-Cantus-No-Xref': 'true'}
+
+        actual = yield self.http_client.fetch(self.get_url('/sources/842/'), method='GET', headers=headers)
+
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        assert actual['842']['source_status_id'] == '5467'
+        assert 'source_status' not in actual['842']
+
+    @testing.gen_test
+    def test_xref_missing_resource(self):
+        '''
+        - the cross-referenced resource isn't available in Solr
+        '''
+        self.add_resource_complex()
+
+        actual = yield self.http_client.fetch(self.get_url('/sources/498/'), method='GET')
+
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        assert 'century' not in actual['498']
+        assert 'century_id' not in actual['498']
 
 
 class TestBadRequestHeadersSimple(shared.TestHandler):
