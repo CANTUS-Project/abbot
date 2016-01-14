@@ -165,17 +165,16 @@ class TestSimple(shared.TestHandler):
     @testing.gen_test
     def test_search_5(self, mock_search_handler, mock_vrh, mock_write, mock_mrh):
         '''
-        search_handler() returns 3 things, "include_resources" is False, is a HEAD request;
-        don't call write(), call make_response_headers() with proper arguments
+        search_handler() returns 3 things, "include_resources" is False,; call write(); call
+        make_response_headers() with proper arguments
         '''
         self.handler.hparams['include_resources'] = False
-        self.handler.head_request = True
         mock_vrh.return_value = True
         mock_search_handler.return_value = shared.make_future(([1, 2, 3], 42))
         actual = yield self.handler.search()
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
-        self.assertEqual(0, mock_write.call_count)
+        mock_write.assert_called_once_with([1, 2, 3])
         mock_mrh.assert_called_once_with(True, 42)
 
     @mock.patch('abbot.simple_handler.SimpleHandler.make_response_headers')
@@ -185,11 +184,10 @@ class TestSimple(shared.TestHandler):
     @testing.gen_test
     def test_search_6(self, mock_search_handler, mock_vrh, mock_write, mock_mrh):
         '''
-        search_handler() returns 3 things, "include_resources" is True, is not a HEAD request;
-        call write(), call make_response_headers() with proper arguments
+        search_handler() returns 3 things, "include_resources" is True; call write(); call
+        make_response_headers() with proper arguments
         '''
         self.handler.hparams['include_resources'] = True
-        self.handler.head_request = False
         mock_vrh.return_value = True
         mock_search_handler.return_value = shared.make_future(([1, 2, 3, 'resources'], 42))
         actual = yield self.handler.search()

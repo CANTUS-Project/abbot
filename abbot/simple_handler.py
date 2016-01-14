@@ -809,5 +809,4 @@ class SimpleHandler(web.RequestHandler):
         # finally, prepare the response headers
         self.make_response_headers(is_browse_request, num_results)
 
-        if not self.head_request:
-            self.write(response)
+        self.write(response)
