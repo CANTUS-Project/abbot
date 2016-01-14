@@ -35,6 +35,42 @@ Integration tests for SEARCH requests in SimpleHandler and ComplexHandler.
 import test_get_integration
 
 
+# TODO: these tests *in addition to* the GET ones
+# - when there's no query submitted
+# - when there's an invalid query submitted
+# - when the query returns no results
+# - SEARCH query on a "view" URL leads to failure
+# - queries that:
+#   - are just looked up and work (done in other suite, but I should mention that specifically)
+#   - require subqueries
+#   - require complicated parsing
+
+
+class TestSimple(test_get_integration.TestSimple):
+    '''
+    Runs the GET method's TestSimple suite with the SEARCH HTTP method.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestSimple, self).__init__(*args, **kwargs)
+        self._method = 'SEARCH'
+
+    # TODO: add tests for SEARCH-specific functionality
+
+
+class TestComplex(test_get_integration.TestComplex):
+    '''
+    Runs the GET method's TestComplex suite with the SEARCH HTTP method.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestComplex, self).__init__(*args, **kwargs)
+        self._method = 'SEARCH'
+
+    # TODO: add tests for SEARCH-specific functionality
+    # TODO: make sure the tests added in *this module's* Simple tests are also run with Complex
+
+
 class TestBadRequestHeadersSimple(test_get_integration.TestBadRequestHeadersSimple):
     '''
     Runs the GET method's TestBadRequestHeadersSimple suite with the SEARCH HTTP method.

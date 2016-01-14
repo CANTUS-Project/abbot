@@ -56,6 +56,7 @@ class TestSimple(shared.TestHandler):
     def __init__(self, *args, **kwargs):
         super(TestSimple, self).__init__(*args, **kwargs)
         self._type = ('century', 'centuries')
+        self._method = 'GET'
 
     def setUp(self):
         "Make a SimpleHandler instance for testing."
@@ -81,7 +82,8 @@ class TestSimple(shared.TestHandler):
         - the default "resources" behaviour is checked later
         '''
         self.add_default_resources()
-        actual = yield self.http_client.fetch(self._browse_url, method='GET')
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}')
 
         self.check_standard_header(actual)
         assert actual.headers['X-Cantus-Total-Results'] == '3'
@@ -106,14 +108,20 @@ class TestSimple(shared.TestHandler):
         '''
         self.add_default_resources()
         headers = {'X-Cantus-Page': '2', 'X-Cantus-Per-Page': '4', 'X-Cantus-Sort': 'id,desc'}
-        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
         self.check_standard_header(actual)
         assert actual.headers['X-Cantus-Page'] == '2'
         assert actual.headers['X-Cantus-Per-Page'] == '4'
         assert actual.headers['X-Cantus-Sort'] == 'id,desc'
-        self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), sort='id desc',
-            start=4, rows=4, df='default_search')
+        # the query is modified before submission for a SEARCH query
+        if self._method == 'SEARCH':
+            self.solr.search.assert_called_with('type:{} * '.format(self._type[0]), sort='id desc',
+                start=4, rows=4, df='default_search')
+        else:
+            self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), sort='id desc',
+                start=4, rows=4, df='default_search')
 
     @testing.gen_test
     def test_view_request(self):
@@ -121,6 +129,10 @@ class TestSimple(shared.TestHandler):
         - view request
         - -Include-Resources request header is False, and no "resources" part is returned
         '''
+        # NOTE: this "view" request doesn't apply for SEARCH
+        if self._method == 'SEARCH':
+            return
+
         self.add_default_resources()
         self.solr.search_se.add('id:7', {'id': '7', 'type': self._type[0]})
         headers = {'X-Cantus-Include-Resources': 'false'}
@@ -142,7 +154,8 @@ class TestSimple(shared.TestHandler):
         self.add_default_resources()
         exp_ids = ('6', '2', '9')
         exp_urls = ['{0}{1}/{2}/'.format(self._simple_options.server_name, self._type[1], x) for x in exp_ids]
-        actual = yield self.http_client.fetch(self._browse_url, method='GET')
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}')
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -164,7 +177,8 @@ class TestSimple(shared.TestHandler):
         exp_ids = ('6', '2', '9')
         exp_urls = ['{0}{1}/{2}'.format(self._simple_options.drupal_url, self._type[0], x) for x in exp_ids]
         headers = {'X-Cantus-Include-Resources': 'true'}
-        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -190,7 +204,8 @@ class TestSimple(shared.TestHandler):
             self.solr.search_se.add('*', {'id': '14', 'type': 'indexer', 'name': 'Bob', 'country': 'CA'})
             exp_fields = ('id', 'type', 'name')
 
-            actual = yield self.http_client.fetch(self.get_url('/indexers/'), method='GET')
+            actual = yield self.http_client.fetch(self.get_url('/indexers/'), method=self._method,
+                allow_nonstandard_methods=True, body=b'{"query":"*"}')
 
             self.check_standard_header(actual)
             self.assertCountEqual(exp_fields, actual.headers['X-Cantus-Fields'].split(','))
@@ -202,7 +217,8 @@ class TestSimple(shared.TestHandler):
             exp_fields = ('id', 'type')
             exp_extra_fields = ('incipit', 'name')
 
-            actual = yield self.http_client.fetch(self.get_url('/chants/'), method='GET')
+            actual = yield self.http_client.fetch(self.get_url('/chants/'), method=self._method,
+                allow_nonstandard_methods=True, body=b'{"query":"*"}')
 
             self.check_standard_header(actual)
             self.assertCountEqual(exp_fields, actual.headers['X-Cantus-Fields'].split(','))
@@ -219,7 +235,9 @@ class TestSimple(shared.TestHandler):
         request_header = 'id, type'
 
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
+                                              body=b'{"query":"*"}',
                                               headers={'X-Cantus-Fields': request_header}
         )
 
@@ -235,6 +253,10 @@ class TestSimple(shared.TestHandler):
         Returns 404 when the resource ID is not found.
         Regression test for GitHub issue #87.
         """
+        # NOTE: this "view" request doesn't apply for SEARCH queries
+        if self._method == 'SEARCH':
+            return
+
         resource_id = '34324242343423423423423'
         expected_reason = simple_handler._ID_NOT_FOUND.format(self._type[0], resource_id)
         request_url = self.get_url('/{0}/{1}/'.format(self._type[1], resource_id))
@@ -254,7 +276,10 @@ class TestSimple(shared.TestHandler):
         Returns 422 when the resource ID is invalid.
         Regression test for GitHub issue #87.
         """
-        # NOTE: named after TestBasicGetUnit.test_basic_get_unit_8().
+        # NOTE: this "view" request doesn't apply for SEARCH queries
+        if self._method == 'SEARCH':
+            return
+
         resource_id = '-888_'
         expected_reason = simple_handler._INVALID_ID
         request_url = self.get_url('/{0}/{1}/'.format(self._type[1], resource_id))
@@ -278,8 +303,10 @@ class TestSimple(shared.TestHandler):
         '''
         self.solr.search_se.add('*', {'id': '1', 'name': 'one', 'type': self._type[0]})
 
-        slash = yield self.http_client.fetch(self._browse_url, method='GET', raise_error=False)
-        noslash = yield self.http_client.fetch(self._browse_url, method='GET', raise_error=False)
+        slash = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
+        noslash = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
 
         self.assertEqual(slash.code, noslash.code)
         self.assertEqual(slash.reason, noslash.reason)
@@ -298,7 +325,8 @@ class TestSimple(shared.TestHandler):
         exp_allow_origin = self._simple_options.cors_allow_origin
         headers = {'Origin': self._simple_options.cors_allow_origin}
 
-        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
         assert exp_allow_headers == actual.headers['Access-Control-Allow-Headers']
         assert exp_expose_headers == actual.headers['Access-Control-Expose-Headers']
@@ -318,7 +346,8 @@ class TestSimple(shared.TestHandler):
         exp_allow_origin = self._simple_options.cors_allow_origin
         headers = {'Origin': self._simple_options.cors_allow_origin}
 
-        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
         assert 'Access-Control-Allow-Headers' not in actual.headers
         assert 'Access-Control-Expose-Headers' not in actual.headers
@@ -332,7 +361,8 @@ class TestSimple(shared.TestHandler):
         '''
         self.solr.search.side_effect = pysolrtornado.SolrError
         url = self.get_url('/{0}/7/'.format(self._type[1]))
-        actual = yield self.http_client.fetch(url, method='GET', raise_error=False)
+        actual = yield self.http_client.fetch(url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
 
         self.check_standard_header(actual)
         assert actual.code == 502
@@ -355,8 +385,8 @@ class TestComplex(TestSimple):
         '''
         Add a complex of resources for use while testing the ComplexHandler.
         '''
-        self.solr.search_se.add('+type:source +id:*', {'id': '123', 'type': 'source', 'century_id': '61', 'indexers': ['900', '901']})
-        self.solr.search_se.add('+type:source +id:*', {'id': '234', 'type': 'source', 'century_id': '62', 'indexers': ['900', '901']})
+        self.solr.search_se.add('+id:*', {'id': '123', 'type': 'source', 'century_id': '61', 'indexers': ['900', '901']})
+        self.solr.search_se.add('+id:*', {'id': '234', 'type': 'source', 'century_id': '62', 'indexers': ['900', '901']})
         self.solr.search_se.add('id:61', {'id': '61', 'type': 'century', 'name': '10th'})
         self.solr.search_se.add('id:62', {'id': '62', 'type': 'century', 'name': '14th'})
         self.solr.search_se.add('id:900', {'id': '900', 'type': 'indexer', 'display_name': 'Danceathon Smith'})
@@ -382,7 +412,8 @@ class TestComplex(TestSimple):
         headers = {'X-Cantus-Include-Resources': 'true'}
         exp_ids = ['123', '234']
 
-        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"+id:*"}', headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -410,7 +441,8 @@ class TestComplex(TestSimple):
         headers = {'X-Cantus-Include-Resources': 'false'}
         exp_ids = ['123', '234']
 
-        actual = yield self.http_client.fetch(self._browse_url, method='GET', headers=headers)
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"+id:*"}', headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -426,6 +458,10 @@ class TestComplex(TestSimple):
 
         NOTE: we have to use a "chant" for this test, in order to get the proper xrefs
         '''
+        # NOTE: this "view" request doesn't apply for SEARCH
+        if self._method == 'SEARCH':
+            return
+
         self.add_resource_complex()
 
         actual = yield self.http_client.fetch(self.get_url('/chants/678/'), method='GET')
@@ -439,6 +475,10 @@ class TestComplex(TestSimple):
         '''
         - ensure we'll look up the "source_status_desc"
         '''
+        # NOTE: this "view" request doesn't apply for SEARCH
+        if self._method == 'SEARCH':
+            return
+
         self.add_resource_complex()
 
         actual = yield self.http_client.fetch(self.get_url('/sources/842/'), method='GET')
@@ -453,6 +493,10 @@ class TestComplex(TestSimple):
         - the -No-Xref header is set to "true"
         - the xreffable fields aren't xreffed
         '''
+        # NOTE: this "view" request doesn't apply for SEARCH
+        if self._method == 'SEARCH':
+            return
+
         self.add_resource_complex()
         headers = {'X-Cantus-No-Xref': 'true'}
 
@@ -468,6 +512,10 @@ class TestComplex(TestSimple):
         '''
         - the cross-referenced resource isn't available in Solr
         '''
+        # NOTE: this "view" request doesn't apply for SEARCH
+        if self._method == 'SEARCH':
+            return
+
         self.add_resource_complex()
 
         actual = yield self.http_client.fetch(self.get_url('/sources/498/'), method='GET')
