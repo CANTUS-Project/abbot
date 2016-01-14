@@ -31,3 +31,29 @@ Integration tests for SEARCH requests in SimpleHandler and ComplexHandler.
 
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
+
+import test_get_integration
+
+
+class TestBadRequestHeadersSimple(test_get_integration.TestBadRequestHeadersSimple):
+    '''
+    Runs the GET method's TestBadRequestHeadersSimple suite with the SEARCH HTTP method.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestBadRequestHeadersSimple, self).__init__(*args, **kwargs)
+        self._method = 'SEARCH'
+
+    # TODO: add tests for SEARCH-specific headers
+
+
+class TestBadRequestHeadersComplex(test_get_integration.TestBadRequestHeadersComplex):
+    '''
+    Runs the GET method's TestBadRequestHeadersSimple suite with the SEARCH HTTP method.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestBadRequestHeadersComplex, self).__init__(*args, **kwargs)
+        self._method = 'SEARCH'
+
+    # TODO: make sure the tests added in *this module's* Simple tests are also run with Complex

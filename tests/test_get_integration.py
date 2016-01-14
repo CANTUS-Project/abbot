@@ -492,6 +492,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def __init__(self, *args, **kwargs):
         super(TestBadRequestHeadersSimple, self).__init__(*args, **kwargs)
         self._type = ('century', 'centuries')
+        self._method = 'GET'
 
     def setUp(self):
         super(TestBadRequestHeadersSimple, self).setUp()
@@ -502,12 +503,14 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_per_page_1(self):
         "returns 400 when X-Cantus-Per-Page is set improperly"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Per-Page': 'force'})
+                                              headers={'X-Cantus-Per-Page': 'force'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
-        # self.check_standard_header(actual)
+        self.check_standard_header(actual)
         self.assertEqual(400, actual.code)
         self.assertEqual(simple_handler._INVALID_PER_PAGE, actual.reason)
 
@@ -515,9 +518,11 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_per_page_2(self):
         "returns 507 when X-Cantus-Per-Page is greater than 100"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Per-Page': '101'})
+                                              headers={'X-Cantus-Per-Page': '101'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
@@ -528,9 +533,11 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_per_page_2(self):
         "returns 507 when X-Cantus-Per-Page is less than 0"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Per-Page': '-5'})
+                                              headers={'X-Cantus-Per-Page': '-5'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
@@ -541,12 +548,19 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_page_1(self):
         "returns 400 when X-Cantus-Page is set too high"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Page': '10'})
+                                              headers={'X-Cantus-Page': '10'},
+                                              body=b'{"query":"+id:*"}')
 
-        self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), start=90, rows=10,
-            df='default_search')
+        # the SEARCH query gets modified before it hits Solr
+        if self._method == 'SEARCH':
+            self.solr.search.assert_called_with('type:{}  +id:* '.format(self._type[0]), start=90,
+                rows=10, df='default_search')
+        else:
+            self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), start=90,
+                rows=10, df='default_search')
         self.check_standard_header(actual)
         self.assertEqual(409, actual.code)
         self.assertEqual(simple_handler._TOO_LARGE_PAGE, actual.reason)
@@ -555,9 +569,11 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_page_2(self):
         "returns 400 when X-Cantus-Page is less than 0"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Page': '-2'})
+                                              headers={'X-Cantus-Page': '-2'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
@@ -568,9 +584,11 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_fields_1(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Fields': 'id, type,price'})
+                                              headers={'X-Cantus-Fields': 'id, type,price'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
@@ -581,9 +599,11 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_incl_resources_1(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Include-Resources': 'maybe'})
+                                              headers={'X-Cantus-Include-Resources': 'maybe'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
@@ -594,9 +614,11 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
     def test_sort_1(self):
         "returns 400 when X-Cantus-Fields has a field name that doesn't exist"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-Sort': 'fuzz^ball'})
+                                              headers={'X-Cantus-Sort': 'fuzz^ball'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
@@ -609,10 +631,15 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
         - -Page, -Per-Page, and -Sort request headers are all invalid
         - but it's a "view" request, so the API says they should be ignored
         '''
+        # NOTE: this test doesn't apply for SEARCH requests, so we'll skip it in that case
+        if self._method == 'SEARCH':
+            return
+
         self.solr.search_se.add('id:7', {'id': '7', 'type': self._type[0]})
         headers = {'X-Cantus-Page': 'jj', 'X-Cantus-Per-Page': 'ww', 'X-Cantus-Sort': 'm_l'}
-        actual = yield self.http_client.fetch(self.get_url('/{}/7/'.format(self._type[1])), method='GET',
-            headers=headers)
+        actual = yield self.http_client.fetch(self.get_url('/{}/7/'.format(self._type[1])),
+                                              method='GET',
+                                              headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
@@ -632,9 +659,11 @@ class TestBadRequestHeadersComplex(TestBadRequestHeadersSimple):
     def test_noxref_1(self):
         "returns 400 when X-Cantus-No-Xref isn't a boolean setting"
         actual = yield self.http_client.fetch(self._browse_url,
-                                              method='GET',
+                                              method=self._method,
+                                              allow_nonstandard_methods=True,
                                               raise_error=False,
-                                              headers={'X-Cantus-No-Xref': 'please'})
+                                              headers={'X-Cantus-No-Xref': 'please'},
+                                              body=b'{"query":""}')
 
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
