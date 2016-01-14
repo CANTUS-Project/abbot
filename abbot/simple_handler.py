@@ -764,6 +764,9 @@ class SimpleHandler(web.RequestHandler):
             else:
                 return (yield self.get_handler(query=query))
 
+        # if we reach this point, there was an error code somewhere
+        return (None, 0)
+
     @util.request_wrapper
     @gen.coroutine
     def search(self, resource_id=None):  # pylint: disable=unused-argument

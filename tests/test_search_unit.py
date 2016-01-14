@@ -89,7 +89,7 @@ class TestSimple(shared.TestHandler):
 
         mock_senderr.assert_called_once_with(404, reason=simple_handler._NO_SEARCH_RESULTS)
         assert 0 == mock_get_handler.call_count
-        assert actual is None
+        assert (None, 0) == actual
 
     @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
     @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
@@ -105,9 +105,9 @@ class TestSimple(shared.TestHandler):
 
         actual = yield self.handler.search_handler()
 
-        assert actual is None
-        assert 0 == mock_get_handler.call_count
         mock_senderr.assert_called_with(400, reason=simple_handler._INVALID_SEARCH_QUERY)
+        assert 0 == mock_get_handler.call_count
+        assert (None, 0) == actual
 
     @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
