@@ -32,12 +32,14 @@ Integration tests for SEARCH requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
+from tornado import testing
+
+from abbot import simple_handler
+
 import test_get_integration
 
 
 # TODO: these tests *in addition to* the GET ones
-# - when there's no query submitted
-# - when there's an invalid query submitted
 # - when the query returns no results
 # - SEARCH query on a "view" URL leads to failure
 # - queries that:
@@ -80,7 +82,32 @@ class TestBadRequestHeadersSimple(test_get_integration.TestBadRequestHeadersSimp
         super(TestBadRequestHeadersSimple, self).__init__(*args, **kwargs)
         self._method = 'SEARCH'
 
-    # TODO: add tests for SEARCH-specific headers
+    @testing.gen_test
+    def test_no_query(self):
+        "returns 400 when there is no request body"
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False)
+
+        assert 0 == self.solr.search.call_count
+        self.check_standard_header(actual)
+        self.assertEqual(400, actual.code)
+        self.assertEqual(simple_handler._MISSING_SEARCH_BODY, actual.reason)
+
+    @testing.gen_test
+    def test_invalid_query(self):
+        "returns 400 when the request body isn't valid JSON"
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'<query>Alldkkllleeejjjasjdfajsdfjasdf</query>')
+
+        assert 0 == self.solr.search.call_count
+        self.check_standard_header(actual)
+        self.assertEqual(400, actual.code)
+        self.assertEqual(simple_handler._MISSING_SEARCH_BODY, actual.reason)
 
 
 class TestBadRequestHeadersComplex(test_get_integration.TestBadRequestHeadersComplex):
@@ -92,4 +119,6 @@ class TestBadRequestHeadersComplex(test_get_integration.TestBadRequestHeadersCom
         super(TestBadRequestHeadersComplex, self).__init__(*args, **kwargs)
         self._method = 'SEARCH'
 
-    # TODO: make sure the tests added in *this module's* Simple tests are also run with Complex
+    # this runs the SEARCH-specific tests from above, but with a ComplexHandler
+    test_no_query = TestBadRequestHeadersSimple.test_no_query
+    test_invalid_query = TestBadRequestHeadersSimple.test_invalid_query
