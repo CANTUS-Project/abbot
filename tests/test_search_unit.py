@@ -197,3 +197,13 @@ class TestSimple(shared.TestHandler):
         mock_search_handler.assert_called_once_with()
         mock_write.assert_called_once_with([1, 2, 3, 'resources'])
         mock_mrh.assert_called_once_with(True, 42)
+
+    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
+    @testing.gen_test
+    def test_search_7(self, mock_senderr):
+        '''
+        When a "resource_id" is given, this is SEARCH on a "view" URL, so search() should call
+        send_error() with a 405 Method Not Allowed.
+        '''
+        self.handler.search(resource_id='123/')
+        mock_senderr.assert_called_with(405, allow=SimpleHandler._ALLOWED_VIEW_METHODS)

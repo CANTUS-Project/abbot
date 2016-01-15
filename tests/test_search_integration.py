@@ -57,7 +57,21 @@ class TestSimple(test_get_integration.TestSimple):
         super(TestSimple, self).__init__(*args, **kwargs)
         self._method = 'SEARCH'
 
-    # TODO: add tests for SEARCH-specific functionality
+    @testing.gen_test
+    def test_search_to_view(self):
+        '''
+        A SEARCH request to a "view" URL will fail with "405 Method Not Allowed."
+        '''
+        actual = yield self.http_client.fetch('{}7244/'.format(self._browse_url),
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'{"query":"name:Todd"}')
+
+        self.check_standard_header(actual)
+        assert 405 == actual.code
+        assert 'Method Not Allowed' == actual.reason
+        assert 'GET, HEAD, OPTIONS' == actual.headers['Allow']  # required in RFC 7231 S. 6.5.5
 
 
 class TestComplex(test_get_integration.TestComplex):

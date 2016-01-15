@@ -789,6 +789,10 @@ class SimpleHandler(web.RequestHandler):
         Does the same header things as get()
         '''
 
+        if resource_id and resource_id != '/':
+            self.send_error(405, allow=SimpleHandler._ALLOWED_VIEW_METHODS)
+            return
+
         # If there was no "query" member in the request body, we'll still get called, even though
         # send_error() will already have been called from initialize(). We have to quit now or
         # we'll end up overwriting the error.
