@@ -375,8 +375,13 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         # check
         self.assertIsNone(actual)
         some.write.assert_called_once_with('five')
-        assert self._log.debug.call_count > 5
         some.send_error.assert_called_once_with(500, reason='Programmer Error')
+        assert self._log.debug.call_count > 5
+        # weird indexing on "call" objects is weird
+        for each_call in self._log.debug.call_args_list:
+            assert isinstance(each_call[0][0], str)
+        assert 'Traceback' in self._log.debug.call_args_list[0][0][0]
+        assert 'IndexError' in self._log.debug.call_args_list[-1][0][0]
 
     @testing.gen_test
     def test_wrong_order(self):

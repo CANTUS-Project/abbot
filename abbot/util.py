@@ -376,7 +376,7 @@ def request_wrapper(func):
             if isinstance(exc, gen.BadYieldError):
                 log.error('IMPORTANT: write the @request_wrapper decorator above @gen.coroutine')
             for line in tback:
-                log.debug(tback)
+                log.debug(line)
 
             self.send_error(500, reason='Programmer Error')
 
