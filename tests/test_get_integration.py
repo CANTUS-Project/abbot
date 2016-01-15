@@ -354,11 +354,30 @@ class TestSimple(shared.TestHandler):
         assert 'Access-Control-Allow-Origin' not in actual.headers
 
     @testing.gen_test
-    def test_solr_unavailable(self):
+    def test_solr_unavailable_browse(self):
+        '''
+        - browse request
+        - Solr is unavailable, so pysolr-tornado raises a SolrError
+        '''
+        self.solr.search.side_effect = pysolrtornado.SolrError
+        url = self.get_url('/{0}/'.format(self._type[1]))
+        actual = yield self.http_client.fetch(url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
+
+        self.check_standard_header(actual)
+        assert actual.code == 502
+        assert actual.reason == simple_handler._SOLR_502_ERROR
+
+    @testing.gen_test
+    def test_solr_unavailable_view(self):
         '''
         - view request
         - Solr is unavailable, so pysolr-tornado raises a SolrError
         '''
+        # NOTE: this is a "view" URL so the SEARCH method is not allowed
+        if self._method == 'SEARCH':
+            return
+
         self.solr.search.side_effect = pysolrtornado.SolrError
         url = self.get_url('/{0}/7/'.format(self._type[1]))
         actual = yield self.http_client.fetch(url, method=self._method,
