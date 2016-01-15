@@ -304,24 +304,17 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
 
     def setUp(self):
         '''
-        Make some additional mocks: log.error(); print().
+        Put a mock on the "log" module.
         '''
         super(TestRequestWrapper, self).setUp()
         self._log_patcher = mock.patch('abbot.util.log')
         self._log = self._log_patcher.start()
-        self._actual_print = __builtins__['print']
-        __builtins__['print'] = mock.MagicMock()
-        self._options_patcher = mock.patch('abbot.util.options')
-        self._options = self._options_patcher.start()
-        self._options.debug = False
 
     def tearDown(self):
         '''
         Remove the mock from the global "options" modules.
         '''
-        __builtins__['print'] = self._actual_print
         self._log_patcher.stop()
-        self._options_patcher.stop()
         super(TestRequestWrapper, self).tearDown()
 
     @testing.gen_test
@@ -351,19 +344,16 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         # check
         self.assertIsNone(actual)
         some.write.assert_called_once_with('five')
-        self.assertEqual(0, print.call_count)
         self.assertEqual(0, self._log.error.call_count)
         self.assertEqual(0, some.send_error.call_count)
 
     @testing.gen_test
-    def test_nodebug_failure(self):
+    def test_request_failure(self):
         '''
-        - func() raises IndexError; debug is True
-        - print() called with the message
+        - func() raises IndexError
+        - log.debug() called with the message
         - self.send_error(500, reason='Programmer Error')
         '''
-
-        self._options.debug = True
 
         # set up a handler
         class SomeHandler(web.RequestHandler):
@@ -385,14 +375,13 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         # check
         self.assertIsNone(actual)
         some.write.assert_called_once_with('five')
-        self.assertEqual(1, print.call_count)
-        self.assertEqual(0, self._log.error.call_count)
+        assert self._log.debug.call_count > 5
         some.send_error.assert_called_once_with(500, reason='Programmer Error')
 
     @testing.gen_test
-    def test_debug_wrong_order(self):
+    def test_wrong_order(self):
         '''
-        - func() is wrapped in the wrong order; debug is False
+        - func() is wrapped in the wrong order
         - log.error() called with the message
         - the message ends with 'IMPORTANT: write the @request_wrapper decorator above @gen.coroutine'
         - self.send_error(500, reason='Programmer Error')
@@ -419,8 +408,8 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         # check
         # self.assertIsNone(actual)
         some.write.assert_called_once_with('five')
-        self.assertEqual(0, print.call_count)
-        self.assertEqual(1, self._log.error.call_count)
+        assert self._log.debug.call_count > 5
+        assert self._log.error.call_count == 1
         self.assertTrue(self._log.error.call_args[0][0].endswith(exp_log_ending))
         some.send_error.assert_called_once_with(500, reason='Programmer Error')
 
