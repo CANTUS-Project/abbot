@@ -431,7 +431,7 @@ def parse_query(query):
     :param str query: The raw, user-submitted search query string.
     :returns: A list of parsed query components (see below).
     :rtype: list of 2-tuple of str
-    :raises: :exc:`InvalidQueryError` when SOMETHING SOMETHING SOMETHING
+    :raises: :exc:`InvalidQueryError` when the search query string is invalid.
 
 
     **Return Value**
