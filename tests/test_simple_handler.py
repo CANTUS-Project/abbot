@@ -976,3 +976,19 @@ class TestSendError(shared.TestHandler):
         self.assertEqual(0, mock_add_header.call_count)
         mock_set_status.assert_called_once_with(code)
         mock_write.assert_called_once_with('{}: (no reason given)'.format(code))
+
+    @mock.patch('abbot.simple_handler.SimpleHandler.add_header')
+    def test_send_error_3(self, mock_add_header):
+        '''
+        With "allow" in the kwargs.
+
+        Ensure:
+        - add_header() is called to set the "Allow" header
+        '''
+        code = 420
+        reason = 'blaze it'
+        allow = 'GET, PUT'
+
+        self.handler.send_error(code, reason=reason, allow=allow)
+
+        mock_add_header.assert_called_with('Allow', allow)

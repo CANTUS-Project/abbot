@@ -711,9 +711,15 @@ class SimpleHandler(web.RequestHandler):
         :param response: An object to return as the response body. This should either be a string
             or a dict to serialize as a JSON object.
         :type response: str or dict
+        :param allow: A value for the "Allow" HTTP response header. Intended for "405 Method Not
+            Allowed," but may also be useful in other situations.
+        :type allow: list of str
         '''
 
         self.clear()
+
+        if 'allow' in kwargs:
+            self.add_header('Allow', kwargs['allow'])
 
         if 'per_page' in kwargs:
             self.add_header('X-Cantus-Per-Page', kwargs['per_page'])
