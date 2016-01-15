@@ -32,6 +32,7 @@ Integration tests for SEARCH requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
+import pysolrtornado
 from tornado import testing
 
 from abbot import simple_handler
@@ -39,13 +40,7 @@ from abbot import simple_handler
 import test_get_integration
 
 
-# TODO: these tests *in addition to* the GET ones
-# - when the query returns no results
-# - SEARCH query on a "view" URL leads to failure
-# - queries that:
-#   - are just looked up and work (done in other suite, but I should mention that specifically)
-#   - require subqueries
-#   - require complicated parsing
+# TODO: a test that requires complicated parsing
 
 
 class TestSimple(test_get_integration.TestSimple):
@@ -131,14 +126,102 @@ class TestSimple(test_get_integration.TestSimple):
 class TestComplex(test_get_integration.TestComplex):
     '''
     Runs the GET method's TestComplex suite with the SEARCH HTTP method.
+
+    NOTE that the tests written specifically for this suite only need to check the return value when
+         it's different from what you might expect in a GET request. The GET integration tests are
+         sufficient for checking cross-references and the like.
     '''
 
     def __init__(self, *args, **kwargs):
         super(TestComplex, self).__init__(*args, **kwargs)
         self._method = 'SEARCH'
 
-    # TODO: add tests for SEARCH-specific functionality
-    # TODO: make sure the tests added in *this module's* Simple tests are also run with Complex
+    # tests from TestSimple
+    test_boringly_works = TestSimple.test_boringly_works
+    test_invalid_search_string = TestSimple.test_invalid_search_string
+    test_no_results = TestSimple.test_no_results
+    test_search_to_view = TestSimple.test_search_to_view
+
+    @testing.gen_test
+    def test_subquery_returns_nothing(self):
+        "returns 404 when a subquery yields no results"
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'{"query":"century:21st"}')
+
+        # as submitted by run_subqueries()
+        self.solr.search.assert_called_with('type:century AND (21st)', df='default_search')
+        self.check_standard_header(actual)
+        self.assertEqual(404, actual.code)
+        self.assertEqual(simple_handler._NO_SEARCH_RESULTS, actual.reason)
+
+    @testing.gen_test
+    def test_subquery_returns_one_thing(self):
+        '''
+        Works properly with a subquery yielding one result.
+        '''
+        # the Century will be searched both for the subquery and the cross-reference
+        self.solr.search_se.add('21st', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('type:source', {'type': 'source', 'id': '999', 'century_id': '830'})
+
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              body=b'{"query":"century:21st"}')
+
+        # as submitted by run_subqueries()
+        self.solr.search.assert_any_call('type:century AND (21st)', df='default_search')
+        # as submitted by the search itself
+        self.solr.search.assert_any_call(' +type:source century_id:830 ', df='default_search', rows=10)
+        # as submitted for the cross-reference
+        self.solr.search.assert_any_call('+type:century +id:830', df='default_search')
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_subquery_returns_three_things(self):
+        '''
+        Works properly with a subquery yielding three results.
+        '''
+        # the Century will be searched both for the subquery and the cross-reference
+        self.solr.search_se.add('21st', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('21st', {'type': 'century', 'id': '831', 'name': '21-1/3s century'})
+        self.solr.search_se.add('21st', {'type': 'century', 'id': '832', 'name': '21-2/3s century'})
+        self.solr.search_se.add('id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('type:source', {'type': 'source', 'id': '999', 'century_id': '830'})
+
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              body=b'{"query":"century:21st"}')
+
+        # as submitted by run_subqueries()
+        self.solr.search.assert_any_call('type:century AND (21st)', df='default_search')
+        # as submitted by the search itself
+        self.solr.search.assert_any_call(' +type:source (century_id:830^3 OR century_id:831^2 OR century_id:832^1) ',
+            df='default_search', rows=10)
+        # as submitted for the cross-reference
+        self.solr.search.assert_any_call('+type:century +id:830', df='default_search')
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_solr_failure_in_subquery(self):
+        "returns 502 when Solr fails while running a subquery"
+        self.solr.search.side_effect = pysolrtornado.SolrError
+
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'{"query":"century:21st"}')
+
+        # as submitted by run_subqueries()
+        self.solr.search.assert_called_with('type:century AND (21st)', df='default_search')
+        self.check_standard_header(actual)
+        self.assertEqual(502, actual.code)
+        self.assertEqual(simple_handler._SOLR_502_ERROR, actual.reason)
 
 
 class TestBadRequestHeadersSimple(test_get_integration.TestBadRequestHeadersSimple):
