@@ -51,11 +51,65 @@ import test_get_integration
 class TestSimple(test_get_integration.TestSimple):
     '''
     Runs the GET method's TestSimple suite with the SEARCH HTTP method.
+
+    NOTE that the tests written specifically for this suite only need to check the return value when
+         it's different from what you might expect in a GET request. The GET integration tests are
+         sufficient for normal stuff.
     '''
 
     def __init__(self, *args, **kwargs):
         super(TestSimple, self).__init__(*args, **kwargs)
         self._method = 'SEARCH'
+
+    @testing.gen_test
+    def test_boringly_works(self):
+        '''
+        When the query just works properly.
+        '''
+        # the Century will be searched both for the subquery and the cross-reference
+        self.solr.search_se.add('id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
+
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              body=b'{"query":"id:830"}')
+
+        self.solr.search.assert_called_with(' +type:{} id:830 '.format(self._type[0]),
+            df='default_search', rows=10)
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_invalid_search_string(self):
+        '''
+        When the search string is invalid, and should be refused by util.parse_query().
+        '''
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'{"query":"type:salad AND"}')
+
+        assert 0 == self.solr.search.call_count
+        self.check_standard_header(actual)
+        self.assertEqual(400, actual.code)
+        self.assertEqual(simple_handler._INVALID_SEARCH_QUERY, actual.reason)
+
+    @testing.gen_test
+    def test_no_results(self):
+        '''
+        When the search returns no results, give 404.
+        '''
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'{"query":"name:Todd"}')
+
+        self.solr.search.assert_called_with(' +type:{} name:Todd '.format(self._type[0]),
+            df='default_search', rows=10)
+        self.check_standard_header(actual)
+        self.assertEqual(404, actual.code)
+        self.assertEqual(simple_handler._NO_SEARCH_RESULTS, actual.reason)
 
     @testing.gen_test
     def test_search_to_view(self):
