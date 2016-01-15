@@ -750,7 +750,7 @@ class SimpleHandler(web.RequestHandler):
         to cross-referenced fields.
         '''
 
-        query = 'type:{type} {query}'.format(type=self.type_name, query=self.hparams['search_query'])
+        query = '+type:{type} {query}'.format(type=self.type_name, query=self.hparams['search_query'])
 
         try:
             query = util.parse_query(query)

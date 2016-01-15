@@ -55,10 +55,11 @@ class TestSimple(shared.TestHandler):
         self.handler = SimpleHandler(self.get_app(), request, type_name='century')
         self.handler.hparams['search_query'] = 'some query'
 
+    @mock.patch('abbot.util.parse_query')
     @mock.patch('abbot.util.run_subqueries')
     @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
     @testing.gen_test
-    def test_search_handler_1(self, mock_get_handler, mock_rs):
+    def test_search_handler_1(self, mock_get_handler, mock_rs, mock_parse):
         '''
         Ensure the kwargs are passed along properly.
         '''
@@ -71,6 +72,7 @@ class TestSimple(shared.TestHandler):
         actual = yield self.handler.search_handler()
 
         assert expected == actual
+        mock_parse.assert_called_with('+type:century feast:celery genre:tasty')
         mock_get_handler.assert_called_once_with(query=expected_final_query)
 
     @mock.patch('abbot.util.run_subqueries')
