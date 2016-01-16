@@ -33,7 +33,7 @@ Integration tests for SEARCH requests in SimpleHandler and ComplexHandler.
 # That's an important part of testing! For me, at least.
 
 import pysolrtornado
-from tornado import testing
+from tornado import escape, testing
 
 from abbot import simple_handler
 
@@ -222,6 +222,29 @@ class TestComplex(test_get_integration.TestComplex):
         self.check_standard_header(actual)
         self.assertEqual(502, actual.code)
         self.assertEqual(simple_handler._SOLR_502_ERROR, actual.reason)
+
+    @testing.gen_test
+    def test_issue_96(self):
+        '''
+        This is a regression test for GitHub issue #96.
+
+        In this issue, cross-references to Notation resources were found to be incorrect. This test
+        is to guarantee proper behaviour for the /browse/ URL.
+
+        NOTE: the important part is the "resources" URL generated for the "notation_style" xref.
+        '''
+        self.solr.search_se.add('id:3895', {'type': 'notation', 'name': 'German - neumatic', 'id': '3895'})
+        self.solr.search_se.add('id:123', {'type': 'source', 'id': '123', 'notation_style_id': '3895'})
+        headers = {'X-Cantus-Include-Resources': 'true'}
+        exp_ids = ['123']
+
+        actual = yield self.http_client.fetch(self.get_url('/browse/'), method='SEARCH',
+            allow_nonstandard_methods=True, body=b'{"query":"+id:123"}', headers=headers)
+
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        assert exp_ids == actual['sort_order']
+        assert actual['resources']['123']['notation_style'] == 'https://cantus.org/notations/3895/'
 
 
 class TestBadRequestHeadersSimple(test_get_integration.TestBadRequestHeadersSimple):

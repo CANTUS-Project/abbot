@@ -452,6 +452,34 @@ class TestComplex(TestSimple):
         }
 
     @testing.gen_test
+    def test_issue_96(self):
+        '''
+        This is a regression test for GitHub issue #96.
+
+        In this issue, cross-references to Notation resources were found to be incorrect. This test
+        is to guarantee proper behaviour for the /sources/ URL.
+
+        NOTE: the important part is the "resources" URL generated for the "notation_style" xref.
+
+        - results include xreffed fields
+        - must look up an Indexer (which is xreffed as a list)
+        - must look up a Century (which is xreffed as a single ID
+        - includes "resources" block
+        '''
+        self.solr.search_se.add('id:3895', {'type': 'notation', 'name': 'German - neumatic', 'id': '3895'})
+        self.solr.search_se.add('id:*', {'type': 'source', 'id': '123', 'notation_style_id': '3895'})
+        headers = {'X-Cantus-Include-Resources': 'true'}
+        exp_ids = ['123']
+
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"+id:*"}', headers=headers)
+
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        assert exp_ids == actual['sort_order']
+        assert actual['resources']['123']['notation_style'] == 'https://cantus.org/notations/3895/'
+
+    @testing.gen_test
     def test_xref_no_resources(self):
         '''
         Same as previous test BUT doesn't include "resources" block
