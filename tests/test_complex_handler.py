@@ -177,6 +177,24 @@ class TestLookUpXrefs(shared.TestHandler):
         actual = self.handler._lookup_name_for_response(in_val)
         self.assertEqual(expected, actual)
 
+    @testing.gen_test
+    def test_issue_96(self):
+        '''
+        This is a regression test for GitHub issue 96.
+
+        In this issue, cross-references to Notation resources were found to be incorrect. This test
+        is to guarantee that look_up_xrefs() uses the "type" member of the LOOKUP object.
+        '''
+        record = {'id': '123656', 'notation_style_id': '3895'}
+        self.solr.search_se.add('id:3895', {'id': '3895', 'name': 'German - neumatic'})
+        expected = ({'id': '123656', 'notation_style': 'German - neumatic'},
+                    {'notation_style': 'https://cantus.org/notations/3895/'})
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
 
 class TestMakeExtraFields(shared.TestHandler):
     '''

@@ -146,9 +146,9 @@ class ComplexHandler(simple_handler.SimpleHandler):
                     # X-Cantus-No-Xref: true
                     post[field] = record[field]
 
-                # fill in "reources" URLs
+                # fill in "resources" URLs
                 if self.hparams['include_resources']:
-                    plural = util.singular_resource_to_plural(LOOKUP[field].replace_to)
+                    plural = util.singular_resource_to_plural(LOOKUP[field].type)
                     if isinstance(record[field], (list, tuple)):
                         resource_url = [self.make_resource_url(x, plural) for x in record[field]]
                     else:
