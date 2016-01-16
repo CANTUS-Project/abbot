@@ -84,7 +84,7 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-No-Xref': 'code yellow',
                                                   'X-Cantus-Fields': 'code black'})
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        actual = SimpleHandler(self.get_app(), request, type_name='feast')
         self.assertEqual('code red', actual.hparams['include_resources'])
         self.assertEqual('code blue', actual.hparams['per_page'])
         self.assertEqual('code green', actual.hparams['page'])
@@ -103,7 +103,7 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Fields': 'code black'},
                                          body='{}')
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        actual = SimpleHandler(self.get_app(), request, type_name='feast')
         self.assertEqual('code red', actual.hparams['include_resources'])
         self.assertEqual('code blue', actual.hparams['per_page'])
         self.assertEqual('code green', actual.hparams['page'])
@@ -128,7 +128,7 @@ class TestInitialize(shared.TestHandler):
                                                '"fields": "black code",'
                                                '"query": "whatever"}')
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        actual = SimpleHandler(self.get_app(), request, type_name='feast')
         self.assertEqual('red code', actual.hparams['include_resources'])
         self.assertEqual('blue code', actual.hparams['per_page'])
         self.assertEqual('green code', actual.hparams['page'])
@@ -149,7 +149,7 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Fields': 'code black'},
                                          body='{include_resources: "red code"}')
         request.connection = mock.Mock()  # required for Tornado magic things
-        actual = SimpleHandler(self.get_app(), request, type_name='twist')
+        actual = SimpleHandler(self.get_app(), request, type_name='feast')
         self.assertIsNone(actual.hparams['search_query'])
         mock_send_error.assert_called_once_with(400, reason=simple_handler._MISSING_SEARCH_BODY)
 

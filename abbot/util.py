@@ -97,8 +97,9 @@ def singular_resource_to_plural(singular):
     "feasts" or "centuries").
 
     :param str singular: The resource type's name in singular form.
-    :returns: The resource type's name in plural form, or ``None`` if the resource type cannot be
-        converted.
+    :returns: The resource type's name in plural form.
+    :rtype: str
+    :raises: :exc:`KeyError` if the resource type cannot be converted.
 
     **Examples**
 
@@ -127,10 +128,7 @@ def singular_resource_to_plural(singular):
                    '*': '*',
                   }
 
-    if singular in conversions:
-        return conversions[singular]
-    else:
-        return None
+    return conversions[singular]
 
 
 def prepare_formatted_sort(sort):

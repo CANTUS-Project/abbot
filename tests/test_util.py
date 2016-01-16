@@ -55,12 +55,10 @@ class TestSingularResourceToPlural(TestCase):
         "When the singular form has a corresponding pural."
         assert 'feasts' == util.singular_resource_to_plural('feast')
 
-    @given(strats.text())
-    def test_singular_resource_to_plural_2(self, convert_me):
+    def test_singular_resource_to_plural_2(self):
         "When the singular form doesn't have a corresponding plural."
-        # It's possible to get things that will convert, but unlikely... except for '*'
-        assume('*' != convert_me)
-        self.assertIsNone(util.singular_resource_to_plural(convert_me))
+        with pytest.raises(KeyError):
+            self.assertIsNone(util.singular_resource_to_plural('Franklin is a turtle.'))
 
 
 class TestSolrAskers(shared.TestHandler):
