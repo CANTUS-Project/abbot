@@ -578,33 +578,179 @@ def run_subqueries(components):
     532. This function uses the order of subquery results to determine term boosting values, joining
     both "filling" IDs with an OR.
     '''
-
     reffed_comps = []
 
-    for comp in components:
+    enumerator = enumerate(components)
+    for i, comp in enumerator:
         if comp[0] not in TRANSFORM_FIELDS:
             reffed_comps.append(comp)
         else:
             field = comp[0]
-            results = yield search_solr('type:{} AND ({})'.format(field, comp[1]))
-            if not results:
-                raise InvalidQueryError('No results for cross-referenced field "{}"'.format(field))
 
-            max_boost = len(results)  # so the min_boost is 1
-            if max_boost == 1:
-                reffed_comps.append((TRANSFORM_FIELDS[field], results[0]['id']))
-            else:
-                subq_ids = []
+            if comp[1] == '':
+                # we have a situation like this:
+                #    century:(20th OR 21st)
+
+                # first use our helper function to figure out what this subquery should be
+                grouped = _make_xref_group(components, i)
+                results = yield search_solr(grouped[0])
+
+                if not results:
+                    raise InvalidQueryError('No results for cross-referenced field "{}"'.format(field))
+
+                # Now skip through this subquery.
+                # The try/except deals with the subquery consuming the rest of the list.
+                # We have to do "minus one" on grouped[1] because it also counts the current element,
+                # which is part of this weird subquery.
+                try:
+                    for _ in range(grouped[1] - 1):
+                        zell = enumerator.__next__()
+                except StopIteration:
+                    pass
+
+                # and build the query
                 field_name = TRANSFORM_FIELDS[field]
-                for i, result in enumerate(results):
-                    subq_ids.append('{field}:{id}^{boost}'.format(
-                        field=field_name,
-                        id=result['id'],
-                        boost=(max_boost - i)
-                    ))
+                subq_ids = ['{name}:{id}'.format(name=field_name, id=res['id']) for res in results]
                 reffed_comps.append(('default', '({})'.format(' OR '.join(subq_ids))))
 
+            else:
+                results = yield search_solr('type:{} AND ({})'.format(field, comp[1]))
+
+                if not results:
+                    raise InvalidQueryError('No results for cross-referenced field "{}"'.format(field))
+
+                max_boost = len(results)  # so the min_boost is 1
+                if max_boost == 1:
+                    reffed_comps.append((TRANSFORM_FIELDS[field], results[0]['id']))
+                else:
+                    subq_ids = []
+                    field_name = TRANSFORM_FIELDS[field]
+                    for i, result in enumerate(results):
+                        subq_ids.append('{field}:{id}^{boost}'.format(
+                            field=field_name,
+                            id=result['id'],
+                            boost=(max_boost - i)
+                        ))
+                    reffed_comps.append(('default', '({})'.format(' OR '.join(subq_ids))))
+
     return reffed_comps
+
+
+def _make_xref_group(components, start):
+    '''
+    Given a list of query components and the index at which to start in the list, parse out the
+    query for a cross-referenced subquery.
+
+    This is a helper function for :func:`run_subqueries`. See below for examples.
+
+    :param components: The output of :func:`parse_query_components`.
+    :type components: list of str and 2-tuple of str
+    :param int start: The index at which the subquery starts.
+    :returns: The subquery for submission, and how many elements it used in ``components``.
+    :rtype: (str, int)
+    :raises: :exc:`ValueError` when the query is somehow malformed (that is: unmatched or incorrect
+        parentheses)
+
+
+    **Explanation**
+
+    This function is intended for a very specific situation: query components on a cross-referenced
+    field where the user submits something like this:
+
+        century:(20th OR 21st)
+
+    Such a query will come into :func:`run_subqueries` like this:
+
+        [('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')']
+
+    Which requires some extra parsing before :func:`run_subqueries` can run the subquery. This
+    function does that extra parsing.
+
+
+    **Return Values**
+
+    This function returns a 2-tuple. The first element is a string with the subquery, for direct
+    submission to Solr. The second element is the number of elements in the ``components`` argument
+    that are consumed by the subquery. This number of elements, therefore, no longer need to be
+    processed by the calling function (:func:`run_subqueries`).
+
+
+    **Simple Example**
+
+    With this query from the user:
+
+        century:(20th OR 21st)
+
+    You will have this input to :func:`run_subqueries`:
+
+        components = [('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')']
+
+    Which leads to this call to this function:
+
+        _make_xref_group(components, 0)
+
+    Which leads a return value like this:
+
+        ('century:(20th OR 21st)', 6)
+
+    So that :func:`run_subqueries` skips six elements in the list, reaches the end, and finishes.
+
+
+    **Complicated Example**
+
+    With this query from the user:
+
+        incipit:deus* AND century:(20th OR 21st) AND genre:antiphon
+
+    You will have this input to :func:`run_subqueries`:
+
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')',
+            ('genre', 'antiphon')
+        ]
+
+    Which leads to this call to this function:
+
+        _make_xref_group(components, 2)
+
+    Which leads a return value like this:
+
+        ('century:(20th OR 21st)', 6)
+
+    So that :func:`run_subqueries` skips six elements in the list, and continues running subqueries
+    at index 8, which is the "genre:antiphon" subquery.
+    '''
+
+    ERR_MSG = 'Something weird happened in a subquery.'
+
+    try:
+        # the first two things must be a field name and (
+        if components[start + 1] != '(':
+            raise ValueError(ERR_MSG)
+
+        # then find out how many elements are consumed by this subquery group
+        consumed = 2
+        open_parens = 1
+        for elem in components[(start + 2):]:
+            consumed += 1
+
+            if elem == '(':
+                open_parens += 1
+            elif elem == ')':
+                open_parens -= 1
+
+            if open_parens == 0:
+                break
+
+        # by this point, all the parentheses should be closed
+        if open_parens > 0:
+            raise ValueError(ERR_MSG)
+        else:
+            return (assemble_query(components[start:(start+consumed)]), consumed)
+
+    except IndexError:
+        raise ValueError(ERR_MSG)
 
 
 def assemble_query(components):

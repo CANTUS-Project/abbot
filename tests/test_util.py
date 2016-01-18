@@ -768,6 +768,104 @@ class TestQueryParserSync(TestCase):
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
+    def test_xref_group_1(self):
+        '''
+        It works with this query from the user:
+            "century:(20th OR 21st)"
+        '''
+        components = [('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')']
+        start = 0
+        expected = ('century:  ( 20th  OR 21st  ) ', 6)
+
+        actual = util._make_xref_group(components, start)
+
+        assert expected == actual
+
+    def test_xref_group_2(self):
+        '''
+        It works with this query from the user:
+            "incipit:deus* AND century:(20th OR 21st) AND genre:antiphon"
+        '''
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')',
+            ('genre', 'antiphon')
+        ]
+        start = 2
+        expected = ('century:  ( 20th  OR 21st  ) ', 6)
+
+        actual = util._make_xref_group(components, start)
+
+        assert expected == actual
+
+    def test_xref_group_3(self):
+        '''
+        It works with this (admittedly nonsense) query from the user:
+            "century:(20th OR (19th AND 21st) OR 18th)"
+        '''
+        components = [
+            ('century', ''), '(',
+            ('default', '20th'), 'OR', '(',
+            ('default', '19th'), 'AND', ('default', '21st'), ')', 'OR',
+            ('default', '18th'), ')'
+        ]
+        start = 0
+        expected = ('century:  ( 20th  OR  ( 19th  AND 21st  )  OR 18th  ) ', 12)
+
+        actual = util._make_xref_group(components, start)
+
+        assert expected == actual
+
+    def test_xref_group_4(self):
+        '''
+        It complains about this query from the user:
+            "incipit:deus* AND century: ! 20th OR 21st) AND genre:antiphon"
+
+        ... which should never get to this point anyway.
+        '''
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '!', ('default', '20th'), 'OR', ('default', '21st'), ')',
+            ('genre', 'antiphon')
+        ]
+        start = 2
+
+        with pytest.raises(ValueError):
+            actual = util._make_xref_group(components, start)
+
+    def test_xref_group_5(self):
+        '''
+        It complains about this query from the user:
+            "incipit:deus* AND century:(20th OR 21st AND genre:antiphon"
+
+        ... which should never get to this point anyway.
+        '''
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'),
+            ('genre', 'antiphon')
+        ]
+        start = 2
+
+        with pytest.raises(ValueError):
+            actual = util._make_xref_group(components, start)
+
+    def test_xref_group_6(self):
+        '''
+        It complains (properly) when it gets a "start" argument that's too large.
+
+        ... which should never get to this point anyway.
+        '''
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'),
+            ('genre', 'antiphon')
+        ]
+        start = 40
+
+        with pytest.raises(ValueError):
+            actual = util._make_xref_group(components, start)
+
 
 class TestQueryParserAsync(shared.TestHandler):
     '''
@@ -889,6 +987,80 @@ class TestQueryParserAsync(shared.TestHandler):
         actual = yield util.run_subqueries(components)
 
         self.assertEqual(expected, actual)
+
+    @testing.gen_test
+    def test_run_subqueries_8(self):
+        '''
+        Complicated thing from this query:
+
+            "incipit:deus* AND century:(20th OR 21st)"
+
+        (Ensure the weird subquery works when it's at the end of the query).
+        '''
+        exp_subquery = 'century:  ( 20th  OR 21st  ) '
+        self.solr.search_se.add(exp_subquery, {'id': '666', 'type': 'century'})
+        self.solr.search_se.add(exp_subquery, {'id': '777', 'type': 'century'})
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')'
+        ]
+        expected = [('incipit', 'deus*'), 'AND', ('default', '(century_id:666 OR century_id:777)')]
+
+        actual = yield util.run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+
+    @testing.gen_test
+    def test_run_subqueries_9(self):
+        '''
+        Complicated thing from this query:
+
+            "incipit:deus* AND century:(20th OR 21st) AND genre:antiphon"
+
+        (Ensure the weird subquery works when it's in the middle of the query).
+        '''
+        exp_subquery = 'century:  ( 20th  OR 21st  ) '
+        self.solr.search_se.add(exp_subquery, {'id': '666', 'type': 'century'})
+        self.solr.search_se.add(exp_subquery, {'id': '777', 'type': 'century'})
+        self.solr.search_se.add('genre', {'id': '4567', 'type': 'genre'})
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')',
+            ('genre', 'antiphon')
+        ]
+        expected = [
+            ('incipit', 'deus*'), 'AND',
+            ('default', '(century_id:666 OR century_id:777)'),
+            ('genre_id', '4567')
+        ]
+
+        actual = yield util.run_subqueries(components)
+
+        self.assertEqual(expected, actual)
+
+    @testing.gen_test
+    def test_run_subqueries_10(self):
+        '''
+        Complicated thing that returns no results, from this query:
+
+            "incipit:deus* AND century:(20th OR 21st) AND genre:antiphon"
+
+        (Ensure the weird subquery works when it's in the middle of the query).
+        '''
+        exp_subquery = 'century:  ( 20th  OR 21st  ) '
+        components = [
+            ('incipit', 'deus*'), 'AND',
+            ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')',
+            ('genre', 'antiphon')
+        ]
+        expected = [
+            ('incipit', 'deus*'), 'AND',
+            ('default', '(century_id:666 OR century_id:777)'),
+            ('genre_id', '4567')
+        ]
+
+        with pytest.raises(util.InvalidQueryError):
+            actual = yield util.run_subqueries(components)
 
 
 class TestVerifyResourceId(object):
