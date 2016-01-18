@@ -40,9 +40,6 @@ from abbot import simple_handler
 import test_get_integration
 
 
-# TODO: a test that requires complicated parsing
-
-
 class TestSimple(test_get_integration.TestSimple):
     '''
     Runs the GET method's TestSimple suite with the SEARCH HTTP method.
@@ -245,6 +242,72 @@ class TestComplex(test_get_integration.TestComplex):
         actual = escape.json_decode(actual.body)
         assert exp_ids == actual['sort_order']
         assert actual['resources']['123']['notation_style'] == 'https://cantus.org/notations/3895/'
+
+    @testing.gen_test
+    def test_complicated_query(self):
+        '''
+        Works properly with a complicated query.
+
+        There are:
+        - some booleans in the search query
+        - some grouping with ( ) in the search query
+        - two subqueries, each with two results
+        - two results to the main query, which are Source resources
+        - those two results require looking up different cross-referenced fields
+        '''
+        # We need to make these available textually (for the subquery) and by ID (for the xref).
+        # NOTE that by using the full "expected" call up here, we implicitly make an assertion about
+        #      how Solr was called, so we don't need to check it later.
+        # NOTE that we have to put the + in front of the "id" later, or else the xref queries will
+        #      interfere with the main query. That is, "id:829" matches both "+id:829" and "century_id:829",
+        #      so that "id:829" without the + sign will inadvertently return the century as part of
+        #      the main query
+        exp_century_call = 'century:  ( 20th  OR 21st  ) '
+        self.solr.search_se.add(exp_century_call, {'type': 'century', 'id': '829', 'name': '20th century'})
+        self.solr.search_se.add(exp_century_call, {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('+id:829', {'type': 'century', 'id': '829', 'name': '20th century'})
+        self.solr.search_se.add('+id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
+        #
+        self.solr.search_se.add(
+            'type:notation_style AND (square)',
+            {'type': 'notation', 'id': '757', 'name': 'square notation'}
+        )
+        self.solr.search_se.add(
+            'type:notation_style AND (triangle)',
+            {'type': 'notation', 'id': '767', 'name': 'triangle notation'}
+        )
+        self.solr.search_se.add('+id:757', {'type': 'notation', 'id': '757', 'name': 'square notation'})
+        self.solr.search_se.add('+id:767', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
+        # for the "NOT"
+        self.solr.search_se.add('19th', {'type': 'century', 'id': '800', 'name': '19th century'})
+        # results of the main query itself
+        self.solr.search_se.add('type:source', {'type': 'source', 'id': '4412', 'century_id': '829', 'notation_style_id': '757'})
+        self.solr.search_se.add('type:source', {'type': 'source', 'id': '4413', 'century_id': '830', 'notation_style_id': '767'})
+        #
+        query = 'century:(20th OR 21st) && (notation_style:square OR notation_style:triangle) NOT century:19th'
+
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              body=bytes('{{"query":"{}"}}'.format(query), encoding='utf-8'))
+
+        self.check_standard_header(actual)
+        # check how Solr was called for the main query
+        self.solr.search.assert_any_call(
+            ' +type:source (century_id:829 OR century_id:830)  &&  ( notation_style_id:757  OR notation_style_id:767  )  NOT century_id:800 ',
+            df='default_search', rows=10)
+        # check the right results were returned
+        actual = escape.json_decode(actual.body)
+        assert actual['sort_order'] == ['4412', '4413']
+        for each_id in actual['sort_order']:
+            assert 'self' in actual['resources'][each_id]
+            assert 'century' in actual['resources'][each_id]
+            assert 'notation_style' in actual['resources'][each_id]
+            #
+            assert 'id' in actual[each_id]
+            assert 'type' in actual[each_id]
+            assert 'century' in actual[each_id]
+            assert 'notation_style' in actual[each_id]
 
 
 class TestBadRequestHeadersSimple(test_get_integration.TestBadRequestHeadersSimple):
