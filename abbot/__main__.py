@@ -33,12 +33,13 @@ from tornado.options import define, options
 from tornado.options import Error as OptionsError
 
 from systemdream.journal import handler as journalctl
+from tornado_systemd import SystemdHTTPServer
 
 import abbot
 from abbot.handlers import CanonicalHandler, RootHandler, EverythingElseHandler
 from abbot.simple_handler import SimpleHandler
 from abbot.complex_handler import ComplexHandler
-from abbot.systemd_http_server import SystemdHTTPServer
+
 
 define('port', default=8888, type=int,
        help='port for Abbot to listen on, between 1024 and 32768')
