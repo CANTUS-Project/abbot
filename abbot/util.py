@@ -505,8 +505,6 @@ def parse_query(query):
             field = term.children[1].children[0]
 
             if field.expr_name == 'named_field':
-                if field.children[0].expr_name != 'field_name' or field.children[2].expr_name != 'field_value':
-                    raise InvalidQueryError(_INVALID_QUERY)
                 if field.children[2].children[0].expr_name == 'grouped_term_list':
                     post.append((field.children[0].text, ''))
                     post.append('(')
@@ -525,12 +523,6 @@ def parse_query(query):
                     post.append(')')
                 else:
                     post.append(('default', field.text))
-
-            else:  # ???
-                raise InvalidQueryError(_INVALID_QUERY)
-
-        else:  # ???
-            raise InvalidQueryError(_INVALID_QUERY)
 
     return post
 
