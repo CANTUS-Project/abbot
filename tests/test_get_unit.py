@@ -285,6 +285,34 @@ class TestBasicGetSimple(shared.TestHandler):
         for i, each_id in enumerate(exp_ids):
             assert actual[each_id]['drupal_path'] == exp_urls[i]
 
+    @testing.gen_test
+    def test_invalid_resource_1(self):
+        '''
+        When the resource returned doesn't have an "id" field.
+        '''
+        self.solr.search_se.add('*', {'type': 'feast'})
+        self.handler.send_error = mock.Mock()
+        expected = (None, 0)
+
+        actual = yield self.handler.basic_get()
+
+        assert expected == actual
+        self.handler.send_error.assert_called_with(502, reason=simple_handler._RESOURCE_MISSING_ID)
+
+    @testing.gen_test
+    def test_invalid_resource_2(self):
+        '''
+        When the resource returned doesn't have a "type" field.
+        '''
+        self.solr.search_se.add('*', {'id': '123'})
+        self.handler.send_error = mock.Mock()
+        expected = (None, 0)
+
+        actual = yield self.handler.basic_get()
+
+        assert expected == actual
+        self.handler.send_error.assert_called_with(502, reason=simple_handler._RESOURCE_MISSING_TYPE)
+
 
 class TestGetSimple(shared.TestHandler):
     '''

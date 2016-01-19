@@ -387,6 +387,30 @@ class TestSimple(shared.TestHandler):
         assert actual.code == 502
         assert actual.reason == simple_handler._SOLR_502_ERROR
 
+    @testing.gen_test
+    def test_invalid_resource_1(self):
+        '''
+        When the resource returned doesn't have an "id" field.
+        '''
+        self.solr.search_se.add('*', {'type': 'feast'})
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
+
+        assert actual.code == 502
+        assert actual.reason == simple_handler._RESOURCE_MISSING_ID
+
+    @testing.gen_test
+    def test_invalid_resource_2(self):
+        '''
+        When the resource returned doesn't have a "type" field.
+        '''
+        self.solr.search_se.add('*', {'id': '123'})
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
+
+        assert actual.code == 502
+        assert actual.reason == simple_handler._RESOURCE_MISSING_TYPE
+
 
 class TestComplex(TestSimple):
     '''

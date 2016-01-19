@@ -83,6 +83,10 @@ _NO_SEARCH_RESULTS = 'SEARCH query returned no results'
 _INVALID_SEARCH_QUERY = 'SEARCH query is malformed'
 # when the resource ID is invalid
 _INVALID_ID = util._INVALID_ID
+# when the resource from Solr doesn't have an "id" field
+_RESOURCE_MISSING_ID = 'Solr returned a resource without an "id" field.'
+# when the resource from Solr doesn't have a "type" field
+_RESOURCE_MISSING_TYPE = 'Solr returned a resource without a "type" field.'
 
 
 class SimpleHandler(web.RequestHandler):
@@ -381,7 +385,17 @@ class SimpleHandler(web.RequestHandler):
 
         # format the query --------------------------------
         if resp.docs:
-            post = {record['id']: self.format_record(record) for record in resp}
+            post = {}
+            for record in resp:
+                if 'id' not in record:
+                    self.send_error(502, reason=_RESOURCE_MISSING_ID)
+                    return _NONE_ZERO
+                elif 'type' not in record:
+                    self.send_error(502, reason=_RESOURCE_MISSING_TYPE)
+                    return _NONE_ZERO
+                else:
+                    post[record['id']] = self.format_record(record)
+
             number_of_records = len(post)
             post['sort_order'] = [record['id'] for record in resp]
         else:
