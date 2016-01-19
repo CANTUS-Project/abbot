@@ -411,7 +411,7 @@ class TestBasicGetComplex(TestBasicGetSimple):
         self._complex = True
 
 
-class TestGetComplex(TestBasicGetSimple):
+class TestGetComplex(TestGetSimple):
     '''
     Run all the TestGetSimple unit tests with a ComplexHandler instead.
 
