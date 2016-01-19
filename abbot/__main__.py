@@ -112,17 +112,13 @@ HANDLERS = [
     ]
 
 
-# TODO: too many branches
-# TODO: too many statements
-def main():
+def _load_options():
     '''
-    This function creates a Tornado Web Application listening on the specified port, then starts
-    an event loop and blocks until the event loop finishes.
+    Load options from the command line and from any configuration file.
+
+    :raises: :exc:`SystemExit` if a command line option cannot be parsed
+    :raises: :exc:`SystemExit` if the path a configuration file is given but it cannot be loaded
     '''
-
-    # Job #1: logging. It's not "quality," contrary to what Ford says.
-    logging.root.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='abbot'))
-
     # parse commandline options
     try:
         options.parse_command_line(final=False)
@@ -134,19 +130,32 @@ def main():
     if len(options.options_file) > 1:
         try:
             options.parse_config_file(options.options_file, final=True)
-        except FileNotFoundError:
+        except (FileNotFoundError, OptionsError):
             print('Could not find the options file "{}"\nQuitting.'.format(options.options_file))
-            return
+            raise SystemExit(1)
+
+
+def _print_and_exit_things(starting_msg):  # pragma: no cover
+    '''
+    Show one of the "print and exit" messages, if required.
+
+    Those messages include:
+    - licence,
+    - copyright,
+    - about, and
+    - version
+
+    :param str starting_msg: The message printed to the system log when Abbot starts.
+
+    :raises: :exc:`SystemExit` if any of the "print and exit" messages were triggered.
+    '''
+    # Maybe I'm just being sloppy, but I really don't expect anybody to use this ever, and if it
+    # does break, well, the world won't end. So there are no tests. Sue me.
 
     # to allow --copyright, --license, and --licence to work identically
     if options.license or options.copyright:
         options.licence = True
 
-    # print the standard header
-    starting_msg = 'Abbot Server {server} for Cantus API {api} is starting up!'.format(
-        server=abbot.__version__,
-        api=abbot.__cantus_version__)
-    log.app_log.warning(starting_msg)
     if options.debug or options.about or options.licence or options.version:
         print(starting_msg)
 
@@ -159,17 +168,22 @@ def main():
               'Abbot, the Cantus API, and the Cantus Database, at http://cantusdatabase.org/.')
     if options.licence or options.about:
         # thing about the licence
-        print('\nAbbot Copyright (C) 2015 Christopher Antila\n'
+        print('\nAbbot Copyright (C) 2015, 2016 Christopher Antila\n'
               'This program comes with ABSOLUTELY NO WARRANTY\n'
               'This is free software, and you are welcome to redistribute it under\n'
               'certaion conditions (Affero General Public Licence, version 3 or later).\n'
               'For details, refer to the LICENSE file or https://gnu.org/licenses/agpl-3.0.html\n'
               'Although the source code is included with Abbot, you may access our source code\n'
               'repository at https://github.com/CANTUS-Project/abbot/\n')
-    if options.about or options.licence or options.version:
-        return
 
-    # Job #1.5: because Tornado doesn't seem to do its job, we need to set the logging level
+    if options.about or options.licence or options.version:
+        raise SystemExit(0)
+
+
+def _set_log_level():
+    '''
+    Set the log level. Defaults to WARN.
+    '''
     log_level = str(options.logging).lower()
     if log_level == 'debug':
         log.access_log.setLevel(logging.DEBUG)
@@ -179,20 +193,33 @@ def main():
         log.access_log.setLevel(logging.INFO)
         log.app_log.setLevel(logging.INFO)
         log.gen_log.setLevel(logging.INFO)
+    elif log_level == 'error':
+        log.access_log.setLevel(logging.ERROR)
+        log.app_log.setLevel(logging.ERROR)
+        log.gen_log.setLevel(logging.ERROR)
     else:
         log.access_log.setLevel(logging.WARN)
         log.app_log.setLevel(logging.WARN)
         log.gen_log.setLevel(logging.WARN)
 
+
+
+def _set_addresses():
+    '''
+    Set the server's Web address and port.
+
+    :raises: :exc:`SystemExit` if the port is not between 1024 and 32768.
+    :raises: :exc:`SystemExit` if the scheme is not "http" or "https".
+    '''
     # check port is okay
     if not isinstance(options.port, int) or options.port < 1024 or options.port > 32768:
-        print('Invalid port ({}). Choose a port between 1024 and 32768.\nExiting.'.format(options.port))
-        return
+        log.app_log.error('Invalid port ({}). Choose a port between 1024 and 32768.\nExiting.'.format(options.port))
+        raise SystemExit(1)
 
     # check URL access scheme
     if options.scheme.lower() not in ('http', 'https'):
-        print('Invalid access scheme ({}). Require "http" or "https"'.format(options.scheme))
-        return
+        log.app_log.error('Invalid access scheme ({}). Require "http" or "https"'.format(options.scheme))
+        raise SystemExit(1)
 
     # set the server_name option
     options.server_name = '{scheme}://{hostname}:{port}/'.format(
@@ -200,8 +227,29 @@ def main():
         hostname=options.hostname,
         port=options.port)
 
-    if options.debug:
-        print('Listening on {}'.format(options.server_name))
+    log.app_log.debug('Listening on {}'.format(options.server_name))
+
+
+def main():  # pragma: no cover
+    '''
+    This function creates a Tornado Web Application listening on the specified port, then starts
+    an event loop and blocks until the event loop finishes.
+    '''
+
+    # Job #1: logging. It's not "quality," contrary to what Ford says.
+    logging.root.addHandler(journalctl.JournalHandler(SYSLOG_IDENTIFIER='abbot'))
+
+    _load_options()
+
+    # print the standard header
+    starting_msg = 'Abbot Server {server} for Cantus API {api}.'.format(
+        server=abbot.__version__,
+        api=abbot.__cantus_version__)
+    log.app_log.warning(starting_msg)
+
+    _print_and_exit_things(starting_msg)
+    _set_log_level()
+    _set_addresses()
 
     # prepare settings for the HTTPServer
     settings = {'debug': options.debug,
@@ -211,14 +259,11 @@ def main():
     server = SystemdHTTPServer(web.Application(handlers=HANDLERS, settings=settings))
     server.listen(options.port)
 
-    if options.debug:
-        print('')
-
     try:
         ioloop.IOLoop.current().start()
     except KeyboardInterrupt:
         raise SystemExit(0)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()
