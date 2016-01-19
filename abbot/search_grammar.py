@@ -82,12 +82,8 @@ def it_parses(it, reraise=False):
     '''
     try:
         result = SEARCH_GRAMMAR.parse(it)
-        if reraise:
-            print(str(result))
         return True
     except (exceptions.ParseError, exceptions.IncompleteParseError, exceptions.VisitationError) as exc:
-        if reraise:
-            raise exc
         return False
 
 
