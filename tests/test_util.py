@@ -1103,3 +1103,11 @@ class TestVerifyResourceId(object):
         with pytest.raises(ValueError) as excinfo:
             util._verify_resource_id('_ejlk2458')
         assert util._INVALID_ID in str(excinfo.value)
+        #
+        with pytest.raises(ValueError) as excinfo:
+            util._verify_resource_id('e@e')
+        assert util._INVALID_ID in str(excinfo.value)
+        #
+        with pytest.raises(ValueError) as excinfo:
+            util._verify_resource_id('kjhlea!kljhtkjhe')
+        assert util._INVALID_ID in str(excinfo.value)
