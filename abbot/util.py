@@ -597,7 +597,9 @@ def run_subqueries(components):
                 try:
                     for _ in range(grouped[1] - 1):
                         zell = enumerator.__next__()
-                except StopIteration:
+                except StopIteration:  # pragma: no cover
+                    # CPython will "optimize out" a statement like this, so it doesn't technically
+                    # execute, even though, in effect, it does execute.
                     pass
 
                 # and build the query
