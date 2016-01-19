@@ -91,8 +91,7 @@ class TestLookUpXrefs(shared.TestHandler):
     def test_field_not_found_1(self):
         "when the xreffed field is a string, but it's not found in Solr"
         record = {'id': '123656', 'provenance_id': '3624'}
-        expected = ({'id': '123656'},
-                    {})
+        expected = ({'id': '123656'}, {})
 
         actual = yield self.handler.look_up_xrefs(record)
 
@@ -104,8 +103,7 @@ class TestLookUpXrefs(shared.TestHandler):
     def test_field_not_found_2(self, ):
         "when the xreffed field is a list of strings, but nothing is ever found in Solr"
         record = {'id': '123656', 'proofreaders': ['124104']}
-        expected = ({'id': '123656'},
-                    {})
+        expected = ({'id': '123656'}, {})
 
         actual = yield self.handler.look_up_xrefs(record)
 

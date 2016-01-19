@@ -141,7 +141,16 @@ class ComplexHandler(simple_handler.SimpleHandler):
                         if resp:
                             post[replace_to] = resp[0][LOOKUP[field].replace_with]
                         else:
-                            continue  # avoid writing the "resources" block for a missing xref resource
+                            # In this issue...
+                            # https://bitbucket.org/ned/coveragepy/issues/198/
+                            # ... the Coverage.py people say that this situation (where a "suite"
+                            #     consists only of a "continue" statement) will be optimized in such
+                            #     a way that the "continue" statement isn't actually executed, and
+                            #     therefore cannot be properly checked by Coverage.py.
+                            # However, this branch is tested in test_field_not_found_1().
+
+                            # avoid writing the "resources" block for a missing xref resource
+                            continue  # pragma: no cover
                 else:
                     # X-Cantus-No-Xref: true
                     post[field] = record[field]
