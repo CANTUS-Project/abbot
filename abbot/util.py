@@ -513,15 +513,15 @@ def parse_query(query):
                 else:
                     post.append((field.children[0].text, field.children[2].text))
 
-            elif field.expr_name == 'default_field':
-                post.append(('default', field.text))
-
             elif field.expr_name == 'field_value':
                 if field.children[0].expr_name == 'grouped_term_list':
                     post.append('(')
                     post.extend(parse_query(field))
                     post.append(')')
                 else:
+                    # This means "default_field"... because the rule for that is currently...
+                    #   default_field = field_value
+                    # ... so at this level, a field named "default_field" won't happen.
                     post.append(('default', field.text))
 
     return post
