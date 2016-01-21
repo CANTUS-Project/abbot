@@ -307,12 +307,17 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         super(TestRequestWrapper, self).setUp()
         self._log_patcher = mock.patch('abbot.util.log')
         self._log = self._log_patcher.start()
+        self._options_patcher = mock.patch('abbot.util.options')
+        self._options = self._options_patcher.start()
+        #
+        self._options.debug = True
 
     def tearDown(self):
         '''
         Remove the mock from the global "options" modules.
         '''
         self._log_patcher.stop()
+        self._options_patcher.stop()
         super(TestRequestWrapper, self).tearDown()
 
     @testing.gen_test
@@ -346,14 +351,16 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         self.assertEqual(0, some.send_error.call_count)
 
     @testing.gen_test
-    def test_request_failure(self):
+    def test_request_failure_1(self):
         '''
         - func() raises IndexError
+        - options.debug is True
         - log.debug() called with the message
         - self.send_error(500, reason='Programmer Error')
         '''
 
         # set up a handler
+        self._options.debug = True
         class SomeHandler(web.RequestHandler):
             def __init__(self):
                 pass
@@ -380,6 +387,39 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
             assert isinstance(each_call[0][0], str)
         assert 'Traceback' in self._log.debug.call_args_list[0][0][0]
         assert 'IndexError' in self._log.debug.call_args_list[-1][0][0]
+
+    @testing.gen_test
+    def test_request_failure_2(self):
+        '''
+        - func() raises IndexError
+        - options.debug is False
+        - log.debug() called with the message
+        - self.send_error(500, reason='Programmer Error')
+        '''
+
+        # set up a handler
+        self._options.debug = False
+        class SomeHandler(web.RequestHandler):
+            def __init__(self):
+                pass
+
+            @util.request_wrapper
+            @gen.coroutine
+            def get(self):
+                self.write('five')
+
+            write = mock.MagicMock(side_effect=IndexError)
+            send_error = mock.MagicMock()
+
+        # run the test
+        some = SomeHandler()
+        actual = yield some.get()
+
+        # check
+        self.assertIsNone(actual)
+        some.write.assert_called_once_with('five')
+        some.send_error.assert_called_once_with(500, reason='Programmer Error')
+        assert self._log.debug.call_count == 0
 
     @testing.gen_test
     def test_wrong_order(self):

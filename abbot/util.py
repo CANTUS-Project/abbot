@@ -369,12 +369,13 @@ def request_wrapper(func):
         try:
             yield func(self, *args, **kwargs)
         except (gen.BadYieldError, Exception) as exc:   # pylint: disable=broad-except
-            import traceback
-            tback = traceback.format_exception(type(exc), exc, None)
-            if isinstance(exc, gen.BadYieldError):
-                log.error('IMPORTANT: write the @request_wrapper decorator above @gen.coroutine')
-            for line in tback:
-                log.debug(line)
+            if options.debug:
+                import traceback
+                tback = traceback.format_exception(type(exc), exc, None)
+                if isinstance(exc, gen.BadYieldError):
+                    log.error('IMPORTANT: write the @request_wrapper decorator above @gen.coroutine')
+                for line in tback:
+                    log.debug(line)
 
             self.send_error(500, reason='Programmer Error')
 
