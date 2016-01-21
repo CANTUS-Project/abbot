@@ -66,7 +66,7 @@ class TestSimple(test_get_integration.TestSimple):
                                               allow_nonstandard_methods=True,
                                               body=b'{"query":"id:830"}')
 
-        self.solr.search.assert_called_with(' +type:{} id:830 '.format(self._type[0]),
+        self.solr.search.assert_called_with('type:{}  AND  ( id:830  ) '.format(self._type[0]),
             df='default_search', rows=10)
         self.check_standard_header(actual)
 
@@ -97,7 +97,7 @@ class TestSimple(test_get_integration.TestSimple):
                                               raise_error=False,
                                               body=b'{"query":"name:Todd"}')
 
-        self.solr.search.assert_called_with(' +type:{} name:Todd '.format(self._type[0]),
+        self.solr.search.assert_called_with('type:{}  AND  ( name:Todd  ) '.format(self._type[0]),
             df='default_search', rows=10)
         self.check_standard_header(actual)
         self.assertEqual(404, actual.code)
@@ -187,7 +187,7 @@ class TestComplex(test_get_integration.TestComplex):
         # as submitted by run_subqueries()
         self.solr.search.assert_any_call('type:century AND (21st)', df='default_search')
         # as submitted by the search itself
-        self.solr.search.assert_any_call(' +type:source century_id:830 ', df='default_search', rows=10)
+        self.solr.search.assert_any_call('type:source  AND  ( century_id:830  ) ', df='default_search', rows=10)
         # as submitted for the cross-reference
         self.solr.search.assert_any_call('+type:century +id:830', df='default_search')
         self.check_standard_header(actual)
@@ -212,7 +212,7 @@ class TestComplex(test_get_integration.TestComplex):
         # as submitted by run_subqueries()
         self.solr.search.assert_any_call('type:century AND (21st)', df='default_search')
         # as submitted by the search itself
-        self.solr.search.assert_any_call(' +type:source (century_id:830^3 OR century_id:831^2 OR century_id:832^1) ',
+        self.solr.search.assert_any_call('type:source  AND  ( (century_id:830^3 OR century_id:831^2 OR century_id:832^1)  ) ',
             df='default_search', rows=10)
         # as submitted for the cross-reference
         self.solr.search.assert_any_call('+type:century +id:830', df='default_search')
@@ -309,7 +309,7 @@ class TestComplex(test_get_integration.TestComplex):
         self.check_standard_header(actual)
         # check how Solr was called for the main query
         self.solr.search.assert_any_call(
-            ' +type:source (century_id:829 OR century_id:830)  &&  ( notation_style_id:757  OR notation_style_id:767  )  NOT century_id:800 ',
+            'type:source  AND  ( (century_id:829 OR century_id:830)  &&  ( notation_style_id:757  OR notation_style_id:767  )  NOT century_id:800  ) ',
             df='default_search', rows=10)
         # check the right results were returned
         actual = escape.json_decode(actual.body)

@@ -72,7 +72,7 @@ class TestSimple(shared.TestHandler):
         actual = yield self.handler.search_handler()
 
         assert expected == actual
-        mock_parse.assert_called_with('+type:century feast:celery genre:tasty')
+        mock_parse.assert_called_with('type:century AND (feast:celery genre:tasty)')
         mock_get_handler.assert_called_once_with(query=expected_final_query)
 
     @mock.patch('abbot.util.run_subqueries')

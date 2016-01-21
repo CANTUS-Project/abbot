@@ -117,7 +117,7 @@ class TestSimple(shared.TestHandler):
         assert actual.headers['X-Cantus-Sort'] == 'id,desc'
         # the query is modified before submission for a SEARCH query
         if self._method == 'SEARCH':
-            self.solr.search.assert_called_with(' +type:{} * '.format(self._type[0]), sort='id desc',
+            self.solr.search.assert_called_with('type:{}  AND  ( *  ) '.format(self._type[0]), sort='id desc',
                 start=4, rows=4, df='default_search')
         else:
             self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), sort='id desc',
@@ -675,7 +675,7 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
 
         # the SEARCH query gets modified before it hits Solr
         if self._method == 'SEARCH':
-            self.solr.search.assert_called_with(' +type:{}  +id:* '.format(self._type[0]), start=90,
+            self.solr.search.assert_called_with('type:{}  AND  (  +id:*  ) '.format(self._type[0]), start=90,
                 rows=10, df='default_search')
         else:
             self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), start=90,
