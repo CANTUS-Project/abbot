@@ -1,0 +1,99 @@
+Abbot Module README
+===================
+
+Submodule Description
+---------------------
+
+- __init__: Initialize the "abbot" module, including Tornado's "options" module.
+- __main__: Start Abbot as a program.
+- complex_handler: HTTP request handlers for "complex" resources.
+- handlers: Miscellaneous HTTP request handlers (for example, at the root URL).
+- search_grammar: Definition of the grammar for SEARCH requests.
+- simple_handler: HTTP request handlers for "simple" resources.
+- util: Helper functions used by both simple and complex handlers.
+
+
+How the Request Handlers Work
+-----------------------------
+
+The HTTP request handlers are designed in such a way as to minimize duplicated functionality. While
+this offers several advantages, like a much smaller code base and a greatly reduced chance of forgetting
+all of the places that certain behaviour happens, it does make Abbot's control flow more complicated.
+
+There are two general ideas:
+- everything uses GET machinery as much as possible, and
+- the ComplexHandler uses the SimpleHandler as much as possible.
+
+GET requests are broken into three steps: get(), which calls get_handler(), which calls basic_get().
+In practice the control flow for a SimpleHandler GET request looks like this:
+
+    - SimpleHandler.get()  (which handles request headers)
+    - SimpleHandler.get_handler()  (which does nothing)
+    - SimpleHandler.basic_get()  (which submits the request to Solr and prepares a response)
+    - SimpleHandler.get_handler()  (which does nothing)
+    - SimpleHandler.get()  (which handles response headers)
+
+The ComplexHandler GET request is therefore implemented in the following way:
+
+    - SimpleHandler.get()  (same as superclass)
+    - ComplexHandler.get_handler()  (which handles complex-resource-specific request headers)
+    - SimpleHandler.basic_get()  (same as superclass)
+    - ComplexHandler.get_handler()  (which adds complex-resource-specific response data
+    - SimpleHandler.get()  (same as superclass)
+
+In other words, the SimpleHandler.get_handler() method does nothing, but is overridden in the
+ComplexHandler to do all the additional work for complex resources. With this design, a significant
+amount of code is shared between the handlers, and the ComplexHandler merely *adds* functionality
+for the aspects of complex resources that are different from simple resources.
+
+There are additional cases where the ComplexHandler uses SimpleHandler methods, though this happens
+with the more usual call to super(). For example, ComplexHandler.verify_request_headers().
+
+HEAD requests are prepared as GET requests for which the response body is not sent. Notice how the
+SimpleHandler.head() method simply sets "self.head_request" to True, then calls SimpleHandler.get().
+The only place "self.head_request" is used is the get() method, where the response body is either
+written or not.
+
+OPTIONS requests are handled separately.
+
+SEARCH requests were additional designed with a three-part structure similar to GET requests. However,
+it became clear that SEARCH and GET requests share a significant amount of functionality. Therefore,
+the control flow for a SimpleHandler SEARCH request looks like this:
+
+    - SimpleHandler.search()  (which handles request headers)
+    - SimpleHandler.search_handler()  (which prepares the search query for Solr)
+    - SimpleHandler.get_handler()
+    - SimpleHandler.basic_get()
+    - SimpleHandler.get_handler()
+    - SimpleHandler.search_handler()  (which does nothing on the "way out")
+    - SimpleHandler.search()  (which handles response headers)
+
+ComplexHandler does not override search() or search_handler() at this time, so the control flow is
+very similar.
+
+All of the complicated query-parsing machinery is held in the "util" module.
+
+
+The request_wrapper Decorator
+-----------------------------
+
+When DEBUG mode is inactive, which is the default and recommended situation for production use, any
+unhandled exception in the program code will cause Tornado not to return a response. Tornado does
+this to avoid a security problem, where the server might reveal that some user input causes undesirable
+behaviour on the server.
+
+However, it does leave user agents (and end users) waiting on the server for a response that will
+never show up.
+
+Because Abbot so far does not modify any database records, I feel there is a substantially lower
+risk. Therefore, most of Abbot's outermost request-handling functions (like get(), head(), and so
+on, but not get_handler() or similar) use the request_wrapper decorator.
+
+When a request causes an unhandled exception, the request_wrapper catches the exception and returns
+"500: Programmer Error" to the user agent. Revealing no specific information, the security risk is
+further minimized.
+
+In addition, if the server is set to DEBUG mode, the request_wrapper will also include a traceback
+in the system log. This is particularly perilous: an attacker might fill the system log by causing
+a large number of unhandled exceptions. It is therefore important not to let a production server
+operate in DEBUG mode!
