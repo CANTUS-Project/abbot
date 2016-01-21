@@ -780,16 +780,16 @@ class TestQueryParserSync(TestCase):
         '''
         Complicated thing formed from this search query:
 
-        '(force && place:field) || (flavour:"ginger" && basis:"bread") NOT activity:baking'
+        '(force && full_text:field) || (provenance_id:"ginger" && siglum:"bread") NOT proofread_fulltext:baking'
         '''
         components = [
-            '(', ('default', 'force'), '&&', ('place', 'field'), ')',
+            '(', ('default', 'force'), '&&', ('full_text', 'field'), ')',
             '||',
-            '(', ('flavour', '"ginger"'), '&&', ('basis', '"bread"'), ')',
+            '(', ('provenance_id', '"ginger"'), '&&', ('siglum', '"bread"'), ')',
             'NOT',
-            ('activity', 'baking')
+            ('proofread_fulltext', 'baking')
         ]
-        expected = ' ( force  && place:field  )  ||  ( flavour:"ginger"  && basis:"bread"  )  NOT activity:baking '
+        expected = ' ( force  && full_text:field  )  ||  ( provenance_id:"ginger"  && siglum:"bread"  )  NOT proofread_fulltext:baking '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
 
@@ -807,6 +807,17 @@ class TestQueryParserSync(TestCase):
         expected = ' +type:  ( name:feast  OR name:chant  ) '
         actual = util.assemble_query(components)
         self.assertEqual(expected, actual)
+
+    def test_assemble_query_8(self):
+        '''
+        Complicated thing invalid fields.
+
+        'flavour:"ginger" && basis:"bread"'
+        '''
+        components = [('flavour', '"ginger"'), '&&', ('basis', '"bread"')]
+        with pytest.raises(ValueError) as excinfo:
+            util.assemble_query(components)
+        assert excinfo.value.the_field == 'flavour'
 
     def test_xref_group_1(self):
         '''

@@ -87,6 +87,8 @@ _INVALID_ID = util._INVALID_ID
 _RESOURCE_MISSING_ID = 'Solr returned a resource without an "id" field.'
 # when the resource from Solr doesn't have a "type" field
 _RESOURCE_MISSING_TYPE = 'Solr returned a resource without a "type" field.'
+# when the search query has a field that's not valid
+_INVALID_SEARCH_FIELD = 'Invalid search field: "{}"'
 
 
 class SimpleHandler(web.RequestHandler):
@@ -781,6 +783,8 @@ class SimpleHandler(web.RequestHandler):
                 query = util.assemble_query((yield util.run_subqueries(query)))
             except util.InvalidQueryError as iqe:
                 self.send_error(404, reason=_NO_SEARCH_RESULTS)
+            except ValueError as val_err:
+                self.send_error(400, reason=_INVALID_SEARCH_FIELD.format(val_err.the_field))
             else:
                 return (yield self.get_handler(query=query))
 

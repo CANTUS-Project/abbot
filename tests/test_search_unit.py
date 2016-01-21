@@ -111,6 +111,22 @@ class TestSimple(shared.TestHandler):
         assert 0 == mock_get_handler.call_count
         assert (None, 0) == actual
 
+    @mock.patch('abbot.simple_handler.SimpleHandler.get_handler')
+    @mock.patch('abbot.simple_handler.SimpleHandler.send_error')
+    @testing.gen_test
+    def test_search_handler_4(self, mock_senderr, mock_get_handler):
+        '''
+        Ensure a 400 error when util.assemble_query() raises a ValueError because of an invalid field.
+        '''
+        query = 'gingerbread:Absalon'
+        self.handler.hparams['search_query'] = query
+
+        actual = yield self.handler.search_handler()
+
+        mock_senderr.assert_called_with(400, reason=simple_handler._INVALID_SEARCH_FIELD.format('gingerbread'))
+        assert 0 == mock_get_handler.call_count
+        assert (None, 0) == actual
+
     @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
     def test_search_1(self, mock_search_handler):

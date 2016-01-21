@@ -119,6 +119,21 @@ class TestSimple(test_get_integration.TestSimple):
         assert 'Method Not Allowed' == actual.reason
         assert 'GET, HEAD, OPTIONS' == actual.headers['Allow']  # required in RFC 7231 S. 6.5.5
 
+    @testing.gen_test
+    def test_invalid_field(self):
+        '''
+        A SEARCH request with an invalid field in the query will fail with 400.
+        '''
+        actual = yield self.http_client.fetch(self._browse_url,
+                                              method='SEARCH',
+                                              allow_nonstandard_methods=True,
+                                              raise_error=False,
+                                              body=b'{"query":"gingerbread:Absalon"}')
+
+        self.check_standard_header(actual)
+        assert 400 == actual.code
+        assert simple_handler._INVALID_SEARCH_FIELD.format('gingerbread') == actual.reason
+
 
 class TestComplex(test_get_integration.TestComplex):
     '''

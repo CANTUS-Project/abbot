@@ -57,7 +57,7 @@ _INVALID_QUERY = 'Invalid search query.'
 # error message for _verify_resource_id()
 _INVALID_ID = 'Invalid resource ID for the Cantus API.'
 
-# Used by prepare_formatted_sort() and parse_query_components(). Put here, they might be used by
+# Used by prepare_formatted_sort() and assemble_query(). Put here, they might be used by
 # other methods to check whether they have proper values for these things.
 ALLOWED_CHARS = ',;_'
 DIRECTIONS = ('asc', 'desc')
@@ -757,6 +757,7 @@ def assemble_query(components):
     :type components: list of str and 2-tuple of str
     :returns: The query string to submit to Solr.
     :rtype: str
+    :raises: :exc:`ValueError` if there is an invalid field in the search
     '''
     def helper(comp):
         "Prepare a single field:value pair."
@@ -767,6 +768,10 @@ def assemble_query(components):
                 return ' {} '.format(comp)
         elif comp[0] == 'default':
             return '{} '.format(comp[1])
+        elif comp[0] not in FIELDS and comp[0] not in TRANSFORMED_FIELDS:
+            err = ValueError('Invalid field: {}'.format(comp[0]))
+            err.the_field = comp[0]
+            raise err
         else:
             return '{field}:{value} '.format(field=comp[0], value=comp[1])
 
