@@ -1,0 +1,98 @@
+HolyOrders README
+=================
+
+HolyOrders updates Abbot's Solr database by polling Drupal for updated resources. HolyOrders is
+designed to be started periodically by "systemd" (hourly by default).
+
+Unfortunately HolyOrders is a mess, and I don't know whether I'll be able to clean it up before
+leaving it to someone else (you?) so it's all the more important that I try to explain what happened.
+
+
+Explanation
+-----------
+
+Understanding why HolyOrders is a mess will help you understand the structure. My initial plan was
+to write a simple bash script, without an automated test suite, that would use cURL to ask Drupal
+for updates, then run a simple Drupal-to-Solr conversion script, then use cURL to push the updates
+to Solr. As HolyOrders grew into the 600-line monstrosity of a "script" that it is now, I continued
+to fool myself into thinking it would be "simple enough." But gradually it became clear that my bash
+skills weren't up to the task, and that the vast array of possible errors meant that a "look and see
+if it's working" approach was insufficient. Although I've tried to break things down into reasonable
+functions, the program's architecture still reveals it's roots as an overgrown "simple update script."
+
+Even a quick look at the script reveals that I had a tremendous amount of difficulty working the
+process into something sufficiently reliable. Roughly, the steps in updating are: see if a type
+needs updating; download updates from Drupal; convert updates to Solr XML; submit updates to Solr;
+then update the log file. At each step along the way, I've tried to make it so that, if a single
+resource type fails, HolyOrders will still finish updating the other resource types.
+
+As development continued, it became clear that "chant" resources were quite different from the
+others. Part of the reason is that there are simply many more chants than anything else: as of
+22 January 2016, there are 450,537 chants and 3,018 other resources in the CANTUS Database. Over
+99% of the database is a single resource type! In addition, it seems to happen often enough that
+thousands of chants are updated in a matter of hours, probably through a semi-automated process in
+Drupal.
+
+This lead to a situation where Drupal couldn't produce updates before an internal request timeout.
+If we did an export in batch mode, MySQL would be brought to its knees while preparing the update.
+That's why we started taking chant updates from Drupal one at a time (I'll explain more below), which
+lets Drupal service other requests between the HolyOrders requests, and which also lets us insert
+pauses, just in case. On the other hand, now that all the chant updates are submited to Solr as
+individual requests, rather than with all resources in a single request, we also have to be careful
+not to overload Solr.
+
+
+Workflow
+--------
+
+The update process is run by the main() function. These are the steps:
+
+- determine which resource types to update
+- for each type:
+    - download the update
+    - convert the update from Drupal XML to Solr XML
+    - submit the update to Solr
+- ask Solr to "commit" and "optimize" the updates
+- save the configuration file with the most recent update time
+
+By running the download/convert/submit steps as a unit for each resource type, we reduce the space
+required in memory and for temporary files.
+
+
+The Configuration File
+----------------------
+
+The configuration file is currently JSON, and it holds *both* configuration data and runtime data.
+This should be adjusted so that configuration and application data are held in separate files; the
+configuration should be an INI file (as per Pythonic convention) and the application data in XML
+(like the Drupal and Solr updates, to reduce the variety of file formats in use). This is issue #58
+on Abbot's GitHub page.
+
+The configuration file holds the following members:
+- resource_types: list of types in Abbot
+- solr_url: which Solr server to update
+- update_frequency: by resource type, how often to update, in hours or days
+- drupal_urls: by resource type, URLs that respond to a GET query with a Drupal XML file
+- last_updated: by resource type, as a UNIX timestamp, the time of the most recent update
+
+
+Update Process for Chants
+-------------------------
+
+At this point, everything should be pretty obvious (if you read the HolyOrders source files), except
+maybe for chants.
+
+Chants are downloaded by download_chant_updates(). Downloading chants requires a two-step process
+with Drupal: first, asking for the IDs of modified chants on a day-by-day basis; second, asking for
+each chant by ID. (Asking Drupal for the full chants that modified on a given day was too stressful,
+so we ask for the IDs *then* for the chants).
+
+The download function therefore has four steps. First, determine how many days of updates we need.
+This depends on the time/day of the most recent update, and we always take an extra day just in case.
+For example, if the last update was yesterday, we will ask Drupal for the IDs of chants modified
+today, yesterday, and two days ago. Second, we download the list of modified IDs. Third, we deduplicate
+the chant IDs so that a chant modified on more than one day is still only downloaded once. Finally,
+we download the updated chants.
+
+The rest of the chant update process is the same as for other resources, but with more resources
+and therefore a greater chance of something going wrong.
