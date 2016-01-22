@@ -864,7 +864,7 @@ class TestCommitThenOptimize(unittest.TestCase):
         '''
         solr_url = 'http::/com.checkit'
         commit_url = '{}/update?commit=true'.format(solr_url)
-        optimize_url = '{}/update?optimize=true'.format(solr_url)
+        # optimize_url = '{}/update?optimize=true'.format(solr_url)
         request_timeout = 5 * 60
         expected = 1
         # setup the httpclient mock
@@ -878,7 +878,7 @@ class TestCommitThenOptimize(unittest.TestCase):
         actual = holy_orders.commit_then_optimize(solr_url)
 
         assert expected == actual
-        assert 1 == mock_client.fetch.call_count
+        assert mock_client.fetch.call_count == 1
         mock_client.fetch.assert_any_call(commit_url, method='GET', request_timeout=request_timeout)
         mock_client.close.assert_called_once_with()
 
@@ -900,8 +900,7 @@ class TestCommitThenOptimize(unittest.TestCase):
         mock_client.close = mock.Mock()
         mock_client.fetch = mock.Mock()
         # ugh...
-        call_count = 0
-        def fetch_side_effect(url, *args, **kwargs):
+        def fetch_side_effect(url, *args, **kwargs):  # pylint: disable=unused-argument
             "Raise IOError if 'commit' is not in 'url'."
             if 'commit' not in url:
                 raise IOError()
