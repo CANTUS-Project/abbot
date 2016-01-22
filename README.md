@@ -91,3 +91,83 @@ configuration. When Ansible runs a playbook, it follows all the instructions in 
 in "included" playbooks, in the order they are specified. Therefore, running the playbook called
 "abbot.yml" will configure SSH, *then* install Solr after its dependencies, *then* install Abbot
 after its dependencies.
+
+
+## System Management and Logging
+
+Abbot is designed for Linux operating systems with ``systemd``, and therefore uses ``journald`` for
+logging. If you followed the deployment instructions, you're running Abbot on CentOS 7, so the
+following instructions are for you. If you didn't follow the instructions, I don't really know what
+will happen.
+
+### Abbot
+
+According to ``systemd``, Abbot is called ``abbot``. You can start, stop, or view the status of
+Abbot with the following commands (run with superuser permissions):
+
+```
+# systemctl start abbot
+# systemctl stop abbot
+# systemctl status abbot
+```
+
+This is a sample output from the ``status`` command.
+
+```
+[compadmin@abbot ~]$ sudo systemctl status abbot
+● abbot.service - "Abbot HTTP Server"
+   Loaded: loaded (/usr/lib/systemd/system/abbot.service; enabled; vendor preset: disabled)
+   Active: active (running) since Thu 2016-01-21 14:49:01 EST; 8h ago
+     Docs: https://github.com/CANTUS-Project/abbot/
+ Main PID: 12680 (python)
+   CGroup: /system.slice/abbot.service
+           └─12680 /usr/local/abbot-venv/bin/python -m abbot --options_file=/etc/abbot.conf
+
+Jan 21 14:49:01 abbot.uwaterloo.ca systemd[1]: Started "Abbot HTTP Server".
+Jan 21 14:49:01 abbot.uwaterloo.ca systemd[1]: Starting "Abbot HTTP Server"...
+Jan 21 14:49:02 abbot.uwaterloo.ca abbot[12680]: Abbot Server 0.4.16 for Cantus API 0.2.3.
+Jan 21 14:50:24 abbot.uwaterloo.ca abbot[12680]: 404 GET /favicon.ico/ (::ffff:198.58.167.176) 0.72ms
+Jan 21 14:50:24 abbot.uwaterloo.ca abbot[12680]: 404 GET /favicon.ico/ (::ffff:198.58.167.176) 0.53ms
+```
+
+You can also view the Abbot logs:
+
+```
+# journalctl -u abbot -n 50
+# journalctl -u abbot
+```
+
+The first command, with an ``n`` flag, asks ``journalctl`` to output only the most recent 50 log
+messages. The ``u`` flag tells ``journalctl`` which "unit" to print data for.
+
+The Ansible playbooks install Abbot as a socket-activated service, enabled by default. This means
+that Abbot will start whenever the operating system boots. Moreover, if Abbot crashes or stops for
+some reason, ``systemd`` will start Abbot if someone tries to connect to its port. Therefore, if
+you wish to disable (or enable) Abbot, you must disable (or enable) two things:
+
+```
+# systemctl disable abbot.service
+# systemctl disable abbot.socket
+```
+
+
+### HolyOrders
+
+According to ``systemd``, HolyOrders is called ``holyorders``. Most of the commands for HolyOrders
+are very similar to the commands for Abbot:
+
+```
+# systemctl start holyorders
+# systemctl stop holyorders
+# systemctl status holyorders
+# journalctl -u holyorders -n 50
+```
+
+However, Ansible installs HolyOrders as a timer-activated service, enabled by default. This means
+that HolyOrders will be started by ``systemd`` periodically (by default every hour). If you wish to
+disable (or enable) HolyOrders, you must disable (or enable) two things:
+
+```
+# systemctl disable holyorders.service
+# systemctl disable holyorders.timer
+```
