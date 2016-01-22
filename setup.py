@@ -44,10 +44,6 @@ setup(
     ],
     tests_require = ['pytest'],
 
-    scripts = [
-        'scripts/drupal_xml_to_solr_xml.py',
-    ],
-
     # metadata for upload to PyPI
     author = 'Christopher Antila',
     author_email = 'christopher@antila.ca',
