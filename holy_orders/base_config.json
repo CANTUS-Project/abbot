@@ -2,7 +2,6 @@
     "resource_types": ["siglum", "office", "indexer", "century", "source_status", "chant", "source",
                        "portfolio", "segment", "feast", "notation", "genre", "provenance"],
     "solr_url": "http://localhost:8983/solr/collection1",
-    "drupal_to_solr_script": "/home/crantila/Documents/CANTUS/repos/abbot/scripts/drupal_xml_to_solr_xml.py",
     "update_frequency": {
         "chant": "3h",
         "source": "1d",

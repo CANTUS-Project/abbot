@@ -1,7 +1,6 @@
 {
     "resource_types": ["chant", "feast", "source", "provenance"],
     "solr_url": "http://solr.example.com:8983/solr/collection1",
-    "drupal_to_solr_script": "/path/is/great.py",
     "update_frequency": {
         "chant": "3h",
         "source": "1d",
