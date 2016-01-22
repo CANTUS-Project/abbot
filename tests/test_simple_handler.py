@@ -182,6 +182,28 @@ class TestFormatRecord(shared.TestHandler):
         for field in self.handler.returned_fields:
             self.assertEqual(1, self.handler.field_counts[field])
 
+    def test_drupal_urls_enabled(self):
+        '''
+        format_record() properly handles "drupal_path" when the Drupal URL is set.
+        '''
+        self._simple_options.drupal_url = 'http://can.tus/'
+        input_record = {'id': '123', 'drupal_path': '/anon/y/mous/34432/blob.xhtml'}
+
+        actual = self.handler.format_record(input_record)
+
+        assert {'id': '123', 'drupal_path': 'http://can.tus/anon/y/mous/34432/blob.xhtml'} == actual
+
+    def test_drupal_urls_disabled(self):
+        '''
+        format_record() omits "drupal_path" when the Drupal URL is not set.
+        '''
+        self._simple_options.drupal_url = None
+        input_record = {'id': '123', 'drupal_path': '/anon/y/mous/34432/blob.xhtml'}
+
+        actual = self.handler.format_record(input_record)
+
+        assert {'id': '123'} == actual
+
 
 class TestMakeResourceUrl(shared.TestHandler):
     '''
@@ -214,46 +236,6 @@ class TestMakeResourceUrl(shared.TestHandler):
         "with plural resource_type"
         expected = 'https://cantus.org/sources/3.14159/'
         actual = self.handler.make_resource_url('3.14159', 'sources')
-        self.assertEqual(expected, actual)
-
-    def test_make_drupal_url_1(self):
-        "options.drupal_path is None"
-        expected = ''
-        res_id = '123'
-        res_type = None
-        simple_handler.options.drupal_url = None
-        simple_handler.options.drupal_type_map = {}
-        actual = self.handler.make_drupal_url(res_id, res_type)
-        self.assertEqual(expected, actual)
-
-    def test_make_drupal_url_2(self):
-        "res_type is None; it's also mapped to None"
-        expected = ''
-        res_id = '123'
-        res_type = None
-        simple_handler.options.drupal_url = 'asdf'
-        simple_handler.options.drupal_type_map = {'century': None}
-        actual = self.handler.make_drupal_url(res_id, res_type)
-        self.assertEqual(expected, actual)
-
-    def test_make_drupal_url_3(self):
-        "res_type is something; it's mapped to something; drupal_url ends with a /"
-        expected = 'asdf/boop/123'
-        res_id = '123'
-        res_type = 'beep'
-        simple_handler.options.drupal_url = 'asdf/'
-        simple_handler.options.drupal_type_map = {'beep': 'boop'}
-        actual = self.handler.make_drupal_url(res_id, res_type)
-        self.assertEqual(expected, actual)
-
-    def test_make_drupal_url_4(self):
-        "res_type isn't in the mapping"
-        expected = 'asdf/century/123'
-        res_id = '123'
-        res_type = None
-        simple_handler.options.drupal_url = 'asdf'
-        simple_handler.options.drupal_type_map = {}
-        actual = self.handler.make_drupal_url(res_id, res_type)
         self.assertEqual(expected, actual)
 
 

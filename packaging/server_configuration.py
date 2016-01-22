@@ -46,16 +46,6 @@ cors_allow_origin = None
 #    drupal_url = 'http://cantus2.uwaterloo.ca/'
 drupal_url = None
 
-# "drupal_type_map" is a mapping between a singular resource type name in Abbot, and the token to
-# use for that type in a "drupal_path" link. Resource types without an entry in this mapping will
-# use Abbot's singular resource type name. Resource types that map to ``None`` will not produce
-# a drupal_path link. This value is ignored if "drupal_url" is ``None``.
-drupal_type_map = {
-    'portfolio': None,
-    'siglum': 'rism',
-    'source_status': 'source-status',
-}
-
 
 ## Logging ----------------------------------------------------------------------------------------
 

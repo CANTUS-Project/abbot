@@ -68,9 +68,12 @@ class TestSimple(shared.TestHandler):
         '''
         Send the three "default" testing records to Solr.
         '''
-        self.solr.search_se.add('*', {'id': '6', 'name': 'six', 'type': self._type[0]})
-        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': self._type[0]})
-        self.solr.search_se.add('*', {'id': '9', 'name': 'nine', 'type': self._type[0]})
+        self.solr.search_se.add('*', {'id': '6', 'name': 'six', 'type': self._type[0],
+                                      'drupal_path': '/{}/6/view.html'.format(self._type[0])})
+        self.solr.search_se.add('*', {'id': '2', 'name': 'two', 'type': self._type[0],
+                                      'drupal_path': '/{}/2/view.html'.format(self._type[0])})
+        self.solr.search_se.add('*', {'id': '9', 'name': 'nine', 'type': self._type[0],
+                                      'drupal_path': '/{}/9/view.html'.format(self._type[0])})
 
     @testing.gen_test
     def test_browse_request(self):
@@ -175,7 +178,7 @@ class TestSimple(shared.TestHandler):
         self._simple_options.drupal_url = 'http://drupal/'
         self.add_default_resources()
         exp_ids = ('6', '2', '9')
-        exp_urls = ['{0}{1}/{2}'.format(self._simple_options.drupal_url, self._type[0], x) for x in exp_ids]
+        exp_urls = ['{0}{1}/{2}/view.html'.format(self._simple_options.drupal_url, self._type[0], x) for x in exp_ids]
         headers = {'X-Cantus-Include-Resources': 'true'}
         actual = yield self.http_client.fetch(self._browse_url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)

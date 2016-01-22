@@ -28,6 +28,7 @@ SimpleHandler for the Abbot server.
 
 import copy
 from collections import defaultdict
+from urllib.parse import urljoin
 
 from tornado.log import app_log as log
 from tornado import escape, gen, web
@@ -39,7 +40,6 @@ from abbot import util
 
 
 options.define('drupal_url', type=str, help='see config file for details.')
-options.define('drupal_type_map', type=dict, help='see config file for details.')
 options.define('cors_allow_origin',
                help='value for the Access-Control-Allow-Origin response header.',
                type=str,
@@ -237,10 +237,14 @@ class SimpleHandler(web.RequestHandler):
         '''
         post = {}
 
+        drupal = options.drupal_url
+
         for key in iter(record):
             if key in self.returned_fields:
                 post[key] = record[key]
                 self.field_counts[key] += 1
+            elif drupal and key == 'drupal_path':
+                post['drupal_path'] = urljoin(options.drupal_url, record[key])
 
         return post
 
@@ -279,55 +283,6 @@ class SimpleHandler(web.RequestHandler):
         # finally, prepend the host-related info to get a FQDN
         return '{server_name}{resource_path}'.format(server_name=options.server_name,
                                                      resource_path=resource_path)
-
-    def make_drupal_url(self, res_id, res_type=None):
-        '''
-        Make a URL to a resource on the Drupal server for the "resources" section of the response,
-        with the provided partial URL, potentially adding a "type" part.
-
-        :param str res_id: The "id" of the resource for which to create a Drupal URL.
-        :param str res_type: The type of the resource for which to make a URL. The default will be
-            the same type as ``self``.
-        :returns: A dynamically created URL to the specified resource, including hostname, with a
-            terminating slash. If no "drupal_url" setting is specified, or if the "drupal_type_map"
-            value is ``None``, returns an empty string.
-        :rtype: str
-
-        Drupal URLs consist of three parts: host, node type, and node id. For example,
-        ``http://cantus2.uwaterloo.ca/source/123610`` refers to the resource with id ``123610`` on
-        the server ``http://cantus2.uwaterloo.ca``, which is a ``source`` type.
-
-        You can make a URL for a resource of the same type as ``self`` with only the ``res_id``
-        argument. You can make a URL for a resource of any type by providing the ``res_type``
-        argument.
-
-        **Examples**
-
-        >>> feasts = SimpleHandler('feast')
-        >>> feasts.make_drupal_url('2360')
-        'http://cantus2.uwaterloo.ca/feast/2360'
-        >>> feasts.make_drupal_url('123610', 'source')
-        'http://cantus2.uwaterloo.ca/source/123610'
-        '''
-
-        drupal_url = options.drupal_url
-        if drupal_url is None:
-            return ''
-        elif options.drupal_url.endswith('/'):
-            drupal_url = drupal_url[:-1]
-
-        if res_type is None:
-            res_type = self.type_name
-
-        if res_type in options.drupal_type_map:
-            if options.drupal_type_map[res_type] is None:
-                return ''
-            else:
-                partial = '{type}/{id}'.format(type=options.drupal_type_map[res_type], id=res_id)
-        else:
-            partial = '{type}/{id}'.format(type=res_type, id=res_id)
-
-        return '{drupal}/{partial}'.format(drupal=drupal_url, partial=partial)
 
     @gen.coroutine
     def basic_get(self, resource_id=None, query=None):
@@ -416,9 +371,6 @@ class SimpleHandler(web.RequestHandler):
 
         if self.hparams['include_resources']:
             post['resources'] = {i: {'self': self.make_resource_url(i, post[i]['type'])} for i in post['sort_order']}
-            if options.drupal_url:
-                for record in resp:
-                    post[record['id']]['drupal_path'] = self.make_drupal_url(record['id'], record['type'])
 
         return post, number_of_records
 

@@ -273,11 +273,11 @@ class TestBasicGetSimple(shared.TestHandler):
         '''
         self.handler.hparams['include_resources'] = True
         self._simple_options.drupal_url = 'http://drupal/'
-        self.solr.search_se.add('*', {'id': '6', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '9', 'type': 'century'})
-        self.solr.search_se.add('*', {'id': '2', 'type': 'century'})
+        self.solr.search_se.add('*', {'id': '6', 'type': 'century', 'drupal_path': '/century/6/view.html'})
+        self.solr.search_se.add('*', {'id': '9', 'type': 'century', 'drupal_path': '/century/9/view.html'})
+        self.solr.search_se.add('*', {'id': '2', 'type': 'century', 'drupal_path': '/century/2/view.html'})
         exp_ids = ['2', '6', '9']
-        exp_urls = ['{0}century/{1}'.format(self._simple_options.drupal_url, x) for x in exp_ids]
+        exp_urls = ['{0}century/{1}/view.html'.format(self._simple_options.drupal_url, x) for x in exp_ids]
 
         actual = yield self.handler.basic_get()
         actual = actual[0]
