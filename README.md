@@ -18,8 +18,8 @@ the file called "LICENSE."
 
 - ``abbot``: this directory contains program code for the Cantus API server.
 - ``holy_orders``: a program that updates *Abbot*'s Solr server.
-- ``scripts``: Python scripts (and tests) used to convert between various XML formats. These are
-    primarily used by *HolyOrders* to move data exported from Drupal into Solr.
+- ``drupal_export_scripts``: PHP scripts used to export resources from Drupal. Each script here is
+  loaded in Drupal as a "view."
 - ``tests``: unit and integration tests for *Abbot* and *HolyOrders*.
 - ``packaging``: deployment scripts for *Abbot* and *HolyOrders*.
 
@@ -78,4 +78,16 @@ the file called "LICENSE."
 ## Install for Deployment
 
 Use the [Ansible](http://www.ansible.com/) playbooks, according to the instructions in the
-``packaging/deployment_instructions.rst`` document.
+``packaging/deployment_instructions.rst`` document. Note that you **must** follow the instructions
+when initially setting up an Abbot server.  If you don't follow the instructions, Ansible will fail.
+
+Ansible is a tool that helps set up, install, and configure your servers. Ansible can handle very
+complicated situations, but it also works well for Abbot and HolyOrders. Although there are a few
+manual steps required, the Ansible playbooks in this repository handle the most complicated and
+difficult tasks for you.
+
+A "playbook" is a list of steps for Ansible to follow in order to bring your server to the desired
+configuration. When Ansible runs a playbook, it follows all the instructions in that playbook, and
+in "included" playbooks, in the order they are specified. Therefore, running the playbook called
+"abbot.yml" will configure SSH, *then* install Solr after its dependencies, *then* install Abbot
+after its dependencies.
