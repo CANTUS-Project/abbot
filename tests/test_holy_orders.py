@@ -319,14 +319,12 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
 
     @mock.patch('holy_orders.__main__.convert_update')
     @mock.patch('holy_orders.__main__.submit_update')
-    @mock.patch('holy_orders.__main__.get_conversion_script_path')
-    def test_everything_works(self, mock_get_path, mock_submit, mock_convert):
+    def test_everything_works(self, mock_submit, mock_convert):
         '''
         everything works
         '''
         config = {'solr_url': 'http://solr.com'}
         updates = ['update one', 'update two', 'update three']
-        mock_get_path.return_value = pathlib.Path('/usr/bin/gwenview')
         converted = ['converted one', 'converted two', 'converted three']
         mock_convert_returns = ['converted one', 'converted two', 'converted three']
         mock_convert.side_effect = lambda *args: mock_convert_returns.pop()
@@ -335,24 +333,21 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         actual = holy_orders.process_and_submit_updates(updates, config)
 
         self.assertEqual(expected, actual)
-        mock_get_path.assert_called_once_with(config)
         self.assertEqual(len(updates), mock_convert.call_count)
         for i, _ in enumerate(updates):
-            mock_convert.assert_any_call(mock.ANY, str(mock_get_path.return_value), updates[i])
+            mock_convert.assert_any_call(mock.ANY, updates[i])
         self.assertEqual(len(converted), mock_submit.call_count)
         for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
     @mock.patch('holy_orders.__main__.convert_update')
     @mock.patch('holy_orders.__main__.submit_update')
-    @mock.patch('holy_orders.__main__.get_conversion_script_path')
-    def test_conversion_fails(self, mock_get_path, mock_submit, mock_convert):
+    def test_conversion_fails(self, mock_submit, mock_convert):
         '''
         everything else works when convert_update() fails with one
         '''
         config = {'solr_url': 'http://solr.com'}
         updates = ['update one', 'update two', 'update three']
-        mock_get_path.return_value = pathlib.Path('/usr/bin/gwenview')
         converted = ['converted one', 'converted three']
         mock_convert_returns = ['converted one', RuntimeError('yuck'), 'converted three']
         def convert_mocker(*args):  # pylint: disable=unused-argument
@@ -368,24 +363,21 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         actual = holy_orders.process_and_submit_updates(updates, config)
 
         self.assertEqual(expected, actual)
-        mock_get_path.assert_called_once_with(config)
         self.assertEqual(len(updates), mock_convert.call_count)
         for i, _ in enumerate(updates):
-            mock_convert.assert_any_call(mock.ANY, str(mock_get_path.return_value), updates[i])
+            mock_convert.assert_any_call(mock.ANY, updates[i])
         self.assertEqual(len(converted), mock_submit.call_count)
         for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
     @mock.patch('holy_orders.__main__.convert_update')
     @mock.patch('holy_orders.__main__.submit_update')
-    @mock.patch('holy_orders.__main__.get_conversion_script_path')
-    def test_submission_fails(self, mock_get_path, mock_submit, mock_convert):
+    def test_submission_fails(self, mock_submit, mock_convert):
         '''
         submit_update() fails with one
         '''
         config = {'solr_url': 'http://solr.com'}
         updates = ['update one', 'update two', 'update three']
-        mock_get_path.return_value = pathlib.Path('/usr/bin/gwenview')
         converted = ['converted one', 'converted two', 'converted three']
         mock_convert_returns = ['converted one', 'converted two', 'converted three']
         mock_convert.side_effect = lambda *args: mock_convert_returns.pop()
@@ -401,48 +393,12 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         actual = holy_orders.process_and_submit_updates(updates, config)
 
         self.assertEqual(expected, actual)
-        mock_get_path.assert_called_once_with(config)
         self.assertEqual(len(updates), mock_convert.call_count)
         for i, _ in enumerate(updates):
-            mock_convert.assert_any_call(mock.ANY, str(mock_get_path.return_value), updates[i])
+            mock_convert.assert_any_call(mock.ANY, updates[i])
         self.assertEqual(len(converted), mock_submit.call_count)
         for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
-
-
-class TestGetConversionScriptPath(unittest.TestCase):
-    '''
-    Tests for get_conversion_script_path().
-    '''
-
-    def test_path_not_in_config(self):
-        '''
-        When there is no path in the configuration, raise SystemExit.
-        '''
-        config = {}
-        self.assertRaises(SystemExit, holy_orders.get_conversion_script_path, config)
-
-    def test_path_not_exists(self):
-        '''
-        When it's a relative path that doesn't exist, raise SystemExit.
-        '''
-        config = {'drupal_to_solr_script': '../../../../../../../../../../../../../../../sharks'}
-        self.assertRaises(SystemExit, holy_orders.get_conversion_script_path, config)
-
-    def test_path_is_directory(self):
-        '''
-        When the path is a directory, raise SystemExit.
-        '''
-        config = {'drupal_to_solr_scipr': '/usr'}
-        self.assertRaises(SystemExit, holy_orders.get_conversion_script_path, config)
-
-    def test_path_works(self):
-        '''
-        When the path is to a file, it's returned just fine.
-        '''
-        config = {'drupal_to_solr_script': '/usr/bin/python3'}
-        actual = holy_orders.get_conversion_script_path(config)
-        self.assertIsInstance(actual, pathlib.Path)
 
 
 class TestLoadConfig(unittest.TestCase):

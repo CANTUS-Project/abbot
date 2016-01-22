@@ -183,15 +183,13 @@ def process_and_submit_updates(updates, config):
     :rtype: bool
     '''
 
-    conversion_script_path = get_conversion_script_path(config)
-
     updates_have_failed = False
     with tempfile.TemporaryDirectory() as temp_directory:
         conversions_failed = False
         converted = []
         for update in updates:
             try:
-                converted.append(convert_update(temp_directory, str(conversion_script_path), update))
+                converted.append(convert_update(temp_directory, update))
             except RuntimeError:
                 conversions_failed = True
 
@@ -213,35 +211,6 @@ def process_and_submit_updates(updates, config):
             updates_have_failed = True
 
     return not updates_have_failed
-
-
-def get_conversion_script_path(config):
-    '''
-    Given the "Holy Orders" configuration, validate and return the path to the Drupal-to-Solr
-    conversion script.
-
-    :param dict config: Dictionary of the configuration file that has our data.
-    :returns: The path to the conversion script.
-    :rtype: :class:`pathlib.Path`
-    '''
-
-    if 'drupal_to_solr_script' not in config:
-        _log.error('Did not find "drupal_to_solr_script" path in configuration file.')
-        raise SystemExit(1)
-    else:
-        conversion_script_path = pathlib.Path(config['drupal_to_solr_script'])
-        try:
-            # ensure absolute path
-            conversion_script_path = conversion_script_path.resolve()
-        except (RuntimeError, FileNotFoundError):
-            # this will trigger the SystemExit in the next suite
-            conversion_script_path = False
-
-        if not conversion_script_path or not (conversion_script_path.exists() and conversion_script_path.is_file()):
-            _log.error('Configuration file\'s path to "drupal_to_solr_script" seems wrong.\nNOT UPDATING ANYTHING.')
-            raise SystemExit(1)
-
-    return conversion_script_path
 
 
 def should_update_this(resource_type, config):
