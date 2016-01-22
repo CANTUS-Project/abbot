@@ -33,7 +33,6 @@ import datetime
 import json
 import os.path
 import pathlib
-import subprocess
 import unittest
 from unittest import mock
 
@@ -179,147 +178,75 @@ class TestConvertUpdate(unittest.TestCase):
     Tests for convert_update().
     '''
 
-    @mock.patch('holy_orders.__main__.pathlib')
-    @mock.patch('holy_orders.__main__.subprocess')
+    @mock.patch('holy_orders.__main__.drupal_to_solr')
     @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_everything_works(self, mock_now, mock_subp, mock_pathlib):
+    def test_everything_works(self, mock_now, mock_dts):
         '''
         convert_update() when everything goes according to plan.
         '''
         mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
                                                   tzinfo=datetime.timezone.utc)
         temp_directory = '/tmp/hollabackgirls'
-        conversion_script_path = '/usr/bin/inkscape'  # Inkscape opening: punishment for bad mocking
         update = '<xml quality="best"></xml>'
         drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
-        solr_xml_pathname = '{}/20200103042045001024-out.xml'.format(temp_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
         mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
-        # setup mock on subprocess
-        mock_subp.check_output = mock.Mock()
-        # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
-        mock_Path.exists = mock.Mock()
-        mock_Path.exists.return_value = True
-        mock_pathlib.Path = mock.Mock()
-        mock_pathlib.Path.return_value = mock_Path
-        expected = str(mock_Path)
+        # setup mock on "drupal_to_solr" module
+        mock_dts.convert.return_value = 'five'
+        #
+        expected = mock_dts.convert.return_value
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            actual = holy_orders.convert_update(temp_directory, conversion_script_path, update)
+            actual = holy_orders.convert_update(temp_directory, update)
 
-        self.assertEqual(expected, actual)
+        assert expected == actual
         mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        mock_subp.check_output.assert_called_once_with([conversion_script_path, drupal_xml_pathname])
-        mock_pathlib.Path.assert_called_once_with(solr_xml_pathname)
-        mock_Path.exists.assert_called_once_with()
+        mock_dts.convert.assert_called_with(drupal_xml_pathname)
 
-    @mock.patch('holy_orders.__main__.pathlib')
-    @mock.patch('holy_orders.__main__.subprocess')
+    @mock.patch('holy_orders.__main__.drupal_to_solr')
     @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_drupal_output_fails(self, mock_now, mock_subp, mock_pathlib):
+    def test_drupal_output_fails(self, mock_now, mock_dts):
         '''
         convert_update() when writing Drupal XML to a file fails.
         '''
         mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
                                                   tzinfo=datetime.timezone.utc)
         temp_directory = '/tmp/hollabackgirls'
-        conversion_script_path = '/usr/bin/inkscape'  # Inkscape opening: punishment for bad mocking
         update = '<xml quality="best"></xml>'
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
         # NOTE: this next line causes the failure
         mock_open.return_value.write.return_value = 0  # pylint: disable=no-member
-        # setup mock on subprocess
-        mock_subp.check_output = mock.Mock()
-        # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
-        mock_Path.exists = mock.Mock()
-        mock_Path.exists.return_value = True
-        mock_pathlib.Path = mock.Mock()
-        mock_pathlib.Path.return_value = mock_Path
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory,
-                              conversion_script_path, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, update)
 
         mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        self.assertEqual(0, mock_subp.check_output.call_count)
-        self.assertEqual(0, mock_pathlib.Path.call_count)
-        self.assertEqual(0, mock_Path.exists.call_count)
+        assert mock_dts.convert.call_count == 0
 
-    @mock.patch('holy_orders.__main__.pathlib')
-    @mock.patch('holy_orders.__main__.subprocess')
+    @mock.patch('holy_orders.__main__.drupal_to_solr')
     @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_conversion_script_fails(self, mock_now, mock_subp, mock_pathlib):
+    def test_conversion_script_fails(self, mock_now, mock_dts):
         '''
-        convert_update() when the conversion script fails
+        convert_update() when the conversion module fails
         '''
         mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
                                                   tzinfo=datetime.timezone.utc)
         temp_directory = '/tmp/hollabackgirls'
-        conversion_script_path = '/usr/bin/inkscape'  # Inkscape opening: punishment for bad mocking
         update = '<xml quality="best"></xml>'
         drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
         mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
-        # setup mock on subprocess
-        mock_subp.check_output = mock.Mock()
-        mock_subp.CalledProcessError = subprocess.CalledProcessError
         # NOTE: this next line causes the failure
-        mock_subp.check_output.side_effect = mock_subp.CalledProcessError(1, 'python')
-        # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
-        mock_Path.exists = mock.Mock()
-        mock_Path.exists.return_value = True
-        mock_pathlib.Path = mock.Mock()
-        mock_pathlib.Path.return_value = mock_Path
+        mock_dts.convert.side_effect = KeyError  # doesn't matter what it is
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory,
-                              conversion_script_path, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, update)
 
         mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        mock_subp.check_output.assert_called_once_with([conversion_script_path, drupal_xml_pathname])
-        self.assertEqual(0, mock_pathlib.Path.call_count)
-        self.assertEqual(0, mock_Path.exists.call_count)
-
-    @mock.patch('holy_orders.__main__.pathlib')
-    @mock.patch('holy_orders.__main__.subprocess')
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_missing_solrxml(self, mock_now, mock_subp, mock_pathlib):
-        '''
-        convert_update() when the Solr XML file isn't there.
-        '''
-        mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
-                                                  tzinfo=datetime.timezone.utc)
-        temp_directory = '/tmp/hollabackgirls'
-        conversion_script_path = '/usr/bin/inkscape'  # Inkscape opening: punishment for bad mocking
-        update = '<xml quality="best"></xml>'
-        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
-        solr_xml_pathname = '{}/20200103042045001024-out.xml'.format(temp_directory)
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
-        # setup mock on subprocess
-        mock_subp.check_output = mock.Mock()
-        # setup mock on pathlib
-        mock_Path = mock.Mock()  # with the capital, this is the Path object returned ... pylint: disable=invalid-name
-        mock_Path.exists = mock.Mock()
-        mock_Path.exists.return_value = False  # NOTE: this causes the error
-        mock_pathlib.Path = mock.Mock()
-        mock_pathlib.Path.return_value = mock_Path
-
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory,
-                              conversion_script_path, update)
-
-        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        mock_subp.check_output.assert_called_once_with([conversion_script_path, drupal_xml_pathname])
-        mock_pathlib.Path.assert_called_once_with(solr_xml_pathname)
-        mock_Path.exists.assert_called_once_with()
+        mock_dts.convert.assert_called_with(drupal_xml_pathname)
 
 
 class TestSubmitUpdate(unittest.TestCase):

@@ -39,14 +39,14 @@ import tempfile
 import time as time_module
 from xml.etree import ElementTree as etree
 
-from systemdream.journal import handler as journalctl
-
 from tornado import httpclient
 import tornado.log
+from systemdream.journal import handler as journalctl
+
+from holy_orders import drupal_to_solr
 
 # settings
 LOG_LEVEL = logging.DEBUG
-
 
 # script-level "globals"
 _log = tornado.log.app_log
@@ -470,15 +470,14 @@ def download_update(resource_type, config):
     return download_from_urls(update_url)
 
 
-def convert_update(temp_directory, conversion_script_path, update):
+def convert_update(temp_directory, update):
     '''
     Convert a Drupal XML document into a Solr XML document. The Drupal XML document is supplied to
-    this function as a string, outputted to the temporary directory, and the conversion script is
+    this function as a string, outputted to the temporary directory, and the conversion module is
     called. The pathname of the converted file is returned.
 
     :param str temp_directory: The pathname of a (temporary) directory into which the XML documents
         should be saved.
-    :param str conversion_script_path: The pathname to the "drupal_xml_to_solr_xml.py" script.
     :param str update: The Drupal XML document that should be converted. This is *not* the path to
         the already-outputted document!
     :returns: The pathname to the file expected as output from the conversion script.
@@ -490,10 +489,8 @@ def convert_update(temp_directory, conversion_script_path, update):
     # calculate filenames
     drupal_xml_filename = '{dir}/{file}'.format(dir=temp_directory,
                                                 file=_now_wrapper().strftime('%Y%m%d%H%M%S%f'))
-    solr_xml_filename = '{}-out.xml'.format(drupal_xml_filename)
     drupal_xml_filename = '{}.xml'.format(drupal_xml_filename)
     _log.debug('Saving a Drupal XML file to {}'.format(drupal_xml_filename))
-    _log.debug('Expecting a Solr XML file at {}'.format(solr_xml_filename))
 
     # output the Drupal XML file
     with open(drupal_xml_filename, 'w') as the_file:
@@ -503,22 +500,16 @@ def convert_update(temp_directory, conversion_script_path, update):
         _log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    # run the conversion script
+    # run the conversion module
     try:
-        subprocess.check_output([conversion_script_path, drupal_xml_filename])
-    except subprocess.CalledProcessError as cperr:
+        solr_xml_filename = drupal_to_solr.convert(drupal_xml_filename)
+        _log.debug('We got a Solr XML file at {}'.format(solr_xml_filename))
+    except Exception as cperr:
         err_msg = 'Conversion to Solr XML failed ({})'.format(cperr)
         _log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    # double check the Solr XML file exists
-    solr_xml_path = pathlib.Path(solr_xml_filename)
-    if not solr_xml_path.exists():
-        err_msg = 'Conversion script succeeded but Solr XML file is missing at {}'.format(solr_xml_filename)
-        _log.error(err_msg)
-        raise RuntimeError(err_msg)
-
-    return str(solr_xml_path)
+    return solr_xml_filename
 
 
 def submit_update(update_pathname, solr_url):
