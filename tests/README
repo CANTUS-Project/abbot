@@ -1,6 +1,7 @@
 Abbot Test Suite README
 =======================
 
+
 Test Module Organization
 ------------------------
 
@@ -31,13 +32,118 @@ Other modules:
 - test_search_grammar.py for the "abbot.search_grammar" module
 - test_util.py for the "abbot.util" module
 
-Testing Approach
+
+Terminology
+-----------
+
+I make no claim that these are the authoritative or most correct definitions of the following terms,
+but it's important to know how I used them in order to understand how the test suite is structured.
+
+- unit test: to the fullest extent possible, a unit test attempts to isolate a unit of code (usually
+  a function or method, but sometimes also a class and rarely a module). Such isolation is accomplished
+  with "mock" objects that serve as a stand-in for the other units used by the unit under test.
+
+- integration test: combines several units in a single test. In Abbot, which is not especially
+  complicated, most of the integration tests do not mock anything except Solr.
+
+- acceptance test: validates that Abbot works in its real-world situation. These are not part of the
+  automated test suite at the moment, so acceptance testing is conducted informally. If someone
+  wanted to add acceptance tests to the automated test suite, they might duplicate the integration
+  tests with an actual Solr instance populated with actual data from the CANTUS Database.
+
+- white-box test: is written with awareness of how some functionality is implemented.
+
+- black-box test: is written to verify only the functionality described in a unit's documentation
+  (like a docstring or the CANTUS API).
+
+- regression test: helps prevent a bug from returning once it is fixed. A regression test should be
+  written before the bug is fixed, and run and observed to fail, to ensure that you fully understand
+  the circumstances causing the bug. Some of Abbot's regression tests are specifically marked as
+  such, when they might otherwise appear to be superfluous. Regression tests are usually black-box
+  tests, in that they arise because of an "edge case" in functionality that is not obvious from a
+  unit's documentation. A regression test by itself may or may not be sufficient to verify the
+  change in behaviour desired during a bug fix.
+
+Also be aware that, much like music theory words, I would not suggests these terms are absolute
+categories. In particular, the distinction between unit and integration tests, and between white-box
+and black-box tests, is not absolute. Individual tests tend to exhibit characteristics of many
+testing strategies.
+
+
+General Approach
 ----------------
 
-TODO: I'll write about how I test. Specifically I'll talk about the things I call "unit tests" in
-comparison to "integration tests," and clarify that (at the moment?) none of them integrate the full
-system (i.e., none of them include Solr) which I might say is an "acceptance test," or whatever. I
-also have to offer a brief overview of how to use the TestHandler fixture, especially the Solr mock,
-and whatever else I come up with there.
+These are not recommended best practices, and it's not a substitute for actually reading about and
+learning how to write effective automated tests. This is just a description of what I tend to do:
 
-This will be part of GitHub issue #84.
+Start with white-box tests, and add black-box tests as needed. Because they're at a "higher level,"
+the integration tests tend to be more "black box" than the unit.
+
+100% code coverage is necessary but not sufficient for an effective test suite. There are two parts
+to this. First it means that every line of program code must be executed at least once by the test
+suite, otherwise you cannot possibly have verified that the whole program works as expected. Yet a
+program with 100% code coverage (that is, one in which every line of code is executed at least once
+by the test suite) still may not be tested effectively.
+
+For this reason, most functionality is verified both in a unit test and integration test. While a
+unit test can verify that its unit under test works as expected by itself, an integration test can
+verify that a unit under test participates appropriately in making the program as a whole work as
+expected. To put it another way, if a function has unit tests that pass, that's great, but it's no
+guarantee that the rest of the program is (on the one hand) only going to give "expected" input,
+and (on the other hand) properly designed to accept the function's output.
+
+In a perfect world therefore, the test suite would produce 200% coverage, running every line of
+program code once in a unit test and once in an integration test.
+
+
+Deduplication in the Test Suite
+-------------------------------
+
+As in the HTTP request handlers themselves, I've tried to deduplicate functionality in the test
+suite. Broadly, this means that the GET tests are also run with SEARCH, and the SimpleHandler tests
+are also run with a ComplexHandler. Thus tests for GET with SimpleHandler are run four times:
+
+- for GET and SimpleHandler
+- for GET and ComplexHandler
+- for SEARCH and SimpleHandler
+- for SEARCH and ComplexHandler
+
+This is primarily accomplished with subclasses. It does require that superclasses are more flexible
+about their test input values, but it turns out to be relatively easy. Some tests are run multiple
+times by being "copied into" a class. This works because Python is magical. For example:
+
+    class TestOne():
+        def test_func(self):
+            assert 5 == 6
+
+    class TestTwo():
+        test_func = TestOne.test_func
+
+If you want to guarantee for yourself that a test is indeed running as many times as you think it
+should, make a change so a test fails, then count the number of failures.
+
+I admit this poses some difficulty for people who aren't used to it yet, but the benefits seemed
+worth it. The chief benefit is that it alleviates the burden of having the copy-and-paste, then
+keep synchronized, two or four versions of a test that is virtually identical. It also offers some
+protection over a situation where you're overly eager to make the tests pass, so you just change
+the "expected" value to match whatever is being outputted. You can't just change so easily when a
+fix in one test run causes a failure in three others---if the behaviour between the deduplicated
+tests really must be different, now you have to think about it carefully!
+
+
+Test Fixtures (shared.TestHandler)
+----------------------------------
+
+To help simplify the test suite, the "shared.py" file contains several test fixtures. A test fixture
+is a complicated mock object. Nearly every test class in Abbot should subclass shared.TestHandler,
+which mocks some important things. However, the default mock on Solr simply raises an exception. If
+you want to use Solr in your test, you must call setUpSolr() on your TestHandler subclass.
+
+When you call setUpSolr(), a shared.SolrMock instance is installed over the "pysolrtornado" instance
+in the "util" module. Because all calls to Solr are made from the "util" module, this puts a mock
+on every call to Solr.
+
+You can make assertions about how pysolrtornado methods are called, just as with any Mock instance.
+You can also set up complicated side-effect behaviour. Refer to the SolrMock and SolrMethodSideEffect
+documentation in the "shared.py" file for more information. Refer to the "test_get_integration.py"
+file for an example of how these are used.
