@@ -92,7 +92,9 @@ def with_inner_text(field, rtype):
     :returns: An list with :class:`Element` objects to add to the converted document.
     :rtype: list of :class:`~xml.etree.ElementTree.Element`
 
-    The "type" is only used if this is an "id" field.
+    .. note:: The "type" is only used if this is an "id" field.
+    .. note:: If a field name ends with "_id", we assume it is a cross-reference ID, and the value
+        is adjusted using :func:`make_solr_id`.
     '''
 
     elems = [etree.Element(FIELD, {NAME: field.tag.lower()})]
@@ -108,6 +110,9 @@ def with_inner_text(field, rtype):
             elems[0].text = 'Mass'
             elems.append(etree.Element(FIELD, {NAME: field.tag.lower()}))
             elems[1].text = 'Office'
+
+    elif field.tag.endswith('_id') and len(field.tag) > 3:
+        elems[0].text = make_solr_id(field.tag[:-3], field.text)
 
     else:
         elems[0].text = field.text

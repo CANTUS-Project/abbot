@@ -135,6 +135,35 @@ def test_convert_2(mock_etree, mock_cdn):
     output_tree.write.assert_called_with(expected, encoding='utf-8', xml_declaration=True)
 
 
+def test_xreffed_ids():
+    '''
+    Complex resources, which contain cross-references to other resources in the form of "id" fields,
+    must have the cross-referenced IDs modified to match what we will find in Solr.
+
+    In this test, we convert a Feast with Drupal ID 9373, and a Chant that cross-references it. The
+    assertion is that the Chant's cross-reference ID should be the same as the Feast's actual ID.
+
+    Regression test for Abbot's GitHub issue #108.
+    '''
+    feast_xml = etree.fromstring('''
+        <feast>
+            <id>9373</id>
+            <name>Feast of Fun</name>
+        </feast>''')
+    chant_xml = etree.fromstring('''
+        <chant>
+            <id>298734</id>
+            <feast_id>9373</feast_id>
+        </chant>''')
+
+    actual_feast = drupal_to_solr.convert_doc_node(feast_xml)
+    actual_chant = drupal_to_solr.convert_doc_node(chant_xml)
+
+    feast_id = actual_feast.find('.//*[@name="id"]')
+    xref_id = actual_chant.find('.//*[@name="feast_id"]')
+    assert feast_id.text == xref_id.text
+
+
 class TestFieldConverters(object):
     '''
     Tests for with_inner_text() and with_text_attr().
@@ -230,3 +259,33 @@ class TestFieldConverters(object):
         assert actual[1].tag == 'field'
         assert actual[1].get('name') == 'mass_or_office'
         assert actual[1].text == 'Office'
+
+    def test_with_inner_text_4a(self):
+        '''
+        When it's a field ending with "_id" (and therefore probably a cross-reference).
+        '''
+        elem = etree.Element('century_id')
+        elem.text = '123'
+
+        actual = drupal_to_solr.with_inner_text(elem, 'genre')
+
+        assert len(actual) == 1
+        actual = actual[0]
+        assert actual.tag == 'field'
+        assert actual.get('name') == 'century_id'
+        assert actual.text == drupal_to_solr.make_solr_id('century', '123')
+
+    def test_with_inner_text_4b(self):
+        '''
+        When the whole field is called "_id".
+        '''
+        elem = etree.Element('_id')
+        elem.text = '123'
+
+        actual = drupal_to_solr.with_inner_text(elem, 'genre')
+
+        assert len(actual) == 1
+        actual = actual[0]
+        assert actual.tag == 'field'
+        assert actual.get('name') == '_id'
+        assert actual.text == '123'
