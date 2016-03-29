@@ -1,0 +1,82 @@
+---
+- name: check whether keys were regenerated since installation
+  stat: path=/etc/ssh/id_rsa_cantus
+  register: new_ssh_stat
+
+# when we do need to regenerate the host keys
+- name: make a new ssh config directory
+  when: not new_ssh_stat.stat.exists
+  file: path=/etc/ssh_new state=directory
+- name: generate a new RSA host key
+  when: not new_ssh_stat.stat.exists
+  shell: ssh-keygen -t rsa -b 4096 -N "" -f /etc/ssh_new/id_rsa_cantus
+- name: generate a new ECDSA host key
+  when: not new_ssh_stat.stat.exists
+  shell: ssh-keygen -t ecdsa -b 521 -N "" -f /etc/ssh_new/id_ecdsa_cantus
+- name: generate a new ED25519 host key
+  when: not new_ssh_stat.stat.exists
+  shell: ssh-keygen -t ed25519 -N "" -f /etc/ssh_new/id_ed25519_cantus
+
+# set the sshd config file; to different dirs if we're regenerating
+- name: set the sshd config file (if regenerating)
+  when: not new_ssh_stat.stat.exists
+  template: src=sshd_config.j2 dest=/etc/ssh_new/sshd_config
+  notify:
+    - restart sshd
+- name: set the sshd config file (if not regenerating)
+  when: new_ssh_stat.stat.exists
+  template: src=sshd_config.j2 dest=/etc/ssh/sshd_config
+  notify:
+    - restart sshd
+
+# swap the old and new directories, if we're regenerating
+- name: backup existing host keys
+  when: not new_ssh_stat.stat.exists
+  command: creates="/etc/ssh_backup" mv /etc/ssh /etc/ssh_backup
+- name: install newly-generated host keys
+  when: not new_ssh_stat.stat.exists
+  command: creates="/etc/ssh" mv /etc/ssh_new /etc/ssh
+
+# now check permissions on the contained files
+- name: check permissions of host key private parts
+  file:
+    path: /etc/ssh/{{ item }}
+    state: file
+    mode: 0640
+    owner: root
+    group: ssh_keys
+    seuser: system_u
+    setype: sshd_key_t
+  with_items:
+    - id_ed25519_cantus
+    - id_ecdsa_cantus
+    - id_rsa_cantus
+- name: check permissions of host key public parts
+  file:
+    path: /etc/ssh/{{ item }}
+    state: file
+    mode: 0644
+    owner: root
+    group: root
+    seuser: system_u
+    setype: sshd_key_t
+  with_items:
+    - id_ed25519_cantus.pub
+    - id_ecdsa_cantus.pub
+    - id_rsa_cantus.pub
+- name: check permissions of sshd_config
+  file:
+    path: /etc/ssh/sshd_config
+    state: file
+    mode: 0600
+    owner: root
+    group: root
+    seuser: system_u
+    setype: etc_t
+  notify:
+    - restart sshd
+
+- name: ensure SSHD is enabled
+  service: name=sshd enabled=yes
+- name: allow SSH service in the firewall
+  firewalld: service=ssh immediate=yes permanent=yes state=enabled zone=public

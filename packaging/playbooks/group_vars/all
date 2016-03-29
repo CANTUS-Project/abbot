@@ -1,0 +1,36 @@
+---
+epel_key_path: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+epel_rpm_path: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+epel_repo_path: /etc/yum.repos.d/epel.repo
+
+ius_key_path: /etc/pki/rpm-gpg/IUS-COMMUNITY-GPG-KEY
+ius_rpm_path: https://dl.iuscommunity.org/pub/ius/stable/CentOS/7/x86_64/ius-release-1.0-14.ius.centos7.noarch.rpm
+ius_repo_path: /etc/yum.repos.d/ius.repo
+
+unit_files_dir: /usr/lib/systemd/system
+
+solr_version: 5.3.0
+solr_download_url: http://mirror.its.dal.ca/apache/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
+solr_local_path: /home/compadmin/solr-{{ solr_version }}.tgz
+solr_bin_dir: /usr/local/solr-{{ solr_version }}
+solr_var_dir: /var/db/solr
+solr_user: solr
+solr_group: "{{ solr_user }}"
+solr_port: 8983
+solr_homedir_repo: https://github.com/CANTUS-Project/abbot_solr_home.git
+
+pyvenv_path: /usr/bin/pyvenv-3.4
+abbot_repo: https://github.com/CANTUS-Project/abbot.git
+abbot_repo_local: /usr/local/abbot
+abbot_venv_dir: /usr/local/abbot-venv
+abbot_py_exec: "{{ abbot_venv_dir }}/bin/python"
+abbot_user: abbot
+abbot_group: "{{ abbot_user }}"
+abbot_conf_file: /etc/abbot.conf
+holy_orders_conf_file: /var/local/holyorders.json
+
+abbot_port: 8888
+abbot_scheme: http
+abbot_cors_origin: "*"
+abbot_drupal_url: http://cantus.uwaterloo.ca/
+abbot_solr_url: http://localhost:8983/solr/collection1/

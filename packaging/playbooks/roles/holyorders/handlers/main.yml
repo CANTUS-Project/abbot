@@ -1,0 +1,5 @@
+---
+- name: daemon-reload
+  shell: systemctl daemon-reload
+- name: restart holyorders
+  service: name=holyorders.timer state=restarted

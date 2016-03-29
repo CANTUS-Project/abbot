@@ -1,0 +1,7 @@
+---
+- name: daemon-reload
+  shell: systemctl daemon-reload
+- name: restart abbot
+  service: name=abbot state=restarted
+- name: restart holyorders
+  service: name=holyorders.timer state=restarted

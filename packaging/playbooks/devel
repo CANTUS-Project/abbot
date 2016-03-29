@@ -1,0 +1,2 @@
+[abbot]
+abbot.adjectivenoun.ca ansible_user=compadmin ansible_host=10.0.1.132

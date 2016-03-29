@@ -1,9 +1,10 @@
 # Abbot Configuration File
-# {{ ansible_managed }}
+#
+# NOTE: this file is managed by Ansible; manual changes will be overwritten
 
 # These settings are modified automatically by Ansible.
 scheme = '{{ abbot_scheme }}'
-hostname = '{{ abbot_hostname }}'
+hostname = '{{ hostname }}'
 port = {{ abbot_port }}
 cors_allow_origin = '{{ abbot_cors_origin }}'
 drupal_url = '{{ abbot_drupal_url }}'

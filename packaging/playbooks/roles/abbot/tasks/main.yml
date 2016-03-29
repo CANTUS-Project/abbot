@@ -1,0 +1,96 @@
+---
+# download Abbot repository and checkout the proper commit
+- name: check that git is installed
+  yum: name=git state=present
+- name: clone the "abbot" repository
+  # no need to set permissions because everything is copied into the virtualenv
+  git:
+    clone: yes
+    update: yes
+    force: yes  # meaning to overwrite local changes
+    dest: "{{ abbot_repo_local }}"
+    repo: "{{ abbot_repo }}"
+    version: "{{ abbot_version }}"
+  notify:
+    - restart abbot
+    - restart holyorders
+
+- name: install abbot to the virtualenv
+  pip:
+    virtualenv: "{{ abbot_venv_dir }}"
+    virtualenv_command: "{{ pyvenv_path }}"
+    name: "{{ abbot_repo_local }}"
+  notify:
+    - restart abbot
+    - restart holyorders
+- name: set permissions on the virtualenv
+  file:
+    path: "{{ abbot_venv_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+    seuser: system_u
+    setype: usr_t
+- name: set permissions on the virtualenv/lib
+  file:
+    path: "{{ abbot_venv_dir }}/lib"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+    seuser: system_u
+    setype: lib_t
+- name: set permissions on the virtualenv/bin
+  file:
+    path: "{{ abbot_venv_dir }}/bin"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwx,g=rx,o=rx"
+    recurse: yes
+    seuser: system_u
+    setype: bin_t
+
+# make the Abbot configuration
+- name: make the "abbot" user
+  user: name={{ abbot_user }} state=present system=yes shell=/usr/sbin/nologin createhome=no
+- name: generate the Abbot configuration file
+  template:
+    src: abbot_config.py.j2
+    dest: "{{ abbot_conf_file }}"
+    owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
+    seuser: system_u
+    setype: etc_t
+  notify:
+    - restart abbot
+- name: install systemd unit file for Abbot
+  template:
+    src: abbot.service.j2
+    dest: "{{ unit_files_dir }}/abbot.service"
+    owner: root
+    group: root
+    seuser: system_u
+    setype: systemd_unit_file_t
+  notify:
+    - daemon-reload
+    - restart abbot
+- name: install systemd socket file for Abbot
+  template:
+    src: abbot.socket.j2
+    dest: "{{ unit_files_dir }}/abbot.socket"
+    owner: root
+    group: root
+    seuser: system_u
+    setype: systemd_unit_file_t
+  notify:
+    - daemon-reload
+    - restart abbot
+
+- name: enable Abbot
+  service: name=abbot.service enabled=yes
+- name: open Abbot's port in the firewall (permanent)
+  firewalld: port={{ abbot_port }}/tcp permanent=yes immediate=yes state=enabled zone=public

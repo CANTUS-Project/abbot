@@ -1,4 +1,13 @@
 ---
-- include: configure_ssh.yml
-- include: install_solr.yml
-- include: install_abbot.yml
+- name: Abbot servers.
+  hosts: abbot
+  become: yes
+  become_method: sudo
+
+  roles:
+    - general
+    - java
+    - solr
+    - python34
+    - abbot
+    - holyorders

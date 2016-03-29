@@ -1,0 +1,9 @@
+---
+- name: install Python 3.4
+  yum: name={{ item }} state=present
+  with_items:
+    - python34u
+    - python34u-devel
+    - python34u-libs
+    - python34u-pip
+    - python34u-setuptools

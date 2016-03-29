@@ -1,0 +1,76 @@
+---
+# download and install
+- name: check whether Solr is installed
+  stat: path={{ solr_bin_dir }}/server/start.jar
+  register: solr_is_installed
+- name: check whether Solr is downloaded
+  stat: path={{ solr_local_path }}
+  register: solr_is_downloaded
+- name: download the source file
+  when: (not solr_is_installed.stat.exists) and (not solr_is_downloaded.stat.exists)
+  get_url: url={{ solr_download_url }} dest={{ solr_local_path }}
+- name: create the bin directory
+  file: path={{ solr_bin_dir }} state=directory
+- name: extract program code
+  when: not solr_is_installed.stat.exists
+  unarchive: copy=no src={{ solr_local_path }} dest=/usr/local
+  notify:
+    - restart solr
+- name: remove downloaded Solr file
+  file: path={{ solr_local_path }} state=absent
+
+# install the "solr.home" from GitHub
+- name: check that git is installed
+  yum: name=git state=latest
+- name: clone the "solr_home" repository
+  git: clone=yes update=yes force=yes dest={{ solr_var_dir }} repo={{ solr_homedir_repo }} version=master
+- name: set the logging properties file
+  template: src=log4j.properties.j2 dest="{{ solr_var_dir }}/log4j.properties"
+  notify:
+    - restart solr
+- name: create var/logs directory
+  file: name="{{ solr_var_dir }}/logs" state=directory
+
+# set permissions
+- name: make the "solr" user
+  user: name={{ solr_user }} state=present system=yes shell=/usr/sbin/nologin createhome=no
+- name: set permissions on var directory
+  file:
+    path: "{{ solr_var_dir }}"
+    state: directory
+    owner: "{{ solr_user }}"
+    group: "{{ solr_group }}"
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+    setype: var_t
+    # TODO: seuser (eventually, after I figure out all the stuff to make Solr a confined service
+- name: set permissions on installed program code
+  file:
+    path: "{{ solr_bin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+    setype: usr_t
+    seuser: system_u
+- name: set permissions on the "solr" executable
+  file:
+    path: "{{ solr_bin_dir }}/bin/solr"
+    state: file
+    mode: "u=rwx,g=rx,o=rx"
+
+# set up systemd
+- name: install systemd unit file for Solr
+  template:
+    src: solr.service.j2
+    dest: "{{ unit_files_dir }}/solr.service"
+    owner: root
+    group: root
+    seuser: system_u
+    setype: systemd_unit_file_t
+  notify:
+    - daemon-reload
+    - restart solr
+- name: check that solr.service is enabled
+  service: name=solr enabled=yes

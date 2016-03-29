@@ -1,0 +1,11 @@
+---
+- name: check whether IUS is installed
+  stat: path={{ ius_repo_path }}
+  register: ius_stat
+- name: install IUS
+  when: not ius_stat.stat.exists
+  yum: name={{ ius_rpm_path }} state=present
+- name: install IUS GPG key
+  rpm_key: state=present key={{ ius_key_path }}
+- name: ensure IUS is at latest version
+  yum: name=ius-release state=latest

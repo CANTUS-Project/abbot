@@ -1,0 +1,36 @@
+---
+- name: generate the Abbot configuration file
+  copy:
+    src: holyorders.json
+    dest: "{{ holy_orders_conf_file }}"
+    owner: abbot
+    group: root
+    mode: "u=rw,g=r,o=r"
+    seuser: system_u
+    setype: var_t
+    force: no
+- name: install systemd unit file for HolyOrders
+  template:
+    src: holyorders.service.j2
+    dest: "{{ unit_files_dir }}/holyorders.service"
+    owner: root
+    group: root
+    seuser: system_u
+    setype: systemd_unit_file_t
+  notify:
+    - daemon-reload
+    - restart holyorders
+- name: install systemd timer file for HolyOrders
+  template:
+    src: holyorders.timer.j2
+    dest: "{{ unit_files_dir }}/holyorders.timer"
+    owner: root
+    group: root
+    seuser: system_u
+    setype: systemd_unit_file_t
+  notify:
+    - daemon-reload
+    - restart holyorders
+
+- name: enable HolyOrders
+  service: name=holyorders.timer enabled=yes

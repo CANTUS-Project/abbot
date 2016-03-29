@@ -1,0 +1,11 @@
+---
+- name: install EPEL GPG key
+  rpm_key: state=present key={{ epel_key_path }}
+- name: check whether EPEL is installed
+  stat: path={{ epel_repo_path }}
+  register: epel_stat
+- name: install EPEL
+  when: not epel_stat.stat.exists
+  yum: name={{ epel_rpm_path }} state=present
+- name: ensure EPEL is at latest version
+  yum: name=epel-release state=present
