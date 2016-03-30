@@ -108,7 +108,10 @@ class CanonicalHandler(web.RequestHandler):
         SimpleHandler.set_default_headers(self)
 
     def _do_the_redirect(self):
-        self.redirect('{}/'.format(self.request.uri), permanent=True)
+        if '?' in self.request.uri:
+            self.send_error(400)
+        else:
+            self.redirect('{}/'.format(self.request.uri), permanent=True)
 
     def get(self):
         self._do_the_redirect()

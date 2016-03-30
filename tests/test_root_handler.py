@@ -142,7 +142,7 @@ class TestCanonicalHandler(shared.TestHandler):
     '''
 
     @testing.gen_test
-    def test_get(self):
+    def test_get_1(self):
         '''
         Ensure the redirect works properly with a GET request.
         '''
@@ -150,6 +150,40 @@ class TestCanonicalHandler(shared.TestHandler):
                                               follow_redirects=False, raise_error=False)
         self.assertEqual(301, actual.code)
         self.assertEqual('/christopher/', actual.headers['Location'])
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_get_2(self):
+        '''
+        Ensure a 400 when the URL has a query string that's not /-terminated.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher?zed'), method='GET',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(400, actual.code)
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_get_3(self):
+        '''
+        Ensure a 400 when the URL has a query string that's /-terminated.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher?zed/'), method='GET',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(400, actual.code)
+        self.check_standard_header(actual)
+
+    @testing.gen_test
+    def test_get_4(self):
+        '''
+        Ensure a 404 with a GET request with a query string that ends with / and the URL already
+        ends with /.
+
+        One might expect a 400 response here because of the ? in the URL, but it doesn't really
+        matter. The point of this test is to guarantee that a request like this fails cleanly.
+        '''
+        actual = yield self.http_client.fetch(self.get_url('/christopher/?zed/'), method='GET',
+                                              follow_redirects=False, raise_error=False)
+        self.assertEqual(404, actual.code)
         self.check_standard_header(actual)
 
     @testing.gen_test
