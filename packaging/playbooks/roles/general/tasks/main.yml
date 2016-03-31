@@ -2,3 +2,14 @@
 - include: ssh.yml
 - include: epel.yml
 - include: ius.yml
+
+- name: edit yum.conf so the metadata cache is valid for six hours
+  lineinfile:
+    dest: /etc/yum.conf
+    state: present
+    line: "metadata_expire=21600"
+- name: edit yum.conf so metadata are only updated as needed
+  lineinfile:
+    dest: /etc/yum.conf
+    state: present
+    line: "metadata_expire_filter=read-only:present"
