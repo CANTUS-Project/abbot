@@ -371,7 +371,7 @@ def request_wrapper(func):
         except (gen.BadYieldError, Exception) as exc:   # pylint: disable=broad-except
             if options.debug:
                 import traceback
-                tback = traceback.format_exception(type(exc), exc, None)
+                tback = traceback.format_exception(type(exc), exc, exc.__traceback__)
                 if isinstance(exc, gen.BadYieldError):
                     log.error('IMPORTANT: write the @request_wrapper decorator above @gen.coroutine')
                 for line in tback:

@@ -471,7 +471,11 @@ class TestUpdateSaveConfig(unittest.TestCase):
             holy_orders.update_save_config(to_update, failed_types, config, config_path)
 
         mock_open.assert_called_once_with(config_path, 'w')
-        mock_json.dump.assert_called_once_with(config, mock.ANY, indent='\t', sort_keys=True)
+        mock_json.dump.assert_called_once_with(
+            config,
+            mock_open.return_value,  # mock.ANY doesn't work here with CPython 3.5 ...
+            indent='\t',
+            sort_keys=True)
         # Ensure everything saved in the dict was in "to_update" and not "failed_types", and has
         # the proper timestamp.
         saved_conf = mock_json.dump.call_args[0][0]

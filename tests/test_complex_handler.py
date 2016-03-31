@@ -239,8 +239,8 @@ class TestMakeExtraFields(shared.TestHandler):
 
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
-        self.solr.search.assert_any_caled('+type:feast +id:123', df='default_search')
-        self.solr.search.assert_any_caled('+type:source_status +id:456', df='default_search')
+        self.solr.search.assert_any_call('+type:feast +id:123', df='default_search')
+        self.solr.search.assert_any_call('+type:source_status +id:456', df='default_search')
         self.assertEqual(expected, actual)
 
     @testing.gen_test
