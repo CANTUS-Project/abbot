@@ -1,6 +1,6 @@
 # Abbot
 
-*Abbot* is a Python 3.4 implementation of a server for the Cantus API.
+*Abbot* is a server implementation of the Cantus API for CPython 3.4 and 3.5.
 
 [![Requirements Status](https://img.shields.io/requires/github/CANTUS-Project/abbot.svg?style=flat-square)](https://requires.io/github/CANTUS-Project/abbot/requirements/?branch=master)
 [![Build Status](https://img.shields.io/travis/CANTUS-Project/abbot.svg?style=flat-square)](https://travis-ci.org/CANTUS-Project/abbot)
