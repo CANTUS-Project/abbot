@@ -1,5 +1,5 @@
 __all__ = ['complex_handler', 'handlers', 'simple_handler', 'systemd_http_server', 'util']
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 __cantus_version__ = '0.2.3'
 
 
