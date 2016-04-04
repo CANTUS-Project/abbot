@@ -28,6 +28,7 @@ abbot_user: abbot
 abbot_group: "{{ abbot_user }}"
 abbot_conf_file: /etc/abbot.conf
 holy_orders_conf_file: /var/local/holyorders.json
+holyorders_frequency: 1h
 
 abbot_port: 8888
 abbot_scheme: http

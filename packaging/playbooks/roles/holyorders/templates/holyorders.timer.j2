@@ -3,7 +3,7 @@ Description="Run Holy Orders hourly"
 
 [Timer]
 OnBootSec=15min
-OnUnitActiveSec=1h
+OnUnitActiveSec={{ holyorders_frequency }}
 
 [Install]
 WantedBy=timers.target

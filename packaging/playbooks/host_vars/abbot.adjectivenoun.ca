@@ -2,3 +2,6 @@
 hostname: abbot.adjectivenoun.ca
 abbot_version: tags/v0.5.2
 vitrail_version: master
+
+# override the default in group_vars
+holyorders_frequency: 24h
