@@ -9,6 +9,13 @@
     repo: "{{ vitrail_repo }}"
     version: "{{ vitrail_version }}"
 
+- name: set the Abbot server URL for Vitrail
+  lineinfile:
+    state: present
+    dest: "{{ vitrail_repo_local }}/js/nuclear/signals.js"
+    regexp: '<< SERVER URL HERE >>'
+    line: "{{ abbot_url_for_vitrail }}"
+
 # the "npm" module doesn't seem to update things
 - name: install NPM depenencies
   command: "/usr/bin/npm install chdir={{ vitrail_repo_local }}"

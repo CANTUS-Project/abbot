@@ -37,3 +37,4 @@ abbot_drupal_url: http://cantus.uwaterloo.ca/
 abbot_solr_url: http://localhost:8983/solr/collection1/
 
 vitrail_document_root: /var/www/vitrail
+abbot_url_for_vitrail: "'{{ abbot_scheme }}://{{ hostname }}:{{ abbot_port }}/'"
