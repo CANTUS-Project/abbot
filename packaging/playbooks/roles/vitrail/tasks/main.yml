@@ -1,0 +1,31 @@
+---
+- name: make sure git is installed
+  package: name=git state=present
+
+- name: clone the Vitrail repository
+  git:
+    dest: "{{ vitrail_repo_local }}"
+    force: yes
+    repo: "{{ vitrail_repo }}"
+    version: "{{ vitrail_version }}"
+
+- name: set permissions on Vitrail repository
+  file:
+    dest: "{{ vitrail_repo_local }}"
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+    setype: httpd_sys_content_t
+    state: directory
+
+# the "npm" module doesn't seem to update things
+- name: install NPM depenencies
+  command: "/usr/bin/npm install chdir={{ vitrail_repo_local }}"
+
+- name: do an NPM deduplication
+  command: "/usr/bin/npm dedupe chdir={{ vitrail_repo_local }}"
+
+- name: compile JavaScript assets
+  command: "{{ browserify_path }} {{ vitrail_source }} -o {{ vitrail_compiled }} chdir={{ vitrail_repo_local }}"
+
+- name: minify JavaScript assets
+  command: "{{ uglify_path }} {{ vitrail_compiled }} -o {{ vitrail_minified }} chdir={{ vitrail_repo_local }}"

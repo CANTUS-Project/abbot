@@ -1,0 +1,47 @@
+- name: install packages
+  yum: name={{ item }} state=present
+  with_items:
+    - httpd
+    - mod_ssl
+    - git
+    - letsencrypt
+
+- name: remove default VirtualHost configuration files
+  file: path={{ item }} state=absent
+  with_items:
+    - "/etc/httpd/conf.d/autoindex.conf"
+    - "/etc/httpd/conf.d/userdir.conf"
+    - "/etc/httpd/conf.d/welcome.conf"
+    - "/etc/httpd/conf.d/ssl.conf"
+
+- name: add HTTPD configuration file
+  template:
+    src: httpd.conf.j2
+    dest: "/etc/httpd/conf/httpd.conf"
+    mode: u=rw,g=r,o=r
+    seuser: system_u
+    setype: httpd_config_t
+  notify:
+    - restart httpd
+
+- name: add Vitrail configuration file
+  template:
+    src: httpd_site_specific_conf.j2
+    dest: "/etc/httpd/conf.d/vitrail.conf"
+    mode: u=rw,g=r,o=r
+    seuser: system_u
+    setype: httpd_config_t
+  notify:
+    - restart httpd
+
+- name: ensure HTTPD is enabled
+  service: name=httpd enabled=yes
+  notify:
+    - restart httpd
+
+- name: open port 80 in the firewall
+  firewalld: permanent=yes immediate=yes state=enabled zone=public port=80/tcp
+- name: open port 443 in the firewall
+  firewalld: permanent=yes immediate=yes state=enabled zone=public port=443/tcp
+
+# TODO: HTTPS with letsencrypt

@@ -1,0 +1,11 @@
+# THIS FILE IS MANAGED BY ANSIBLE
+
+<VirtualHost _default_:80>
+    ServerName {{ hostname }}
+    DocumentRoot {{ vitrail_document_root }}
+
+    <Directory {{ vitrail_document_root }}>
+        Allow from all
+        Require all granted
+    </Directory>
+</VirtualHost>

@@ -1,0 +1,10 @@
+---
+vitrail_repo: https://github.com/CANTUS-Project/vitrail.git
+# this is set in group_vars so HTTPD config can access it too
+vitrail_repo_local: "{{ vitrail_document_root }}"
+
+browserify_path: "{{ vitrail_repo_local }}/node_modules/.bin/browserify"
+uglify_path: "{{ vitrail_repo_local }}/node_modules/.bin/uglifyjs"
+vitrail_source: "{{ vitrail_repo_local }}/js/vitrail-init.js"
+vitrail_compiled: "{{ vitrail_repo_local }}/js/vitrail-compiled.js"
+vitrail_minified: "{{ vitrail_repo_local }}/js/vitrail.js"

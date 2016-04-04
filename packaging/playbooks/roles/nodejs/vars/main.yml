@@ -1,0 +1,7 @@
+---
+nodejs_version: v4.4.2
+nodejs_download_url: https://nodejs.org/dist/{{ nodejs_version }}/node-{{ nodejs_version }}-linux-x64.tar.xz
+nodejs_local_path: /home/compadmin/nodejs-{{ nodejs_version }}.tar.xz
+nodejs_bin_dir: /usr/local/node-{{ nodejs_version }}-linux-x64
+nodejs_executable: "{{ nodejs_bin_dir }}/bin/node"
+npm_executable: "{{ nodejs_bin_dir }}/lib/node_modules/npm/bin/npm-cli.js"

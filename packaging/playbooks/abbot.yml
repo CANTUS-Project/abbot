@@ -1,5 +1,5 @@
 ---
-- name: Abbot servers.
+- name: Abbot servers
   hosts: abbot
   become: yes
   become_method: sudo
@@ -11,3 +11,6 @@
     - python34
     - abbot
     - holyorders
+    - httpd
+    - nodejs
+    - vitrail

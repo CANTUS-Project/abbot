@@ -1,3 +1,4 @@
 ---
 hostname: abbot.adjectivenoun.ca
-abbot_version: tags/v0.5.1
+abbot_version: tags/v0.5.2
+vitrail_version: master
