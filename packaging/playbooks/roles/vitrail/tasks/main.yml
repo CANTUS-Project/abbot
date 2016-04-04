@@ -9,14 +9,6 @@
     repo: "{{ vitrail_repo }}"
     version: "{{ vitrail_version }}"
 
-- name: set permissions on Vitrail repository
-  file:
-    dest: "{{ vitrail_repo_local }}"
-    mode: "u=rwX,g=rX,o=rX"
-    recurse: yes
-    setype: httpd_sys_content_t
-    state: directory
-
 # the "npm" module doesn't seem to update things
 - name: install NPM depenencies
   command: "/usr/bin/npm install chdir={{ vitrail_repo_local }}"
@@ -29,3 +21,11 @@
 
 - name: minify JavaScript assets
   command: "{{ uglify_path }} {{ vitrail_compiled }} -o {{ vitrail_minified }} chdir={{ vitrail_repo_local }}"
+
+- name: set permissions on Vitrail repository
+  file:
+    dest: "{{ vitrail_repo_local }}"
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+    setype: httpd_sys_content_t
+    state: directory
