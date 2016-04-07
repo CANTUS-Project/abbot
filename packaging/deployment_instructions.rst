@@ -36,6 +36,12 @@ deployment bundle. (*Vitrail* is the mobile-friendly web application designed fo
 probably already have *Git* installed because you cloned this repository. *NodeJS* and *NPM* usually
 come together, and they are available from https://nodejs.org/.
 
+You may also need to create a new "inventory file" to tell Ansible to run on your own VMs rather
+than ours. Use the "devel" and "production" inventory files in the "playbooks" directory as examples.
+Note that the "production" file refers to a host that should be accessible from anywhere, but the
+"devel" host is only accessible (with that IP address) on the author's home network. For more
+information about inventory files: https://docs.ansible.com/ansible/intro_inventory.html
+
 
 Post-Install Preparation
 ------------------------
@@ -77,9 +83,10 @@ Run the SSH Playbook
 --------------------
 
 Because a failure in the SSH playbook may prevent you from reconnecting via SSH, you should keep an
-active session while you run the playbook for the first time. Also note that, when you run the SSH
-playbook for the first time, the server will generate new host keys, so you may have to override the
-SSH client settings on your own computer *the first time* you connect after running the playbook.
+active session while you run the SSH configuration for the first time. Also note that, when you run
+the SSH configuration for the first time, the server will generate new host keys, so you may have to
+override the SSH client settings on your own computer *the first time* you connect after running
+the playbook.
 
 For example:
 ::
@@ -87,8 +94,8 @@ For example:
     $ ssh compadmin@new_host
     ... then in a new terminal window...
     $ cd /path/to/ansible/playbooks
-    $ ansible-playbook configure_ssh.yml
-    ... and in the same terminal window...
+    $ ansible-playbook -i myserver abbot.yml --tags=ssh
+    ... when it's done, try it out...
     $ ssh compadmin@new_host
 
 If you can successfully connect to the new VM after the playbook has run, you can go ahead and
@@ -117,7 +124,7 @@ Run all the Playbooks
 The rest of the setup doesn't require human intervention. In fact, you don't even have to watch!
 ::
 
-    $ ansible-playbook -i hosts abbot.yml
+    $ ansible-playbook -i myserver abbot.yml
 
 
 Set Initial Data

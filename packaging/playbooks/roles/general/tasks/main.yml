@@ -1,5 +1,6 @@
 ---
 - include: ssh.yml
+  tags: ssh
 - include: epel.yml
 - include: ius.yml
 
