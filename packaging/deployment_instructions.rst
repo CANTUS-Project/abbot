@@ -31,10 +31,10 @@ difficult parts) are automated.
 You must install *Ansible* on your own computer, which will be the "Control Machine." Refer to
 https://docs.ansible.com/ansible/intro_installation.html#installing-the-control-machine for help.
 
-You will also want to define an "abbot" host in an inventory file, something like this:
-
-::
-    abbot ansible_ssh_host=10.0.1.132 ansible_ssh_user=compadmin
+You must also install *Git*, *NodeJS*, and *NPM* in order to build and prepare the *Vitrail*
+deployment bundle. (*Vitrail* is the mobile-friendly web application designed for *Abbot*). You
+probably already have *Git* installed because you cloned this repository. *NodeJS* and *NPM* usually
+come together, and they are available from https://nodejs.org/.
 
 
 Post-Install Preparation

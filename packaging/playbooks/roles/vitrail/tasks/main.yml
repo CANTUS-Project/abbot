@@ -1,15 +1,25 @@
 ---
-- name: make sure git is installed
-  package: name=git state=present
+- name: (local) check for dependencies
+  connection: local
+  become: false
+  command: which {{ item }}
+  with_items:
+    - node
+    - npm
+    - git
 
-- name: clone the Vitrail repository
+- name: (local) clone the Vitrail repository
+  connection: local
+  become: false
   git:
     dest: "{{ vitrail_repo_local }}"
     force: yes
     repo: "{{ vitrail_repo }}"
     version: "{{ vitrail_version }}"
 
-- name: set the Abbot server URL for Vitrail
+- name: (local) set the Abbot server URL for Vitrail
+  connection: local
+  become: false
   lineinfile:
     state: present
     dest: "{{ vitrail_repo_local }}/js/nuclear/signals.js"
@@ -17,22 +27,32 @@
     line: "{{ abbot_url_for_vitrail }}"
 
 # the "npm" module doesn't seem to update things
-- name: install NPM depenencies
-  command: "/usr/bin/npm install chdir={{ vitrail_repo_local }}"
+- name: (local) install NPM depenencies
+  connection: local
+  become: false
+  command: "npm install chdir={{ vitrail_repo_local }}"
 
-- name: do an NPM deduplication
-  command: "/usr/bin/npm dedupe chdir={{ vitrail_repo_local }}"
+- name: (local) do an NPM deduplication
+  connection: local
+  become: false
+  command: "npm dedupe chdir={{ vitrail_repo_local }}"
 
-- name: compile JavaScript assets
-  command: "{{ browserify_path }} {{ vitrail_source }} -o {{ vitrail_compiled }} chdir={{ vitrail_repo_local }}"
+- name: (local) build a Vitrail deployment bundle
+  connection: local
+  become: false
+  command: "python3 build_deploy_bundle.py chdir={{ vitrail_repo_local }}"
 
-- name: minify JavaScript assets
-  command: "{{ uglify_path }} {{ vitrail_compiled }} -o {{ vitrail_minified }} chdir={{ vitrail_repo_local }}"
-
-- name: set permissions on Vitrail repository
+- name: create remote {{ vitrail_document_root }}
   file:
-    dest: "{{ vitrail_repo_local }}"
-    mode: "u=rwX,g=rX,o=rX"
-    recurse: yes
-    setype: httpd_sys_content_t
+    dest: "{{ vitrail_document_root }}"
     state: directory
+
+- name: copy and unarchive the deployment bundle
+  unarchive:
+    copy: yes
+    src: vitrail/deploy.xz
+    dest: "{{ vitrail_document_root }}"
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+    setype: httpd_sys_content_t
