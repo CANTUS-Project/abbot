@@ -58,3 +58,6 @@ packaging/playbooks/hosts
 
 # "Hypothesis" notes directory
 .hypothesis
+
+# TLS certificates used for development
+tls_test/*

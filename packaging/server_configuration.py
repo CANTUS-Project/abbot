@@ -31,6 +31,16 @@ port = 8888
 # solr_url = 'http://localhost:8983/solr/collection1/'
 
 
+## TLS --------------------------------------------------------------------------------------------
+
+# these will cause an error unless you generate the certfile and keyfile first!
+certfile = 'tls_test/servercert.pem'
+keyfile = 'tls_test/serverkey.pem'
+# default cipherlist from Mozilla, "intermediate" settings in April 2016:
+# https://mozilla.github.io/server-side-tls/ssl-config-generator/
+ciphers = 'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS'
+
+
 ## Cross-Origin Resource Sharing (CORS) -----------------------------------------------------------
 
 # "cors_allow_origin" will be the value of the Access-Control-Allow-Origin response header. If this

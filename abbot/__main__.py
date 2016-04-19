@@ -27,6 +27,7 @@ Main file for the Abbot server reference implementation of the Cantus API.
 '''
 
 import logging
+import ssl
 
 from tornado import log, ioloop, web
 from tornado.options import define, options
@@ -46,6 +47,9 @@ define('port', default=8888, type=int,
 define('hostname', default='localhost', type=str, help='hostname for FQDN in "resources" links')
 define('scheme', default='http', type=str, help='http or https')
 define('server_name', default='', type=str, help='automatically set with scheme, hostname, and port; no need to override')
+define('certfile', default='', type=str, help='TLS certificate file')
+define('keyfile', default='', type=str, help='TLS private key file')
+define('ciphers', default='', type=str, help='TLS cipherlist in OpenSSL format')
 
 
 # NOTE: these URLs require a terminating /
@@ -256,7 +260,22 @@ def main():  # pragma: no cover
                 'compress_response': not options.debug,
                }
 
-    server = SystemdHTTPServer(web.Application(handlers=HANDLERS, settings=settings))
+    # prepare cryptography settings for the HTTPServer
+    if options.certfile and options.keyfile and options.ciphers:
+        crypto = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        crypto.load_cert_chain(options.certfile, options.keyfile)
+        crypto.set_ciphers(options.ciphers)
+        crypto.options = crypto.options | ssl.OP_NO_SSLv2
+        crypto.options = crypto.options | ssl.OP_NO_SSLv3
+
+        server = SystemdHTTPServer(
+            web.Application(handlers=HANDLERS, settings=settings),
+            ssl_options=crypto)
+    else:
+        print('HEY! You are not using HTTPS!')
+        log.app_log.warn('HEY! You are not using HTTPS!')
+        server = SystemdHTTPServer(web.Application(handlers=HANDLERS, settings=settings))
+
     server.listen(options.port)
 
     try:
