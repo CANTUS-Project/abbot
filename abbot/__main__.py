@@ -45,8 +45,7 @@ from abbot.complex_handler import ComplexHandler
 define('port', default=8888, type=int,
        help='port for Abbot to listen on, between 1024 and 32768')
 define('hostname', default='localhost', type=str, help='hostname for FQDN in "resources" links')
-define('scheme', default='http', type=str, help='http or https')
-define('server_name', default='', type=str, help='automatically set with scheme, hostname, and port; no need to override')
+define('server_name', default='', type=str, help='set with hostname and port; no need to override')
 define('certfile', default='', type=str, help='TLS certificate file')
 define('keyfile', default='', type=str, help='TLS private key file')
 define('ciphers', default='', type=str, help='TLS cipherlist in OpenSSL format')
@@ -213,21 +212,21 @@ def _set_addresses():
     Set the server's Web address and port.
 
     :raises: :exc:`SystemExit` if the port is not between 1024 and 32768.
-    :raises: :exc:`SystemExit` if the scheme is not "http" or "https".
     '''
     # check port is okay
     if not isinstance(options.port, int) or options.port < 1024 or options.port > 32768:
         log.app_log.error('Invalid port ({}). Choose a port between 1024 and 32768.\nExiting.'.format(options.port))
         raise SystemExit(1)
 
-    # check URL access scheme
-    if options.scheme.lower() not in ('http', 'https'):
-        log.app_log.error('Invalid access scheme ({}). Require "http" or "https"'.format(options.scheme))
-        raise SystemExit(1)
+    # determine HTTP or HTTPS
+    if options.certfile and options.keyfile and options.ciphers:
+        scheme = 'https'
+    else:
+        scheme = 'http'
 
     # set the server_name option
     options.server_name = '{scheme}://{hostname}:{port}/'.format(
-        scheme=options.scheme,
+        scheme=scheme,
         hostname=options.hostname,
         port=options.port)
 

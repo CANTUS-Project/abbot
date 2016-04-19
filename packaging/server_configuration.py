@@ -18,9 +18,6 @@ debug = False
 
 ## URLs -------------------------------------------------------------------------------------------
 
-# "scheme" is either "http" or "https" as appropriate for links on Abbot itself.
-scheme = 'http'
-
 # "hostname" is the fully-qualified domain name as appropriate for links on Abbot itself.
 hostname = 'localhost'
 

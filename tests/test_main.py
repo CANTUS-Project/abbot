@@ -166,23 +166,15 @@ class TestSetAddresses(object):
             main._set_addresses()
 
     @mock.patch('abbot.__main__.options')
-    def test_4(self, mock_options):
-        '''
-        When "scheme' isn't "http" or "https."
-        '''
-        mock_options.port = 4000
-        mock_options.scheme = 'ftp'
-        with pytest.raises(SystemExit):
-            main._set_addresses()
-
-    @mock.patch('abbot.__main__.options')
     def test_5(self, mock_options):
         '''
         When everything works (HTTP).
         '''
         mock_options.port = 4000
-        mock_options.scheme = 'http'
         mock_options.hostname = 'com.com'
+        mock_options.certfile = ''
+        mock_options.keyfile = ''
+        mock_options.ciphers = ''
         main._set_addresses()
         assert mock_options.server_name == 'http://com.com:4000/'
 
@@ -192,7 +184,9 @@ class TestSetAddresses(object):
         When everything works (HTTPS).
         '''
         mock_options.port = 4000
-        mock_options.scheme = 'https'
         mock_options.hostname = 'com.com'
+        mock_options.certfile = 'dd'
+        mock_options.keyfile = 'ee'
+        mock_options.ciphers = 'ff'
         main._set_addresses()
         assert mock_options.server_name == 'https://com.com:4000/'
