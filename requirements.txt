@@ -1,5 +1,5 @@
 -e .
 pytest>=2.7,<3
-hypothesis>=2,<3
+hypothesis>=3,<4
 python-coveralls
 pytest-cov>2,<3
