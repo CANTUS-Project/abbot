@@ -1,6 +1,6 @@
 # THIS FILE IS MANAGED BY ANSIBLE
 
-<VirtualHost _default_:80>
+<VirtualHost _default_:443>
     ServerName {{ hostname }}
     DocumentRoot {{ vitrail_document_root }}
 
@@ -8,4 +8,33 @@
         Allow from all
         Require all granted
     </Directory>
+
+    # as per https://wiki.mozilla.org/Security/Server_Side_TLS
+    SSLEngine on
+    SSLCertificateFile      /etc/letsencrypt/live/{{ hostname }}/cert.pem
+    SSLCertificateChainFile /etc/letsencrypt/live/{{ hostname }}/fullchain.pem
+    SSLCertificateKeyFile   /etc/letsencrypt/live/{{ hostname }}/privkey.pem
+    SSLCACertificateFile    /etc/letsencrypt/live/{{ hostname }}/chain.pem
+
+    Header always set Strict-Transport-Security "max-age=15768000"
+
+    # "Modern compatibility"
+    SSLProtocol             {{ ssl_protocol }}
+    SSLCipherSuite          {{ ssl_cipher_suite }}
+    SSLHonorCipherOrder     on
+    SSLCompression          off
 </VirtualHost>
+
+<VirtualHost _default_:80>
+    ServerName {{ hostname }}
+
+    RewriteEngine on
+    RewriteRule ^/(.*) https://{{ hostname }}/$1 [L,R=301]
+</VirtualHost>
+
+
+# OCSP Stapling, only in httpd 2.3.3 and later
+SSLUseStapling          on
+SSLStaplingResponderTimeout 5
+SSLStaplingReturnResponderErrors off
+SSLStaplingCache        shmcb:/var/run/ocsp(128000)

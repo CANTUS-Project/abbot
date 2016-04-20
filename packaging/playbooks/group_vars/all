@@ -46,3 +46,5 @@ abbot_ciphers: "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-
 
 vitrail_document_root: /var/www/vitrail
 abbot_url_for_vitrail: "'{{ abbot_scheme }}://{{ hostname }}:{{ abbot_port }}/'"
+ssl_protocol: "all -SSLv3"
+ssl_cipher_suite: "{{ abbot_ciphers }}"

@@ -1,6 +1,6 @@
 ---
 hostname: abbot.adjectivenoun.ca
-abbot_version: tags/v0.5.4
+abbot_version: tags/v0.6.0
 vitrail_version: master
 
 # override the default in group_vars

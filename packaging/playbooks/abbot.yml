@@ -9,6 +9,7 @@
     - java
     - solr
     - python34
+    - letsencrypt
     - abbot
     - holyorders
     - httpd
