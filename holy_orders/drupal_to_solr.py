@@ -58,7 +58,7 @@ def make_solr_id(rtype, rid):
 
     This function exists because Drupal may have more than one resource with the same "id" as long
     as the "type" is different, but CANTUS API resources may not have the same "id" no matter what
-    tyep they are.
+    type they are.
 
     The IDs outputted by this function are guaranteed to be consistent for the same type and id.
     '''
@@ -111,7 +111,7 @@ def with_inner_text(field, rtype):
             elems.append(etree.Element(FIELD, {NAME: field.tag.lower()}))
             elems[1].text = 'Office'
 
-    elif field.tag.endswith('_id') and len(field.tag) > 3:
+    elif field.tag.endswith('_id') and len(field.tag) > 3 and field.tag != 'cantus_id':
         elems[0].text = make_solr_id(field.tag[:-3], field.text)
 
     else:

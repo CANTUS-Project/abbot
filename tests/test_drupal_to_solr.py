@@ -289,3 +289,18 @@ class TestFieldConverters(object):
         assert actual.tag == 'field'
         assert actual.get('name') == '_id'
         assert actual.text == '123'
+
+    def test_with_inner_text_4c(self):
+        '''
+        When the field is "cantus_id" (so it shouldn't be changed).
+        '''
+        elem = etree.Element('cantus_id')
+        elem.text = '123'
+
+        actual = drupal_to_solr.with_inner_text(elem, 'genre')
+
+        assert len(actual) == 1
+        actual = actual[0]
+        assert actual.tag == 'field'
+        assert actual.get('name') == 'cantus_id'
+        assert actual.text == '123'
