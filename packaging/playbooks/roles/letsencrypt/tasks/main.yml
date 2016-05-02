@@ -6,7 +6,7 @@
   service: name=httpd state=stopped
 
 - name: renew the certificate if relevant
-  command: "letsencrypt certonly --standalone --standalone-supported-challenges http-01 --agree-tos --no-self-upgrade --rsa-key-size {{ rsa_key_size }} --keep-until-expiring -d {{ hostname }}"
+  command: "letsencrypt certonly --quiet --agree-tos --no-self-upgrade --standalone --standalone-supported-challenges tls-sni-01 --rsa-key-size {{ rsa_key_size }} --keep-until-expiring -d {{ hostname }}"
 
 - name: start httpd
   service: name=httpd state=started
