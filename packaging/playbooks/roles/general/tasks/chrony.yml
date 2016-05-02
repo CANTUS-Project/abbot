@@ -1,0 +1,20 @@
+---
+- name: ensure Chrony is installed
+  yum: name=chrony state=present
+
+- name: generate Chrony configuration file
+  template:
+    src: chrony.conf.j2
+    dest: /etc/chrony.conf
+    mode: u=rw,g=r,o=r
+    owner: root
+    group: root
+    seuser: system_u
+    setype: etc_t
+  notify:
+    - restart chronyd
+
+- name: enable Chrony
+  service: name=chronyd enabled=yes
+  notify:
+    - restart chronyd

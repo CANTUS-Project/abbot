@@ -1,0 +1,21 @@
+# THIS FILE IS MANAGED BY ANSIBLE
+#
+# These are the default CentOS 7 settings for Chrony, except the NTP servers.
+
+server {{ ntp_server1 }} iburst
+server {{ ntp_server2 }} iburst
+server {{ ntp_server3 }} iburst
+server {{ ntp_server4 }} iburst
+
+stratumweight 0
+driftfile /var/lib/chrony/drift
+rtcsync
+makestep 10 3
+bindcmdaddress 127.0.0.1
+bindcmdaddress ::1
+keyfile /etc/chrony.keys
+commandkey 1
+generatecommandkey
+noclientlog
+logchange 0.5
+logdir /var/log/chrony

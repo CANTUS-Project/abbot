@@ -3,6 +3,7 @@
   tags: ssh
 - include: epel.yml
 - include: ius.yml
+- include: chrony.yml
 
 - name: edit yum.conf so the metadata cache is valid for six hours
   lineinfile:

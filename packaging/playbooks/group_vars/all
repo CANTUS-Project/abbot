@@ -1,4 +1,9 @@
 ---
+ntp_server1: 0.ca.pool.ntp.org
+ntp_server2: 1.ca.pool.ntp.org
+ntp_server3: 2.ca.pool.ntp.org
+ntp_server4: 3.ca.pool.ntp.org
+
 epel_key_path: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
 epel_rpm_path: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 epel_repo_path: /etc/yum.repos.d/epel.repo
