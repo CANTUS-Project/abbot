@@ -56,3 +56,6 @@
     group: root
     mode: "u=rwX,g=rX,o=rX"
     setype: httpd_sys_content_t
+
+- name: double-check that httpd is started
+  service: name=httpd state=started

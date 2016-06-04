@@ -8,9 +8,6 @@
 - name: renew the certificate if relevant
   command: "letsencrypt certonly --quiet --agree-tos --no-self-upgrade --standalone --standalone-supported-challenges tls-sni-01 --rsa-key-size {{ rsa_key_size }} --keep-until-expiring -d {{ hostname }}"
 
-- name: start httpd
-  service: name=httpd state=started
-
 - name: check permissions on letsencrypt directory
   file:
     path: /etc/letsencrypt
