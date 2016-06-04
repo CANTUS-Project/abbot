@@ -578,7 +578,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         Postconditions:
         - returns fine
         '''
-        self.test_vrh_template(sort='name,asc', exp_sort='name asc')
+        self.test_vrh_template(sort='name;asc', exp_sort='name asc')
 
     def test_browse_request_11(self):
         '''
@@ -617,7 +617,7 @@ class TestVerifyRequestHeaders(shared.TestHandler):
         - send_error() called with _UNKNOWN_FIELD
         '''
         mock_send_error = mock.Mock()
-        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='nime,asc')
+        self.test_vrh_template(mock_send_error=mock_send_error, expected=False, sort='nime;asc')
         mock_send_error.assert_called_with(400, reason=simple_handler._UNKNOWN_FIELD)
 
     def test_browse_request_14(self):

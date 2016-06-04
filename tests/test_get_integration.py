@@ -110,14 +110,14 @@ class TestSimple(shared.TestHandler):
               given to Solr as required
         '''
         self.add_default_resources()
-        headers = {'X-Cantus-Page': '2', 'X-Cantus-Per-Page': '4', 'X-Cantus-Sort': 'id,desc'}
+        headers = {'X-Cantus-Page': '2', 'X-Cantus-Per-Page': '4', 'X-Cantus-Sort': 'id;desc'}
         actual = yield self.http_client.fetch(self._browse_url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
         self.check_standard_header(actual)
         assert actual.headers['X-Cantus-Page'] == '2'
         assert actual.headers['X-Cantus-Per-Page'] == '4'
-        assert actual.headers['X-Cantus-Sort'] == 'id,desc'
+        assert actual.headers['X-Cantus-Sort'] == 'id;desc'
         # the query is modified before submission for a SEARCH query
         if self._method == 'SEARCH':
             self.solr.search.assert_called_with('type:{}  AND  ( *  ) '.format(self._type[0]), sort='id desc',

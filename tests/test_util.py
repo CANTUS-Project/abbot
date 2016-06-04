@@ -110,7 +110,7 @@ class TestFormattedSorts(TestCase):
         '''
         - works when there are a bunch of spaces all over
         '''
-        sort = '  incipit  ,   asc'
+        sort = '  incipit  ;   asc'
         expected = 'incipit asc'
         actual = util.prepare_formatted_sort(sort)
         self.assertEqual(expected, actual)
@@ -119,7 +119,7 @@ class TestFormattedSorts(TestCase):
         '''
         - works when there are many field specs
         '''
-        sort = 'incipit, asc; feast,desc; family_name, asc   '
+        sort = 'incipit; asc, feast;desc, family_name; asc   '
         expected = 'incipit asc,feast_id desc,family_name asc'
         actual = util.prepare_formatted_sort(sort)
         self.assertEqual(expected, actual)
@@ -128,7 +128,7 @@ class TestFormattedSorts(TestCase):
         '''
         - ValueError when disallowed character
         '''
-        sort = 'incipit~,asc'
+        sort = 'incipit~;asc'
         self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
 
     def test_prepare_sort_4(self):
@@ -142,14 +142,14 @@ class TestFormattedSorts(TestCase):
         '''
         - ValueError when misspelled direction
         '''
-        sort = 'incipit,dasc'
+        sort = 'incipit;dasc'
         self.assertRaises(ValueError, util.prepare_formatted_sort, sort)
 
     def test_prepare_sort_6(self):
         '''
         - KeyError when field isn't in the approved list
         '''
-        sort = 'password,asc'
+        sort = 'password;asc'
         self.assertRaises(KeyError, util.prepare_formatted_sort, sort)
 
     def test_postpare_sort_1(self):
@@ -157,7 +157,7 @@ class TestFormattedSorts(TestCase):
         - with a single field
         '''
         sort = 'incipit asc'
-        expected = 'incipit,asc'
+        expected = 'incipit;asc'
         actual = util.postpare_formatted_sort(sort)
         self.assertEqual(expected, actual)
 
@@ -166,7 +166,7 @@ class TestFormattedSorts(TestCase):
         - with several fields
         '''
         sort = 'incipit asc,id desc,family_name asc'
-        expected = 'incipit,asc;id,desc;family_name,asc'
+        expected = 'incipit;asc,id;desc,family_name;asc'
         actual = util.postpare_formatted_sort(sort)
         self.assertEqual(expected, actual)
 
@@ -175,7 +175,7 @@ class TestFormattedSorts(TestCase):
         - with several fields and lots of unnecessary spaces
         '''
         sort = '   incipit     asc  ,       id    desc   ,    family_name    asc     '
-        expected = 'incipit,asc;id,desc;family_name,asc'
+        expected = 'incipit;asc,id;desc,family_name;asc'
         actual = util.postpare_formatted_sort(sort)
         self.assertEqual(expected, actual)
 

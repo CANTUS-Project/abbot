@@ -153,12 +153,12 @@ def prepare_formatted_sort(sort):
         if each_char not in ALLOWED_CHARS and not each_char.isalpha():
             raise ValueError(_DISALLOWED_CHARACTER_IN_SORT.format(each_char))
 
-    sorts = sort.split(';')
+    sorts = sort.split(',')
     sort = []
 
     for each_sort in sorts:
         try:
-            field, direction = each_sort.split(',')
+            field, direction = each_sort.split(';')
         except ValueError:
             raise ValueError(_MISSING_DIRECTION_SPEC)
 
@@ -197,9 +197,9 @@ def postpare_formatted_sort(sort):
 
     for each_sort in sorts:
         field, direction = each_sort.split()
-        sort.append('{},{}'.format(field, direction))
+        sort.append('{};{}'.format(field, direction))
 
-    return ';'.join(sort)
+    return ','.join(sort)
 
 
 def parse_fields_header(header, returned_fields):
