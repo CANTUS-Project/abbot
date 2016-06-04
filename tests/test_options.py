@@ -57,7 +57,7 @@ class TestSimpleIntegration(shared.TestHandler):
         ensure the OPTIONS method works as expected ('browse' URL)
         '''
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
-                            'X-Cantus-Page', 'X-Cantus-Sort', 'X-Cantus-Search-Help']
+                            'X-Cantus-Page', 'X-Cantus-Sort']
         actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])

@@ -119,7 +119,7 @@ class SimpleHandler(web.RequestHandler):
     # the highest value allowed for X-Cantus-Per-Page; higher values will get a 507
 
     _HEADERS_FOR_BROWSE = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
-                           'X-Cantus-Page', 'X-Cantus-Sort', 'X-Cantus-Search-Help']
+                           'X-Cantus-Page', 'X-Cantus-Sort']
     # the Cantus extension headers that can sensibly be used with a "browse" URL
 
     _HEADERS_FOR_VIEW = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
