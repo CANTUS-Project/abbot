@@ -470,12 +470,16 @@ class TestComplex(TestSimple):
         assert actual['resources']['123'] == {
             'self': 'https://cantus.org/sources/123/',
             'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
+            'indexers_id': ['900', '901'],
             'century': 'https://cantus.org/centuries/61/',
+            'century_id': '61',
         }
         assert actual['resources']['234'] == {
             'self': 'https://cantus.org/sources/234/',
             'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
+            'indexers_id': ['900', '901'],
             'century': 'https://cantus.org/centuries/62/',
+            'century_id': '62',
         }
 
     @testing.gen_test
@@ -505,6 +509,7 @@ class TestComplex(TestSimple):
         actual = escape.json_decode(actual.body)
         assert exp_ids == actual['sort_order']
         assert actual['resources']['123']['notation_style'] == 'https://cantus.org/notations/3895/'
+        assert actual['resources']['123']['notation_style_id'] == '3895'
 
     @testing.gen_test
     def test_xref_no_resources(self):

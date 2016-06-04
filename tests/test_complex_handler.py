@@ -67,7 +67,8 @@ class TestLookUpXrefs(shared.TestHandler):
         record = {'id': '123656', 'provenance_id': '3624'}
         self.solr.search_se.add('id:3624', {'id': '3624', 'name': 'Klosterneuburg'})
         expected = ({'id': '123656', 'provenance': 'Klosterneuburg'},
-                    {'provenance': 'https://cantus.org/provenances/3624/'})
+                    {'provenance': 'https://cantus.org/provenances/3624/',
+                     'provenance_id': '3624'})
 
         actual = yield self.handler.look_up_xrefs(record)
 
@@ -80,7 +81,8 @@ class TestLookUpXrefs(shared.TestHandler):
         record = {'id': '123656', 'proofreaders': ['124104']}
         self.solr.search_se.add('id:124104', {'id': '124104', 'display_name': 'Debra Lacoste'})
         expected = ({'id': '123656', 'proofreaders': ['Debra Lacoste']},
-                    {'proofreaders': ['https://cantus.org/indexers/124104/']})
+                    {'proofreaders': ['https://cantus.org/indexers/124104/'],
+                     'proofreaders_id': ['124104']})
 
         actual = yield self.handler.look_up_xrefs(record)
 
@@ -120,10 +122,15 @@ class TestLookUpXrefs(shared.TestHandler):
                      'proofreaders': ['Debra Lacoste'], 'source_status': 'Published / Complete',
                      'century': '14th century'},
                     {'provenance': 'https://cantus.org/provenances/3624/',
+                     'provenance_id': '3624',
                      'segment': 'https://cantus.org/segments/4063/',
+                     'segment_id': '4063',
                      'proofreaders': ['https://cantus.org/indexers/124104/'],
+                     'proofreaders_id': ['124104'],
                      'source_status': 'https://cantus.org/statii/4212/',
-                     'century': 'https://cantus.org/centuries/3841/'})
+                     'source_status_id': '4212',
+                     'century': 'https://cantus.org/centuries/3841/',
+                     'century_id': '3841'})
         self.solr.search_se.add('id:3624', {'id': '3624', 'name': 'Klosterneuburg'})
         self.solr.search_se.add('id:4063', {'id': '4063', 'name': 'CANTUS Database'})
         self.solr.search_se.add('id:124104', {'id': '124104', 'display_name': 'Debra Lacoste'})
@@ -172,7 +179,8 @@ class TestLookUpXrefs(shared.TestHandler):
         record = {'id': '123656', 'notation_style_id': '3895'}
         self.solr.search_se.add('id:3895', {'id': '3895', 'name': 'German - neumatic'})
         expected = ({'id': '123656', 'notation_style': 'German - neumatic'},
-                    {'notation_style': 'https://cantus.org/notations/3895/'})
+                    {'notation_style': 'https://cantus.org/notations/3895/',
+                     'notation_style_id': '3895'})
 
         actual = yield self.handler.look_up_xrefs(record)
 

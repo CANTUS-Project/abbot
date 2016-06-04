@@ -257,6 +257,7 @@ class TestComplex(test_get_integration.TestComplex):
         actual = escape.json_decode(actual.body)
         assert exp_ids == actual['sort_order']
         assert actual['resources']['123']['notation_style'] == 'https://cantus.org/notations/3895/'
+        assert actual['resources']['123']['notation_style_id'] == '3895'
 
     @testing.gen_test
     def test_complicated_query(self):

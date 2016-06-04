@@ -150,9 +150,12 @@ class ComplexHandler(simple_handler.SimpleHandler):
                     plural = util.singular_resource_to_plural(LOOKUP[field].type)
                     if isinstance(record[field], (list, tuple)):
                         resource_url = [self.make_resource_url(x, plural) for x in record[field]]
+                        resource_id = [x for x in record[field]]
                     else:
                         resource_url = self.make_resource_url(record[field], plural)
+                        resource_id = record[field]
                     resources[replace_to] = resource_url
+                    resources['{0}_id'.format(replace_to)] = resource_id
 
             elif field in self.returned_fields or field == 'drupal_path':
                 # This is for non-cross-referenced fields. Because cross-referenced fields must
