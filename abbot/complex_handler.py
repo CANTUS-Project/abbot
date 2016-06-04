@@ -35,11 +35,6 @@ from abbot import util
 from abbot import simple_handler
 
 
-# translatable strings
-_INVALID_NO_XREF = 'X-Cantus-No-Xref must be either "true" or "false"'
-# X-Cantus-No-Xref doesn't contain any sort of 'true' or 'false'
-
-
 XrefLookup = namedtuple('XrefLookup', ['type', 'replace_with', 'replace_to'])
 '''
 Provide instructions for processing fields that are obtained with by cross-reference to another
@@ -121,39 +116,34 @@ class ComplexHandler(simple_handler.SimpleHandler):
             if field in LOOKUP:
                 replace_to = LOOKUP[field].replace_to  # for readability
 
-                if not self.hparams['no_xref']:
-                    # X-Cantus-No-Xref: false (usual case)
-                    if isinstance(record[field], (list, tuple)):
-                        post[replace_to] = []
+                if isinstance(record[field], (list, tuple)):
+                    post[replace_to] = []
 
-                        for value in record[field]:
-                            resp = yield util.ask_solr_by_id(LOOKUP[field].type, value)
-                            if len(resp) > 0 and LOOKUP[field].replace_with in resp[0]:
-                                post[replace_to].append(resp[0][LOOKUP[field].replace_with])
+                    for value in record[field]:
+                        resp = yield util.ask_solr_by_id(LOOKUP[field].type, value)
+                        if len(resp) > 0 and LOOKUP[field].replace_with in resp[0]:
+                            post[replace_to].append(resp[0][LOOKUP[field].replace_with])
 
-                        # if nothing the list was found, remove the empty list
-                        if not post[replace_to]:
-                            del post[replace_to]
-                            continue  # avoid writing the "resources" block for a missing xref resource
+                    # if nothing the list was found, remove the empty list
+                    if not post[replace_to]:
+                        del post[replace_to]
+                        continue  # avoid writing the "resources" block for a missing xref resource
 
-                    else:
-                        resp = yield util.ask_solr_by_id(LOOKUP[field].type, record[field])
-                        if resp:
-                            post[replace_to] = resp[0][LOOKUP[field].replace_with]
-                        else:
-                            # In this issue...
-                            # https://bitbucket.org/ned/coveragepy/issues/198/
-                            # ... the Coverage.py people say that this situation (where a "suite"
-                            #     consists only of a "continue" statement) will be optimized in such
-                            #     a way that the "continue" statement isn't actually executed, and
-                            #     therefore cannot be properly checked by Coverage.py.
-                            # However, this branch is tested in test_field_not_found_1().
-
-                            # avoid writing the "resources" block for a missing xref resource
-                            continue  # pragma: no cover
                 else:
-                    # X-Cantus-No-Xref: true
-                    post[field] = record[field]
+                    resp = yield util.ask_solr_by_id(LOOKUP[field].type, record[field])
+                    if resp:
+                        post[replace_to] = resp[0][LOOKUP[field].replace_with]
+                    else:
+                        # In this issue...
+                        # https://bitbucket.org/ned/coveragepy/issues/198/
+                        # ... the Coverage.py people say that this situation (where a "suite"
+                        #     consists only of a "continue" statement) will be optimized in such
+                        #     a way that the "continue" statement isn't actually executed, and
+                        #     therefore cannot be properly checked by Coverage.py.
+                        # However, this branch is tested in test_field_not_found_1().
+
+                        # avoid writing the "resources" block for a missing xref resource
+                        continue  # pragma: no cover
 
                 # fill in "resources" URLs
                 if self.hparams['include_resources']:
@@ -186,8 +176,6 @@ class ComplexHandler(simple_handler.SimpleHandler):
         :returns: The ``record`` argument with additional fields as possible.
         :rtype: dict
         '''
-        if self.hparams['no_xref']:
-            return record
 
         # (for Chant) fill in fest_desc if we have a feast_id
         if 'feast_id' in self.returned_fields and 'feast_id' in orig_record:
@@ -241,30 +229,6 @@ class ComplexHandler(simple_handler.SimpleHandler):
 
         return post, num_results
 
-    def verify_request_headers(self, is_browse_request):
-        '''
-        Ensure that the request headers have valid values. This method calls
-        :meth:`SimpleHandler.verify_request_headers`, then also checks the X-Cantus-No-Xref header.
-
-        **Please refer to the superclass method's documentation.**
-        '''
-
-        all_is_well = super(ComplexHandler, self).verify_request_headers(
-            is_browse_request=is_browse_request)
-
-        if all_is_well:
-            # X-Cantus-No-Xref
-            no_xref = str(self.hparams['no_xref']).lower().strip()
-            if no_xref == 'true':
-                self.hparams['no_xref'] = True
-            elif no_xref == 'false':
-                self.hparams['no_xref'] = False
-            else:
-                self.send_error(400, reason=_INVALID_NO_XREF)
-                all_is_well = False
-
-        return all_is_well
-
     def _lookup_name_for_response(self, name):
         '''
         Look up the ``name`` of a field as returned by the Solr database. Return the name that it
@@ -281,12 +245,3 @@ class ComplexHandler(simple_handler.SimpleHandler):
             return ComplexHandler.LOOKUP[name].replace_to
         else:
             return name
-
-    @util.request_wrapper
-    @gen.coroutine
-    def options(self, resource_id=None):  # pylint: disable=arguments-differ
-        '''
-        Response to OPTIONS requests. Sets the "Allow" header and returns.
-        '''
-        yield super(ComplexHandler, self).options(resource_id=resource_id)
-        self.add_header('X-Cantus-No-Xref', 'allow')

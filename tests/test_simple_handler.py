@@ -81,7 +81,6 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Per-Page': 'code blue',
                                                   'X-Cantus-Page': 'code green',
                                                   'X-Cantus-Sort': 'code white',
-                                                  'X-Cantus-No-Xref': 'code yellow',
                                                   'X-Cantus-Fields': 'code black'})
         request.connection = mock.Mock()  # required for Tornado magic things
         actual = SimpleHandler(self.get_app(), request, type_name='feast')
@@ -89,7 +88,6 @@ class TestInitialize(shared.TestHandler):
         self.assertEqual('code blue', actual.hparams['per_page'])
         self.assertEqual('code green', actual.hparams['page'])
         self.assertEqual('code white', actual.hparams['sort'])
-        self.assertEqual('code yellow', actual.hparams['no_xref'])
         self.assertEqual('code black', actual.hparams['fields'])
 
     def test_initialize_4(self):
@@ -99,7 +97,6 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Per-Page': 'code blue',
                                                   'X-Cantus-Page': 'code green',
                                                   'X-Cantus-Sort': 'code white',
-                                                  'X-Cantus-No-Xref': 'code yellow',
                                                   'X-Cantus-Fields': 'code black'},
                                          body='{}')
         request.connection = mock.Mock()  # required for Tornado magic things
@@ -108,7 +105,6 @@ class TestInitialize(shared.TestHandler):
         self.assertEqual('code blue', actual.hparams['per_page'])
         self.assertEqual('code green', actual.hparams['page'])
         self.assertEqual('code white', actual.hparams['sort'])
-        self.assertEqual('code yellow', actual.hparams['no_xref'])
         self.assertEqual('code black', actual.hparams['fields'])
 
     def test_initialize_5(self):
@@ -118,13 +114,11 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Per-Page': 'code blue',
                                                   'X-Cantus-Page': 'code green',
                                                   'X-Cantus-Sort': 'code white',
-                                                  'X-Cantus-No-Xref': 'code yellow',
                                                   'X-Cantus-Fields': 'code black'},
                                          body='{"include_resources": "red code",'
                                                '"per_page": "blue code",'
                                                '"page": "green code",'
                                                '"sort": "white code",'
-                                               '"no_xref": "yellow code",'
                                                '"fields": "black code",'
                                                '"query": "whatever"}')
         request.connection = mock.Mock()  # required for Tornado magic things
@@ -133,7 +127,6 @@ class TestInitialize(shared.TestHandler):
         self.assertEqual('blue code', actual.hparams['per_page'])
         self.assertEqual('green code', actual.hparams['page'])
         self.assertEqual('white code', actual.hparams['sort'])
-        self.assertEqual('yellow code', actual.hparams['no_xref'])
         self.assertEqual('black code', actual.hparams['fields'])
         self.assertEqual('whatever', actual.hparams['search_query'])
 
@@ -145,7 +138,6 @@ class TestInitialize(shared.TestHandler):
                                                   'X-Cantus-Per-Page': 'code blue',
                                                   'X-Cantus-Page': 'code green',
                                                   'X-Cantus-Sort': 'code white',
-                                                  'X-Cantus-No-Xref': 'code yellow',
                                                   'X-Cantus-Fields': 'code black'},
                                          body='{include_resources: "red code"}')
         request.connection = mock.Mock()  # required for Tornado magic things
@@ -671,11 +663,11 @@ class TestMakeResponseHeaders(shared.TestHandler):
         assertions by itself, which are described below.
 
         You can change a default precondition or the by using the kwargs listed here:
-        is_browse_request, num_records, field_counts, include_resources, no_xref, total_results,
+        is_browse_request, num_records, field_counts, include_resources, total_results,
         per_page, page, sort.
 
         You can change the expected hader value by using the kwargs listed here:
-        h_fields, h_extra_fields, h_include_resources, h_no_xref, h_total_results, h_per_page,
+        h_fields, h_extra_fields, h_include_resources, h_total_results, h_per_page,
         h_page, h_sort.
 
         NOTE that if you set one of the expected header values to ``None``, it is turned into an
@@ -690,13 +682,11 @@ class TestMakeResponseHeaders(shared.TestHandler):
         - num_records is 0
         - self.field_counts is {}
         - self.hparams['include_resources'] is True
-        - self.hparams['no_xref'] is False
 
         Postconditions:
         - X-Cantus-Fields isn't called
         - X-Cantus-Extra-Fields isn't called called
         - X-Cantus-Include_Resources called with 'true'
-        - X-Cantus-No-Xref isn't called
 
         --------
 
@@ -725,11 +715,9 @@ class TestMakeResponseHeaders(shared.TestHandler):
         set_default('num_records', 0)
         set_default('field_counts', {})
         set_default('include_resources', True)
-        set_default('no_xref', False)
         set_default('h_fields', None)
         set_default('h_extra_fields', None)
         set_default('h_include_resources', 'true')
-        set_default('h_no_xref', None)
         if kwargs['is_browse_request']:
             set_default('total_results', 400)
             set_default('per_page', None)
@@ -743,7 +731,6 @@ class TestMakeResponseHeaders(shared.TestHandler):
         # prepare the pre-conditions
         self.handler.field_counts = kwargs['field_counts']
         self.handler.hparams['include_resources'] = kwargs['include_resources']
-        self.handler.hparams['no_xref'] = kwargs['no_xref']
         if kwargs['is_browse_request']:
             self.handler.total_results = kwargs['total_results']
             self.handler.hparams['per_page'] = kwargs['per_page']
@@ -758,8 +745,7 @@ class TestMakeResponseHeaders(shared.TestHandler):
         # check the headers (that are always present)
         header_correspondences = {'h_fields': 'X-Cantus-Fields',
                                   'h_extra_fields': 'X-Cantus-Extra-Fields',
-                                  'h_include_resources': 'X-Cantus-Include-Resources',
-                                  'h_no_xref': 'X-Cantus-No-Xref'}
+                                  'h_include_resources': 'X-Cantus-Include-Resources'}
         for key, header in header_correspondences.items():
             if kwargs[key] is None:
                 assert mock.call(header, mock.ANY) not in mock_add_header.call_args_list
@@ -838,16 +824,6 @@ class TestMakeResponseHeaders(shared.TestHandler):
         '''
         self.test_mrh_template(include_resources=False,
                                h_include_resources='false')
-
-    def test_xref_1(self):
-        '''
-        Preconditions:
-        - self.hparams['no_xref'] is True
-
-        Postconditions:
-        - X-Cantus-No-Xref with 'true'
-        '''
-        self.test_mrh_template(no_xref=True, h_no_xref='true')
 
     def test_total_results(self):
         '''

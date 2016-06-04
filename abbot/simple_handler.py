@@ -150,7 +150,6 @@ class SimpleHandler(web.RequestHandler):
             'page': None,               # X-Cantus-Page
             'include_resources': True,  # X-Cantus-Include-Resources
             'sort': None,               # X-Cantus-Sort
-            'no_xref': False,           # X-Cantus-No-Xrefs
             'fields': None,             # X-Cantus-Fields
             'search_query': None,        # "query" parameter from SEARCH request body
             }
@@ -184,7 +183,6 @@ class SimpleHandler(web.RequestHandler):
                              ('X-Cantus-Page', 'page'),
                              ('X-Cantus-Include-Resources', 'include_resources'),
                              ('X-Cantus-Sort', 'sort'),
-                             ('X-Cantus-No-Xref', 'no_xref'),
                              ('X-Cantus-Fields', 'fields')
                             )
         self.hparams.update(util.do_dict_transfer(self.request.headers, header_to_setting))
@@ -205,7 +203,6 @@ class SimpleHandler(web.RequestHandler):
                                      ('page', 'page'),
                                      ('include_resources', 'include_resources'),
                                      ('sort', 'sort'),
-                                     ('no_xref', 'no_xref'),
                                      ('fields', 'fields')
                                     )
                 self.hparams.update(util.do_dict_transfer(body, member_to_setting))
@@ -556,10 +553,6 @@ class SimpleHandler(web.RequestHandler):
             self.add_header('X-Cantus-Include-Resources', 'true')
         else:
             self.add_header('X-Cantus-Include-Resources', 'false')
-
-        # figure out the X-Cantus-No-Xref header
-        if self.hparams['no_xref']:
-            self.add_header('X-Cantus-No-Xref', 'true')
 
         if is_browse_request:
             # figure out X-Cantus-Total-Results

@@ -1,5 +1,5 @@
 __all__ = ['complex_handler', 'handlers', 'simple_handler', 'systemd_http_server', 'util']
-__version__ = '0.6.2'
+__version__ = '0.6.3'
 __cantus_version__ = '0.2.3+'
 
 
@@ -27,7 +27,7 @@ if IMPORT_TORNADO:
     # "import abbot" so that all the Tornado options will be definitely registered before use
 
 CANTUS_REQUEST_HEADERS = ('X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Include-Resources',
-                          'X-Cantus-Sort', 'X-Cantus-No-Xref', 'X-Cantus-Fields')
+                          'X-Cantus-Sort', 'X-Cantus-Fields')
 '''
 Iterable of the headers that Abbot is interested in reading. Needless to say, Abbot will follow
 other headers as applicable---this list determines the value of the
@@ -35,8 +35,8 @@ other headers as applicable---this list determines the value of the
 '''
 
 CANTUS_RESPONSE_HEADERS = ('X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Include-Resources',
-                           'X-Cantus-Sort', 'X-Cantus-No-Xref', 'X-Cantus-Fields', 'Server',
-                           'X-Cantus-Extra-Fields', 'X-Cantus-Version', 'X-Cantus-Total-Results')
+                           'X-Cantus-Sort', 'X-Cantus-Fields', 'Server', 'X-Cantus-Extra-Fields',
+                           'X-Cantus-Version', 'X-Cantus-Total-Results')
 '''
 Iterable of the headers that Cantus clients are interested in reading. Needless to say, Cantus
 clients may be interested in other headers---this list determines the value of the

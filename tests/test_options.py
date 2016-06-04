@@ -128,17 +128,10 @@ class TestSimpleIntegration(shared.TestHandler):
 class TestComplexIntegration(TestSimpleIntegration):
     '''
     Integration tests for the ComplexHandler.options().
+
+    No tests unique to the ComplexHandler.
     '''
 
     def setUp(self):
         super(TestComplexIntegration, self).setUp()
         self.rtype = 'chants'
-
-    @testing.gen_test
-    def test_noxref_for_complex(self):
-        '''
-        Check the -No-Xrefs CANTUS header is "allowed" for complex resources.
-        '''
-        header = 'X-Cantus-No-Xref'
-        actual = yield self.http_client.fetch(self.get_url('/chants/'), method='OPTIONS')
-        assert actual.headers[header].lower() == 'allow'

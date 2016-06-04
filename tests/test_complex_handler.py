@@ -135,20 +135,6 @@ class TestLookUpXrefs(shared.TestHandler):
         self.assertEqual(expected[0], actual[0])
         self.assertEqual(expected[1], actual[1])
 
-    @testing.gen_test
-    def test_no_xref_is_true(self):
-        "when self.hparams['no_xref'] is True"
-        record = {'id': '123656', 'provenance_id': '3624'}
-        expected = ({'id': '123656', 'provenance_id': '3624'},
-                    {'provenance': 'https://cantus.org/provenances/3624/'})
-        self.handler.hparams['no_xref'] = True
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        assert 0 == self.solr.search.call_count
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
-
     def test_lookup_name_for_response_1(self):
         '''
         ComplexHandler._lookup_name_for_response()
@@ -255,113 +241,6 @@ class TestMakeExtraFields(shared.TestHandler):
 
         assert 0 == self.solr.search.call_count
         self.assertEqual(expected, actual)
-
-    @testing.gen_test
-    def test_no_xref_is_true(self):
-        "when self.hparams['no_xref'] is True"
-        record = {}
-        orig_record = {'feast_id': '123', 'source_status_id': '456'}
-        expected = {}
-        self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
-        self.handler.hparams['no_xref'] = True
-
-        actual = yield self.handler.make_extra_fields(record, orig_record)
-
-        assert 0 == self.solr.search.call_count
-        self.assertEqual(expected, actual)
-
-
-class TestVerifyRequestHeaders(shared.TestHandler):
-    '''
-    Tests for the ComplexHandler.verify_request_headers().
-    '''
-
-    def setUp(self):
-        "Make a ComplexHandler instance for testing."
-        super(TestVerifyRequestHeaders, self).setUp()
-        request = httpclient.HTTPRequest(url='/zool/', method='GET')
-        request.connection = mock.Mock()  # required for Tornado magic things
-        self.handler = ComplexHandler(self.get_app(), request, type_name='source')
-        # the full "additional_fields" aren't important here
-
-    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
-    def test_template(self, mock_super_meth, **kwargs):
-        '''
-        Template for tests against SimpleHandler.verify_request_headers().
-
-        Use these kwargs to set test variables:
-
-        - mock_super_meth_return: return value of the mock installed on
-            SimpleHandler.verify_request_headers() (default is True)
-        - no_xref: value for the handler's "no_xref" instance variable (default is 'false')
-        - exp_no_xref: expected value of the "no_xref" after the method executes (default is False)
-        - is_browse_request: value for that argument to the method under test (default is True)
-        - expected: the method's expected return value (default is True)
-        - exp_send_error_count: how many calls to the mock installed on send_error() are expected
-            (default is 0)
-        '''
-
-        def get_from_kwargs(key, val):
-            "Return kwargs[key] if that will work, otherwise return 'val.'"
-            if key in kwargs:
-                return kwargs[key]
-            else:
-                return val
-
-        mock_super_meth.return_value = get_from_kwargs('mock_super_meth_return', True)
-        self.handler.hparams['no_xref'] = get_from_kwargs('no_xref', 'false')
-        exp_no_xref = get_from_kwargs('exp_no_xref', False)
-        is_browse_request = get_from_kwargs('is_browse_request', True)
-        expected = get_from_kwargs('expected', True)
-        exp_send_error_count = get_from_kwargs('exp_send_error_count', 0)
-        mock_send_error = mock.Mock()
-        self.handler.send_error = mock_send_error
-
-        actual = self.handler.verify_request_headers(is_browse_request)
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(exp_send_error_count, mock_send_error.call_count)
-        mock_super_meth.assert_called_once_with(is_browse_request=is_browse_request)
-        self.assertEqual(exp_no_xref, self.handler.hparams['no_xref'])
-
-    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
-    def test_when_other_header_invalid(self, mock_super_meth):
-        '''
-        When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
-
-        The header shouldn't be checked, send_error() shouldn't be called.
-        '''
-        self.test_template(mock_super_meth_return=False,
-                           no_xref='switchboard',
-                           exp_no_xref='switchboard',
-                           expected=False)
-
-    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
-    def test_no_xref_true(self, mock_super_meth):
-        '''
-        When self.hparams['no_xref'] comes out as True
-        '''
-        self.test_template(no_xref='  trUE   ', exp_no_xref=True)
-
-    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
-    def test_no_xref_false(self, mock_super_meth):
-        '''
-        When self.hparams['no_xref'] comes out as False
-        '''
-        self.test_template(no_xref='FALSE ', exp_no_xref=False)
-
-    @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
-    def test_no_xref_invalid(self, mock_super_meth):
-        '''
-        When SimpleHandler.verify_request_headers() determines one of the headers is invalid.
-
-        The header shouldn't be checked, send_error() shouldn't be called.
-        '''
-        self.test_template(no_xref='switchboard',
-                           exp_no_xref='switchboard',
-                           expected=False,
-                           exp_send_error_count=1)
-        self.handler.send_error.assert_called_once_with(400, reason=complex_handler._INVALID_NO_XREF)
 
 
 class TestGetHandler(shared.TestHandler):

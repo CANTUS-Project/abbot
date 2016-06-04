@@ -562,26 +562,6 @@ class TestComplex(TestSimple):
         assert actual['842']['source_status_desc'] == 'This Source does not exist.'
 
     @testing.gen_test
-    def test_xref_noxref(self):
-        '''
-        - the -No-Xref header is set to "true"
-        - the xreffable fields aren't xreffed
-        '''
-        # NOTE: this "view" request doesn't apply for SEARCH
-        if self._method == 'SEARCH':
-            return
-
-        self.add_resource_complex()
-        headers = {'X-Cantus-No-Xref': 'true'}
-
-        actual = yield self.http_client.fetch(self.get_url('/sources/842/'), method='GET', headers=headers)
-
-        self.check_standard_header(actual)
-        actual = escape.json_decode(actual.body)
-        assert actual['842']['source_status_id'] == '5467'
-        assert 'source_status' not in actual['842']
-
-    @testing.gen_test
     def test_xref_missing_resource(self):
         '''
         - the cross-referenced resource isn't available in Solr
@@ -771,23 +751,10 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
 class TestBadRequestHeadersComplex(TestBadRequestHeadersSimple):
     '''
     Runs the TestBadRequestHeadersSimple tests with a ComplexHandler.
+
+    There are no tests unique to the ComplexHandler.
     '''
 
     def __init__(self, *args, **kwargs):
         super(TestBadRequestHeadersComplex, self).__init__(*args, **kwargs)
         self._type = ('source', 'sources')
-
-    @testing.gen_test
-    def test_noxref_1(self):
-        "returns 400 when X-Cantus-No-Xref isn't a boolean setting"
-        actual = yield self.http_client.fetch(self._browse_url,
-                                              method=self._method,
-                                              allow_nonstandard_methods=True,
-                                              raise_error=False,
-                                              headers={'X-Cantus-No-Xref': 'please'},
-                                              body=b'{"query":""}')
-
-        assert 0 == self.solr.search.call_count
-        self.check_standard_header(actual)
-        self.assertEqual(400, actual.code)
-        self.assertEqual(complex_handler._INVALID_NO_XREF, actual.reason)
