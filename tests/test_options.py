@@ -50,6 +50,7 @@ class TestSimpleIntegration(shared.TestHandler):
     def setUp(self):
         super(TestSimpleIntegration, self).setUp()
         self.solr = self.setUpSolr()
+        self.rtype = 'genres'
 
     @testing.gen_test
     def test_browse_works(self):
@@ -58,7 +59,7 @@ class TestSimpleIntegration(shared.TestHandler):
         '''
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields', 'X-Cantus-Per-Page',
                             'X-Cantus-Page', 'X-Cantus-Sort']
-        actual = yield self.http_client.fetch(self.get_url('/genres/'), method='OPTIONS')
+        actual = yield self.http_client.fetch(self.get_url('/{}/'.format(self.rtype)), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
         self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Access-Control-Allow-Methods'])
@@ -73,12 +74,13 @@ class TestSimpleIntegration(shared.TestHandler):
         '''
         expected_headers = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
         self.solr.search_se.add('162', {'id': '162'})
-        actual = yield self.http_client.fetch(self.get_url('/genres/162/'), method='OPTIONS')
+        actual = yield self.http_client.fetch(self.get_url('/{}/162/'.format(self.rtype)), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
-        self.solr.search.assert_called_with('+type:genre +id:162', df='default_search')
+        self.solr.search.assert_called_with('+type:{} +id:162'.format(self.rtype[:-1]),
+            df='default_search')
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
 
@@ -87,19 +89,20 @@ class TestSimpleIntegration(shared.TestHandler):
         '''
         OPTIONS request for non-existent resource gives 404
         '''
-        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre/'),
+        actual = yield self.http_client.fetch(self.get_url('/{}/nogenre/'.format(self.rtype)),
                                               method='OPTIONS',
                                               raise_error=False)
         self.check_standard_header(actual)
         self.assertEqual(404, actual.code)
-        self.solr.search.assert_called_with('+type:genre +id:nogenre', df='default_search')
+        self.solr.search.assert_called_with('+type:{} +id:nogenre'.format(self.rtype[:-1]),
+            df='default_search')
 
     @testing.gen_test
     def test_invalid_resource(self):
         '''
         OPTIONS request for an invalid resource ID gives 422
         '''
-        actual = yield self.http_client.fetch(self.get_url('/genres/nogenre-/'),
+        actual = yield self.http_client.fetch(self.get_url('/{}/nogenre-/'.format(self.rtype)),
                                               method='OPTIONS',
                                               raise_error=False)
         self.check_standard_header(actual)
@@ -113,7 +116,7 @@ class TestSimpleIntegration(shared.TestHandler):
         OPTIONS request for a valid resource ID when Solr is unavailable gives 502
         '''
         self.solr.search.side_effect = pysolrtornado.SolrError
-        actual = yield self.http_client.fetch(self.get_url('/genres/162/'),
+        actual = yield self.http_client.fetch(self.get_url('/{}/162/'.format(self.rtype)),
                                               method='OPTIONS',
                                               raise_error=False)
         self.check_standard_header(actual)
@@ -126,6 +129,10 @@ class TestComplexIntegration(TestSimpleIntegration):
     '''
     Integration tests for the ComplexHandler.options().
     '''
+
+    def setUp(self):
+        super(TestComplexIntegration, self).setUp()
+        self.rtype = 'chants'
 
     @testing.gen_test
     def test_noxref_for_complex(self):
