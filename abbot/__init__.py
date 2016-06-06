@@ -27,7 +27,7 @@ if IMPORT_TORNADO:
     # "import abbot" so that all the Tornado options will be definitely registered before use
 
 CANTUS_REQUEST_HEADERS = ('X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Include-Resources',
-                          'X-Cantus-Sort', 'X-Cantus-Fields')
+                          'X-Cantus-Sort', 'X-Cantus-Fields', 'Content-Type')
 '''
 Iterable of the headers that Abbot is interested in reading. Needless to say, Abbot will follow
 other headers as applicable---this list determines the value of the
