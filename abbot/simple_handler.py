@@ -260,8 +260,9 @@ class SimpleHandler(web.RequestHandler):
             return
 
         # step 6
+        valid_headers = [x.lower() for x in abbot.CANTUS_REQUEST_HEADERS]
         for header in header_field_names:
-            if header not in abbot.CANTUS_REQUEST_HEADERS:
+            if header.lower() not in valid_headers:
                 return
 
         # step 7

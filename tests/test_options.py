@@ -154,7 +154,7 @@ class TestSimpleIntegration(shared.TestHandler):
         request_headers = {
             'Origin': origin,
             'Access-Control-Request-Method': 'GET',
-            'Access-Control-Request-Headers': 'X-Cantus-Page,X-Cantus-Per-Page',
+            'Access-Control-Request-Headers': 'x-cantus-page,CONTENT-TYPE',
         }
         actual = yield self.http_client.fetch(self.get_url('/{}/233/'.format(self.rtype)),
                                               method='OPTIONS',
@@ -164,7 +164,7 @@ class TestSimpleIntegration(shared.TestHandler):
         assert actual.headers['Vary'] == 'Origin'
         assert actual.headers['Access-Control-Max-Age'] == '86400'
         assert actual.headers['Access-Control-Allow-Methods'] == 'GET'
-        assert actual.headers['Access-Control-Allow-Headers'] == 'X-Cantus-Page,X-Cantus-Per-Page'
+        assert actual.headers['Access-Control-Allow-Headers'] == 'x-cantus-page,CONTENT-TYPE'
 
 
 class TestComplexIntegration(TestSimpleIntegration):

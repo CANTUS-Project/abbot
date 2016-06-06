@@ -1121,7 +1121,7 @@ class TestCorsMethods(shared.TestHandler):
         origin = self._simple_options.cors_allow_origin
         self.handler.request.headers['Origin'] = origin
         self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
-        self.handler.request.headers['Access-Control-Request-Headers'] = 'X-Cantus-Page,Content-Type'
+        self.handler.request.headers['Access-Control-Request-Headers'] = 'x-cantus-page,CONTENT-TYPE'
 
         self.handler._cors_preflight()
 
@@ -1129,4 +1129,4 @@ class TestCorsMethods(shared.TestHandler):
         assert self.handler._headers['Vary'] == b'Origin'
         assert self.handler._headers['Access-Control-Max-Age'] == b'86400'
         assert self.handler._headers['Access-Control-Allow-Methods'] == b'GET'
-        assert self.handler._headers['Access-Control-Allow-Headers'] == b'X-Cantus-Page,Content-Type'
+        assert self.handler._headers['Access-Control-Allow-Headers'] == b'x-cantus-page,CONTENT-TYPE'
