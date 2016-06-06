@@ -41,7 +41,7 @@ from abbot import util
 
 options.define('drupal_url', type=str, help='see config file for details.')
 options.define('cors_allow_origin',
-               help='value for the Access-Control-Allow-Origin response header.',
+               help='String or list of strings, the permitted "Host" values for a CORS request.',
                type=str,
                default=None)
 
@@ -212,18 +212,92 @@ class SimpleHandler(web.RequestHandler):
         Set the default headers for all requests: Server, X-Cantus-Version.
 
         Also sets CORS headers:
-        - Access-Control-Allow-Origin (if the "debug" setting is True)
+        - Access-Control-Allow-Origin
         - Access-Control-Allow-Headers
         - Access-Control-Expose-Headers
+
+        CORS is implemented as per https://www.w3.org/TR/cors/#resource-processing-model
 
         .. note:: This method is also used by :meth:`RootHandler.set_default_headers`.
         '''
         self.set_header('Server', 'Abbot/{}'.format(abbot.__version__))
         self.add_header('X-Cantus-Version', 'Cantus/{}'.format(abbot.__cantus_version__))
         if options.cors_allow_origin:
-            self.add_header('Access-Control-Allow-Origin', options.cors_allow_origin)
-            self.add_header('Access-Control-Allow-Headers', ','.join(abbot.CANTUS_REQUEST_HEADERS))
-            self.add_header('Access-Control-Expose-Headers', ','.join(abbot.CANTUS_RESPONSE_HEADERS))
+            if self.request.method == 'OPTIONS':
+                self._cors_preflight()
+            else:
+                self._cors_actual()
+
+    def _cors_preflight(self):
+        '''
+        Add CORS (Cross-Origin Resource Sharing) headers for the preflight request.
+
+        https://www.w3.org/TR/cors/#resource-preflight-requests
+        '''
+        # step 1
+        if 'Origin' not in self.request.headers:
+            return
+
+        # step 2
+        if self.request.headers['Origin'] not in options.cors_allow_origin:
+            return
+
+        # step 3
+        if 'Access-Control-Request-Method' in self.request.headers:
+            method = self.request.headers['Access-Control-Request-Method']
+        else:
+            return
+
+        # step 4
+        if 'Access-Control-Request-Headers' in self.request.headers:
+            header_field_names = self.request.headers['Access-Control-Request-Headers']
+            header_field_names = [x.strip() for x in header_field_names.split(',')]
+        else:
+            header_field_names = []
+
+        # step 5
+        if method not in ('HEAD', 'GET', 'OPTIONS', 'SEARCH'):
+            return
+
+        # step 6
+        for header in header_field_names:
+            if header not in abbot.CANTUS_REQUEST_HEADERS:
+                return
+
+        # step 7
+        self.add_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
+        self.add_header('Vary', 'Origin')  # see https://www.w3.org/TR/cors/#resource-implementation
+
+        # step 8
+        self.add_header('Access-Control-Max-Age', '86400')  # 24 hours
+
+        # step 9
+        self.add_header('Access-Control-Allow-Methods', method)
+
+        # step 10
+        if header_field_names:
+            self.add_header('Access-Control-Allow-Headers', ','.join(header_field_names))
+
+    def _cors_actual(self):
+        '''
+        Add CORS (Cross-Origin Resource Sharing) headers for the actual request.
+
+        https://www.w3.org/TR/cors/#resource-requests
+        '''
+        # step 1
+        if 'Origin' not in self.request.headers:
+            return
+
+        # step 2
+        if self.request.headers['Origin'] not in options.cors_allow_origin:
+            return
+
+        # step 3
+        self.add_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
+        self.add_header('Vary', 'Origin')  # see https://www.w3.org/TR/cors/#resource-implementation
+
+        # step 4
+        self.add_header('Access-Control-Expose-Headers', ','.join(abbot.CANTUS_RESPONSE_HEADERS))
 
     def format_record(self, record):
         '''

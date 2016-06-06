@@ -44,6 +44,12 @@ class RootHandler(web.RequestHandler):
         '''
         SimpleHandler.set_default_headers(self)
 
+    def _cors_actual(self):
+        SimpleHandler._cors_actual(self)
+
+    def _cors_preflight(self):
+        SimpleHandler._cors_preflight(self)
+
     def prepare_get(self):
         '''
         Does the actual work for a GET request at '/'. It's a different method for easier testing.
@@ -107,6 +113,12 @@ class CanonicalHandler(web.RequestHandler):
         '''
         SimpleHandler.set_default_headers(self)
 
+    def _cors_actual(self):
+        SimpleHandler._cors_actual(self)
+
+    def _cors_preflight(self):
+        SimpleHandler._cors_preflight(self)
+
     def _do_the_redirect(self):
         if '?' in self.request.uri:
             self.send_error(400)
@@ -142,6 +154,12 @@ class EverythingElseHandler(web.RequestHandler):
         Use :meth:`SimpleHandler.set_default_headers` to set the default headers.
         '''
         SimpleHandler.set_default_headers(self)
+
+    def _cors_actual(self):
+        SimpleHandler._cors_actual(self)
+
+    def _cors_preflight(self):
+        SimpleHandler._cors_preflight(self)
 
     def _do_the_error(self):
         self.set_status(404)

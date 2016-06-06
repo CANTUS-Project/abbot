@@ -323,7 +323,6 @@ class TestSimple(shared.TestHandler):
         - it's returned successfully
         '''
         self.add_default_resources()
-        exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
         exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
         exp_allow_origin = self._simple_options.cors_allow_origin
         headers = {'Origin': self._simple_options.cors_allow_origin}
@@ -331,12 +330,10 @@ class TestSimple(shared.TestHandler):
         actual = yield self.http_client.fetch(self._browse_url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
-        assert exp_allow_headers == actual.headers['Access-Control-Allow-Headers']
+        assert 'Origin' == actual.headers['Vary']
         assert exp_expose_headers == actual.headers['Access-Control-Expose-Headers']
         assert exp_allow_origin == actual.headers['Access-Control-Allow-Origin']
 
-    # TODO: this "CORS failure" test is known to fail as per GitHub issue #39 and should become "unexpected" when that is fixed
-    @unittest.expectedFailure
     @testing.gen_test
     def test_cors_failure(self):
         '''
@@ -347,14 +344,13 @@ class TestSimple(shared.TestHandler):
         exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
         exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
         exp_allow_origin = self._simple_options.cors_allow_origin
-        headers = {'Origin': self._simple_options.cors_allow_origin}
+        headers = {'Origin': 'https://something.arbitrary.example.org'}
 
         actual = yield self.http_client.fetch(self._browse_url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"*"}', headers=headers)
 
-        assert 'Access-Control-Allow-Headers' not in actual.headers
-        assert 'Access-Control-Expose-Headers' not in actual.headers
         assert 'Access-Control-Allow-Origin' not in actual.headers
+        assert 'Access-Control-Expose-Headers' not in actual.headers
 
     @testing.gen_test
     def test_solr_unavailable_browse(self):

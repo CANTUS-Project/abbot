@@ -35,6 +35,7 @@ Tests for the Abbot server's SimpleHandler.
 from unittest import mock
 from tornado import httpclient
 
+import abbot
 from abbot import __main__ as main
 from abbot.complex_handler import ComplexHandler
 from abbot import simple_handler
@@ -950,3 +951,182 @@ class TestSendError(shared.TestHandler):
         self.handler.send_error(code, reason=reason, allow=allow)
 
         mock_add_header.assert_called_with('Allow', allow)
+
+
+class TestCorsMethods(shared.TestHandler):
+    '''
+    Tests for SimpleHandler._cors_preflight() and _cors_actual().
+    '''
+
+    def setUp(self):
+        '''
+        '''
+        super(TestCorsMethods, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = SimpleHandler(self.get_app(), request, type_name='century')
+
+    def test_actual_1(self):
+        '''
+        Origin request header is missing. No response headers are added.
+        '''
+        assert 'Origin' not in self.handler.request.headers  # pre-condition
+        self.handler._cors_actual()
+        assert 'Access-Control-Allow-Origin' not in self.handler._headers
+        assert 'Vary' not in self.handler._headers
+        assert 'Access-Control-Expose-Headers' not in self.handler._headers
+
+    def test_actual_2(self):
+        '''
+        Origin request header is not in cors_allow_origin. No response headers are added.
+        '''
+        self.handler.request.headers['Origin'] = 'https://cantus_schmantus.org/'
+        self.handler._cors_actual()
+        assert 'Access-Control-Allow-Origin' not in self.handler._headers
+        assert 'Vary' not in self.handler._headers
+        assert 'Access-Control-Expose-Headers' not in self.handler._headers
+
+    def test_actual_3(self):
+        '''
+        Origin request header is in cors_allow_origin, which is a string. Response headers are added.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        exp_expose_headers = bytes(','.join(abbot.CANTUS_RESPONSE_HEADERS), encoding='utf-8')
+
+        self.handler._cors_actual()
+
+        assert self.handler._headers['Access-Control-Allow-Origin'] == bytes(origin, encoding='utf-8')
+        assert self.handler._headers['Vary'] == b'Origin'
+        assert self.handler._headers['Access-Control-Expose-Headers'] == exp_expose_headers
+
+    def test_actual_4(self):
+        '''
+        Origin request header is in cors_allow_origin, which is a list. Response headers are added.
+        '''
+        origin = 'website'
+        self._simple_options.cors_allow_origin = ['debsite', 'website', 'zebsite']
+        self.handler.request.headers['Origin'] = origin
+        exp_expose_headers = bytes(','.join(abbot.CANTUS_RESPONSE_HEADERS), encoding='utf-8')
+
+        self.handler._cors_actual()
+
+        assert self.handler._headers['Access-Control-Allow-Origin'] == bytes(origin, encoding='utf-8')
+        assert self.handler._headers['Vary'] == b'Origin'
+        assert self.handler._headers['Access-Control-Expose-Headers'] == exp_expose_headers
+
+    def test_preflight_1(self):
+        '''
+        Origin request header is missing. No repsonse headers are added.
+        '''
+        assert 'Origin' not in self.handler.request.headers  # pre-condition
+        exp_missing_headers = ('Access-Control-Allow-Origin', 'Vary', 'Access-Control-Max-Age',
+            'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers')
+
+        self.handler._cors_preflight()
+
+        for header in exp_missing_headers:
+            assert header not in self.handler._headers
+
+    def test_preflight_2(self):
+        '''
+        Origin request header is not in cors_allow_origin. No repsonse headers are added.
+        '''
+        self.handler.request.headers['Origin'] = 'https://cantus_schmantus.org/'
+        exp_missing_headers = ('Access-Control-Allow-Origin', 'Vary', 'Access-Control-Max-Age',
+            'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers')
+
+        self.handler._cors_preflight()
+
+        for header in exp_missing_headers:
+            assert header not in self.handler._headers
+
+    def test_preflight_3(self):
+        '''
+        Origin request header is correct, but Access-Control-Request-Method is missing.
+        No repsonse headers are added.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        assert 'Access-Control-Request-Method' not in self.handler.request.headers  # precondition
+        exp_missing_headers = ('Access-Control-Allow-Origin', 'Vary', 'Access-Control-Max-Age',
+            'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers')
+
+        self.handler._cors_preflight()
+
+        for header in exp_missing_headers:
+            assert header not in self.handler._headers
+
+    def test_preflight_4(self):
+        '''
+        Origin request header is correct, and Access-Control-Request-Method is not valid.
+        No repsonse headers are added.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        self.handler.request.headers['Access-Control-Request-Method'] = 'DELETE'
+        exp_missing_headers = ('Access-Control-Allow-Origin', 'Vary', 'Access-Control-Max-Age',
+            'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers')
+
+        self.handler._cors_preflight()
+
+        for header in exp_missing_headers:
+            assert header not in self.handler._headers
+
+    def test_preflight_4(self):
+        '''
+        - Origin request header is correct,
+        - Access-Control-Request-Method is valid,
+        - Access-Control-Request-Headers contains an invalid value
+        No repsonse headers are added.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
+        self.handler.request.headers['Access-Control-Request-Headers'] = 'Retry-After'
+        exp_missing_headers = ('Access-Control-Allow-Origin', 'Vary', 'Access-Control-Max-Age',
+            'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers')
+
+        self.handler._cors_preflight()
+
+        for header in exp_missing_headers:
+            assert header not in self.handler._headers
+
+    def test_preflight_5(self):
+        '''
+        - Origin request header is correct,
+        - Access-Control-Request-Method is valid,
+        - Access-Control-Request-Headers is empty.
+        All repsonse headers are added.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
+
+        self.handler._cors_preflight()
+
+        assert self.handler._headers['Access-Control-Allow-Origin'] == bytes(origin, encoding='utf-8')
+        assert self.handler._headers['Vary'] == b'Origin'
+        assert self.handler._headers['Access-Control-Max-Age'] == b'86400'
+        assert self.handler._headers['Access-Control-Allow-Methods'] == b'GET'
+        assert 'Access-Control-Allow-Headers' not in self.handler._headers
+
+    def test_preflight_6(self):
+        '''
+        - Origin request header is correct,
+        - Access-Control-Request-Method is valid,
+        - Access-Control-Request-Headers has some headers
+        All repsonse headers are added.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
+        self.handler.request.headers['Access-Control-Request-Headers'] = 'X-Cantus-Page,X-Cantus-Per-Page'
+
+        self.handler._cors_preflight()
+
+        assert self.handler._headers['Access-Control-Allow-Origin'] == bytes(origin, encoding='utf-8')
+        assert self.handler._headers['Vary'] == b'Origin'
+        assert self.handler._headers['Access-Control-Max-Age'] == b'86400'
+        assert self.handler._headers['Access-Control-Allow-Methods'] == b'GET'
+        assert self.handler._headers['Access-Control-Allow-Headers'] == b'X-Cantus-Page,X-Cantus-Per-Page'

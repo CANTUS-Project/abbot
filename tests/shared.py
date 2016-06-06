@@ -84,25 +84,14 @@ class TestHandler(testing.AsyncHTTPTestCase):
 
         - Server
         - X-Cantus-Version
-        - Access-Control-Allow-Headers
-        - Access-Control-Expose-Headers
-        - Access-Control-Allow-Origin (if the "debug" setting is True)
 
         :param on_this: The :class:`Response` object to verify.
         :type on_this: :class:`tornado.httpclient.HTTPResponse`
         '''
         exp_server = 'Abbot/{}'.format(abbot.__version__)
         exp_cantus_version = 'Cantus/{}'.format(abbot.__cantus_version__)
-        exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
-        exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
-        exp_allow_origin = self._simple_options.cors_allow_origin
-
-        self.assertEqual(exp_server, on_this.headers['Server'])
-        self.assertEqual(exp_cantus_version, on_this.headers['X-Cantus-Version'])
-        if self._simple_options.cors_allow_origin:
-            self.assertEqual(exp_allow_headers, on_this.headers['Access-Control-Allow-Headers'])
-            self.assertEqual(exp_expose_headers, on_this.headers['Access-Control-Expose-Headers'])
-            self.assertEqual(exp_allow_origin, on_this.headers['Access-Control-Allow-Origin'])
+        assert exp_server == on_this.headers['Server']
+        assert exp_cantus_version == on_this.headers['X-Cantus-Version']
 
     def setUp(self):
         '''
