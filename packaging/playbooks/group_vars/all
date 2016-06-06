@@ -38,7 +38,7 @@ holyorders_frequency: 1h
 abbot_port: 8888
 # NB: scheme isn't used in Abbot config file any more, but is used for Vitrail
 abbot_scheme: https
-abbot_cors_origin: "*"
+abbot_cors_origin: '{{ abbot_scheme }}://{{ hostname }}'
 abbot_drupal_url: http://cantus.uwaterloo.ca/
 abbot_solr_url: http://localhost:8983/solr/collection1/
 
