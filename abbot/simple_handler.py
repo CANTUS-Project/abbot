@@ -697,7 +697,6 @@ class SimpleHandler(web.RequestHandler):
         if resource_id:
             # "view" URL
             self.add_header('Allow', SimpleHandler._ALLOWED_VIEW_METHODS)
-            self.add_header('Access-Control-Allow-Methods', SimpleHandler._ALLOWED_VIEW_METHODS)
 
             if resource_id.endswith('/') and len(resource_id) > 1:
                 resource_id = resource_id[:-1]
@@ -712,7 +711,7 @@ class SimpleHandler(web.RequestHandler):
                 return
 
             if not resp:
-                self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))  # pylint: disable=line-too-long
+                self.send_error(404, reason=_ID_NOT_FOUND.format(self.type_name, resource_id))
 
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_VIEW:
@@ -721,7 +720,6 @@ class SimpleHandler(web.RequestHandler):
         else:
             # "browse" URL
             self.add_header('Allow', SimpleHandler._ALLOWED_BROWSE_METHODS)
-            self.add_header('Access-Control-Allow-Methods', SimpleHandler._ALLOWED_BROWSE_METHODS)
 
             # add Cantus-specific request headers
             for each_header in SimpleHandler._HEADERS_FOR_BROWSE:

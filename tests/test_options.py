@@ -62,7 +62,6 @@ class TestSimpleIntegration(shared.TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/{}/'.format(self.rtype)), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS, SEARCH', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
         for each_header in expected_headers:
             self.assertEqual('allow', actual.headers[each_header].lower())
@@ -77,7 +76,6 @@ class TestSimpleIntegration(shared.TestHandler):
         actual = yield self.http_client.fetch(self.get_url('/{}/162/'.format(self.rtype)), method='OPTIONS')
         self.check_standard_header(actual)
         self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Allow'])
-        self.assertEqual('GET, HEAD, OPTIONS', actual.headers['Access-Control-Allow-Methods'])
         self.assertEqual(0, len(actual.body))
         self.solr.search.assert_called_with('+type:{} +id:162'.format(self.rtype[:-1]),
             df='default_search')
@@ -123,6 +121,50 @@ class TestSimpleIntegration(shared.TestHandler):
         self.assertEqual(502, actual.code)
         self.assertEqual(simple_handler._SOLR_502_ERROR, actual.reason)
         assert self.solr.search.call_count == 1
+
+    @testing.gen_test
+    def test_cors_preflight_1(self):
+        '''
+        With a "browse" URL, simulate a CORS preflight request with no Access-Control-Request-Headers
+        request header.
+        '''
+        origin = self._simple_options.cors_allow_origin
+        request_headers = {
+            'Origin': origin,
+            'Access-Control-Request-Method': 'GET',
+        }
+        actual = yield self.http_client.fetch(self.get_url('/{}/'.format(self.rtype)),
+                                              method='OPTIONS',
+                                              headers=request_headers)
+        #
+        assert actual.headers['Access-Control-Allow-Origin'] == origin
+        assert actual.headers['Vary'] == 'Origin'
+        assert actual.headers['Access-Control-Max-Age'] == '86400'
+        assert actual.headers['Access-Control-Allow-Methods'] == 'GET'
+        assert 'Access-Control-Allow-Headers' not in actual.headers
+
+    @testing.gen_test
+    def test_cors_preflight_2(self):
+        '''
+        With a "view" URL, simulate a CORS preflight request with a Access-Control-Request-Headers
+        request header.
+        '''
+        self.solr.search_se.add('233', {'id': '233'})
+        origin = self._simple_options.cors_allow_origin
+        request_headers = {
+            'Origin': origin,
+            'Access-Control-Request-Method': 'GET',
+            'Access-Control-Request-Headers': 'X-Cantus-Page,X-Cantus-Per-Page',
+        }
+        actual = yield self.http_client.fetch(self.get_url('/{}/233/'.format(self.rtype)),
+                                              method='OPTIONS',
+                                              headers=request_headers)
+        #
+        assert actual.headers['Access-Control-Allow-Origin'] == origin
+        assert actual.headers['Vary'] == 'Origin'
+        assert actual.headers['Access-Control-Max-Age'] == '86400'
+        assert actual.headers['Access-Control-Allow-Methods'] == 'GET'
+        assert actual.headers['Access-Control-Allow-Headers'] == 'X-Cantus-Page,X-Cantus-Per-Page'
 
 
 class TestComplexIntegration(TestSimpleIntegration):
