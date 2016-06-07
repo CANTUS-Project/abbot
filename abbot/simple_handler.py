@@ -676,9 +676,9 @@ class SimpleHandler(web.RequestHandler):
             response, num_results = yield self.get_handler(resource_id)
             if response is None:
                 return
-        except pysolrtornado.SolrError:
-            # TODO: send back details from the SolrError, once we fully write self.send_error()
+        except pysolrtornado.SolrError as err:
             self.send_error(502, reason=_SOLR_502_ERROR)
+            log.warn('Solr problem: {0}'.format(err.args[0]))
             return
 
         # finally, prepare the response headers
@@ -707,8 +707,9 @@ class SimpleHandler(web.RequestHandler):
             except ValueError:
                 self.send_error(422, reason=_INVALID_ID)
                 return
-            except pysolrtornado.SolrError:
+            except pysolrtornado.SolrError as err:
                 self.send_error(502, reason=_SOLR_502_ERROR)
+                log.warn('Solr problem: {0}'.format(err.args[0]))
                 return
 
             if not resp:
@@ -847,9 +848,9 @@ class SimpleHandler(web.RequestHandler):
             response, num_results = yield self.search_handler()
             if response is None:
                 return
-        except pysolrtornado.SolrError:
-            # TODO: send back details from the SolrError, once we fully write self.send_error()
+        except pysolrtornado.SolrError as err:
             self.send_error(502, reason=_SOLR_502_ERROR)
+            log.warn('Solr problem: {0}'.format(err.args[0]))
             return
 
         # finally, prepare the response headers

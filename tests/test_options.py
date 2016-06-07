@@ -32,6 +32,8 @@ Tests for OPTIONS requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
+from unittest import mock
+
 import pysolrtornado
 from tornado import testing
 
@@ -108,12 +110,14 @@ class TestSimpleIntegration(shared.TestHandler):
         self.assertEqual(simple_handler._INVALID_ID, actual.reason)
         assert self.solr.search.call_count == 0
 
+    @mock.patch('abbot.simple_handler.log')
     @testing.gen_test
-    def test_solr_unavailable(self):
+    def test_solr_unavailable(self, mock_log):
         '''
         OPTIONS request for a valid resource ID when Solr is unavailable gives 502
         '''
-        self.solr.search.side_effect = pysolrtornado.SolrError
+        solr_error_message = 'blah blah'
+        self.solr.search.side_effect = pysolrtornado.SolrError(solr_error_message)
         actual = yield self.http_client.fetch(self.get_url('/{}/162/'.format(self.rtype)),
                                               method='OPTIONS',
                                               raise_error=False)
@@ -121,6 +125,7 @@ class TestSimpleIntegration(shared.TestHandler):
         self.assertEqual(502, actual.code)
         self.assertEqual(simple_handler._SOLR_502_ERROR, actual.reason)
         assert self.solr.search.call_count == 1
+        assert solr_error_message in mock_log.warn.call_args_list[0][0][0]
 
     @testing.gen_test
     def test_cors_preflight_1(self):

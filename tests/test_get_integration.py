@@ -358,7 +358,7 @@ class TestSimple(shared.TestHandler):
         - browse request
         - Solr is unavailable, so pysolr-tornado raises a SolrError
         '''
-        self.solr.search.side_effect = pysolrtornado.SolrError
+        self.solr.search.side_effect = pysolrtornado.SolrError('error')
         url = self.get_url('/{0}/'.format(self._type[1]))
         actual = yield self.http_client.fetch(url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)
@@ -377,7 +377,7 @@ class TestSimple(shared.TestHandler):
         if self._method == 'SEARCH':
             return
 
-        self.solr.search.side_effect = pysolrtornado.SolrError
+        self.solr.search.side_effect = pysolrtornado.SolrError('error')
         url = self.get_url('/{0}/7/'.format(self._type[1]))
         actual = yield self.http_client.fetch(url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"*"}', raise_error=False)

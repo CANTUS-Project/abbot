@@ -150,18 +150,21 @@ class TestSimple(shared.TestHandler):
         self.assertIsNone(actual)
         self.assertEqual(0, mock_search_handler.call_count)
 
+    @mock.patch('abbot.simple_handler.log')
     @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')
     @testing.gen_test
-    def test_search_3(self, mock_search_handler, mock_vrh):
+    def test_search_3(self, mock_search_handler, mock_vrh, mock_log):
         '''
         search_handler() raises SolrError; return None, call send_error()
         '''
+        solr_error_message = 'blah blah'
         mock_vrh.return_value = True
-        mock_search_handler.side_effect = pysolrtornado.SolrError
+        mock_search_handler.side_effect = pysolrtornado.SolrError(solr_error_message)
         actual = yield self.handler.search()
         self.assertIsNone(actual)
         mock_search_handler.assert_called_once_with()
+        assert solr_error_message in mock_log.warn.call_args_list[0][0][0]
 
     @mock.patch('abbot.simple_handler.SimpleHandler.verify_request_headers')
     @mock.patch('abbot.simple_handler.SimpleHandler.search_handler')

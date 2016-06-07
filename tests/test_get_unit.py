@@ -376,20 +376,23 @@ class TestGetSimple(shared.TestHandler):
         assert self.mock_ghandler.call_count == 1
         assert self.mock_mrh.call_count == 0
 
+    @mock.patch('abbot.simple_handler.log')
     @testing.gen_test
-    def test_solr_error(self):
+    def test_solr_error(self, mock_log):
         '''
         When there's a SolrError.
 
         - get_handler() raises SolrError
         - make_response_headers() isn't called
         '''
+        solr_error_message = 'blah blah'
         self.handler.send_error = mock.Mock()
-        self.mock_ghandler.side_effect = pysolrtornado.SolrError
+        self.mock_ghandler.side_effect = pysolrtornado.SolrError(solr_error_message)
         yield self.handler.get()
         assert self.mock_ghandler.call_count == 1
         assert self.mock_mrh.call_count == 0
         self.handler.send_error.assert_called_with(502, reason=simple_handler._SOLR_502_ERROR)
+        assert solr_error_message in mock_log.warn.call_args_list[0][0][0]
 
     @testing.gen_test
     def test_works_not_head(self):

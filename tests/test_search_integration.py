@@ -221,7 +221,7 @@ class TestComplex(test_get_integration.TestComplex):
     @testing.gen_test
     def test_solr_failure_in_subquery(self):
         "returns 502 when Solr fails while running a subquery"
-        self.solr.search.side_effect = pysolrtornado.SolrError
+        self.solr.search.side_effect = pysolrtornado.SolrError('fail!')
 
         actual = yield self.http_client.fetch(self._browse_url,
                                               method='SEARCH',
