@@ -120,11 +120,11 @@ class TestSimple(shared.TestHandler):
         assert actual.headers['X-Cantus-Sort'] == 'id;desc'
         # the query is modified before submission for a SEARCH query
         if self._method == 'SEARCH':
-            self.solr.search.assert_called_with('type:{}  AND  ( *  ) '.format(self._type[0]), sort='id desc',
-                start=4, rows=4, df='default_search')
+            self.solr.search.assert_any_call('type:{}  AND  ( *  ) '.format(self._type[0]),
+                sort='id desc', start=4, rows=4, df='default_search')
         else:
-            self.solr.search.assert_called_with('+type:{} +id:*'.format(self._type[0]), sort='id desc',
-                start=4, rows=4, df='default_search')
+            self.solr.search.assert_any_call('+type:{} +id:*'.format(self._type[0]),
+                sort='id desc', start=4, rows=4, df='default_search')
 
     @testing.gen_test
     def test_view_request(self):

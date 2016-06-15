@@ -66,7 +66,7 @@ class TestSimple(test_get_integration.TestSimple):
                                               allow_nonstandard_methods=True,
                                               body=b'{"query":"id:830"}')
 
-        self.solr.search.assert_called_with('type:{}  AND  ( id:830  ) '.format(self._type[0]),
+        self.solr.search.assert_any_call('type:{}  AND  ( id:830  ) '.format(self._type[0]),
             df='default_search', rows=10)
         self.check_standard_header(actual)
 
@@ -189,7 +189,7 @@ class TestComplex(test_get_integration.TestComplex):
         # as submitted by the search itself
         self.solr.search.assert_any_call('type:source  AND  ( century_id:830  ) ', df='default_search', rows=10)
         # as submitted for the cross-reference
-        self.solr.search.assert_any_call('+type:century +id:830', df='default_search')
+        self.solr.search.assert_any_call('id:830', df='default_search', rows=1)
         self.check_standard_header(actual)
 
     @testing.gen_test
@@ -215,7 +215,7 @@ class TestComplex(test_get_integration.TestComplex):
         self.solr.search.assert_any_call('type:source  AND  ( (century_id:830^3 OR century_id:831^2 OR century_id:832^1)  ) ',
             df='default_search', rows=10)
         # as submitted for the cross-reference
-        self.solr.search.assert_any_call('+type:century +id:830', df='default_search')
+        self.solr.search.assert_any_call('id:830', df='default_search', rows=1)
         self.check_standard_header(actual)
 
     @testing.gen_test
@@ -274,15 +274,17 @@ class TestComplex(test_get_integration.TestComplex):
         # We need to make these available textually (for the subquery) and by ID (for the xref).
         # NOTE that by using the full "expected" call up here, we implicitly make an assertion about
         #      how Solr was called, so we don't need to check it later.
-        # NOTE that we have to put the + in front of the "id" later, or else the xref queries will
-        #      interfere with the main query. That is, "id:829" matches both "+id:829" and "century_id:829",
-        #      so that "id:829" without the + sign will inadvertently return the century as part of
-        #      the main query
+        # NOTE that we have to use "OR" in some of the queries, or else the xref queries interfere
+        #      with the main query. That is, "id:829" matches both "id:829 OR id:757" and
+        #      "century_id:829", so that "id:829" without the + sign will inadvertently return the
+        #      century as part of the main query
         exp_century_call = 'century:  ( 20th  OR 21st  ) '
         self.solr.search_se.add(exp_century_call, {'type': 'century', 'id': '829', 'name': '20th century'})
         self.solr.search_se.add(exp_century_call, {'type': 'century', 'id': '830', 'name': '21st century'})
-        self.solr.search_se.add('+id:829', {'type': 'century', 'id': '829', 'name': '20th century'})
-        self.solr.search_se.add('+id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('id:829 OR id:757', {'type': 'century', 'id': '829', 'name': '20th century'})
+        self.solr.search_se.add('id:757 OR id:829', {'type': 'century', 'id': '829', 'name': '20th century'})
+        self.solr.search_se.add('id:830 OR id:767', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('id:767 OR id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
         #
         self.solr.search_se.add(
             'type:notation_style AND (square)',
@@ -292,8 +294,10 @@ class TestComplex(test_get_integration.TestComplex):
             'type:notation_style AND (triangle)',
             {'type': 'notation', 'id': '767', 'name': 'triangle notation'}
         )
-        self.solr.search_se.add('+id:757', {'type': 'notation', 'id': '757', 'name': 'square notation'})
-        self.solr.search_se.add('+id:767', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
+        self.solr.search_se.add('id:829 OR id:757', {'type': 'notation', 'id': '757', 'name': 'square notation'})
+        self.solr.search_se.add('id:757 OR id:829', {'type': 'notation', 'id': '757', 'name': 'square notation'})
+        self.solr.search_se.add('id:830 OR id:767', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
+        self.solr.search_se.add('id:767 OR id:830', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
         # for the "NOT"
         self.solr.search_se.add('19th', {'type': 'century', 'id': '800', 'name': '19th century'})
         # results of the main query itself
