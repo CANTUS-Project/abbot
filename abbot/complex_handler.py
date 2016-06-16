@@ -46,6 +46,156 @@ field to which that value should be assigned in the response body.
 #       read "A" rather than "Antiphon," for example
 
 
+class Xref(object):
+    '''
+    Holds static methods that handle cross-references.
+
+    This class isn't meant to be instantiated. Rather, it's a container for the functions used in
+    preparing cross-references.
+
+    The order of steps in a cross-reference workflow:
+
+    #. :meth:`Xref.collect`
+    #. :meth:`Xref.lookup`
+    #. :meth:`Xref.fill`
+    '''
+
+    @staticmethod
+    def collect(record):
+        '''
+        Step 1: collect the resource IDs to look up.
+
+        :param record: The database record, from Solr, for which we're looking up cross-references.
+        :returns: A 2-tuple. First, "record" without any of the cross-reference fields. Second,
+            a list of IDs for the cross-reference resources, each prefixed with "id:".
+        :rtype: dict, set
+
+        The list of IDs is actually a :func:`set`, to ensure there are no duplicates.
+        '''
+        post = {}
+        xref_query = []
+
+        for field in iter(record):
+            if field in ComplexHandler.LOOKUP:
+                if isinstance(record[field], (list, tuple)):
+                    for each_id in record[field]:
+                        xref_query.append('id:{0}'.format(each_id))
+                else:
+                    xref_query.append('id:{0}'.format(record[field]))
+            else:
+                post[field] = record[field]
+
+        return post, set(xref_query)
+
+    @staticmethod
+    @gen.coroutine
+    def lookup(xref_query):
+        '''
+        Step 2: look up all the cross-reference resources at once.
+
+        :param xref_query: The second element in the 2-tuple returned by :meth:`collect`. This is an
+            iterable of strings that contain the resource IDs to retrieve from Solr. Each resource
+            ID should be prefaced with ``'id:'``, like ``'id:123'``.
+        :returns: The cross-reference resources from Solr. In the dictionary, resource IDs are keys,
+            and the resources themselves are values.
+        :rtype: dict
+
+        .. note:: If ``xref_query`` is an empty list, this function returns an empty dictionary.
+        .. note:: This static method is a coroutine and must be called with ``yield``.
+        '''
+        post = {}
+
+        if len(xref_query):
+            xreffed = yield util.search_solr(' OR '.join(xref_query), rows=len(xref_query))
+            for result in xreffed:
+                post[result['id']] = result
+
+        return post
+
+    @staticmethod
+    def fill(record, result, xrefs):
+        '''
+        Step 3: fill in the cross-referenced fields.
+
+        :param record:  The database record, from Solr, for which we're looking up cross-references.
+            This should be identical to the "record" parameter given to :meth:`collect`.
+        :param result: The first element in the 2-tuple returned by :meth:`collect`. This is the
+            record we're filling cross-references into, without any of the fields that will be
+            cross-referenced.
+        :param xrefs: The return value of :meth:`lookup`, containing the cross-reference resources
+            from Solr. Resource IDs are keys, and the resources themselves are values.
+        :returns: The "result" argument with cross-reference fields filled in.
+        '''
+        if xrefs:
+            for field in iter(record):
+                if field in ComplexHandler.LOOKUP:
+                    # for readability
+                    replace_to = ComplexHandler.LOOKUP[field].replace_to
+                    replace_with = ComplexHandler.LOOKUP[field].replace_with
+                    xref_id = record[field]
+
+                    if isinstance(xref_id, list):
+                        xreffed = []
+                        for each_xref_id in xref_id:
+                            if each_xref_id in xrefs:
+                                xreffed.append(xrefs[each_xref_id][replace_with])
+
+                        if xreffed:
+                            result[replace_to] = xreffed
+
+                    elif xref_id in xrefs:
+                        result[replace_to] = xrefs[xref_id][replace_with]
+
+        return result
+
+    @staticmethod
+    def resources(record, result, xrefs, make_resource_url):
+        '''
+        Step 4: fill in the cross-references resources links
+
+        :param record:  The database record, from Solr, for which we're looking up cross-references.
+            This should be identical to the "record" parameter given to :meth:`collect`.
+        :param result: The first element in the 2-tuple returned by :meth:`collect`. This is the
+            record we're filling cross-references into, without any of the fields that will be
+            cross-referenced.
+        :param xrefs: The return value of :meth:`lookup`, containing the cross-reference resources
+            from Solr. Resource IDs are keys, and the resources themselves are values.
+        :param make_resource_url: The :func:`ComplexHandler.make_resource_url` function for the
+            :class:`ComplexHandler` instance calling this static method.
+        :type make_resource_url: function
+        :returns: A dictionary for the "resources" part of a Cantus API response. For each cross-
+            reference that was found, this includes a link to the resource itself, and a field with
+            that resource's ID.
+
+        Example return value:
+
+        ```{'century': 'http://example.org/552', 'century_id': '552'}```
+        '''
+        post = {}
+
+        if xrefs:
+            for field in iter(record):
+                if field in ComplexHandler.LOOKUP:
+                    # for readability
+                    replace_to = ComplexHandler.LOOKUP[field].replace_to
+                    xref_id = record[field]
+                    plural = util.singular_resource_to_plural(ComplexHandler.LOOKUP[field].type)
+
+                    if isinstance(xref_id, list):
+                        urls = []
+                        for each_xref_id in xref_id:
+                            if each_xref_id in xrefs:
+                                urls.append(make_resource_url(each_xref_id, plural))
+                        if urls:
+                            post[replace_to] = urls
+                            post['{0}_id'.format(replace_to)] = xref_id
+
+                    elif xref_id in xrefs:
+                        post[replace_to] = make_resource_url(xref_id, plural)
+                        post['{0}_id'.format(replace_to)] = xref_id
+
+        return post
+
 class ComplexHandler(simple_handler.SimpleHandler):
     '''
     A handler for complex resource types that contain references to other resources. Simple resource
@@ -106,66 +256,22 @@ class ComplexHandler(simple_handler.SimpleHandler):
         {'genre': '/genres/162/'}
         '''
 
-        LOOKUP = ComplexHandler.LOOKUP  # pylint: disable=invalid-name
-
-        post = {}
         resources = {}
 
-        # TODO: this is too complicated
-        for field in iter(record):
-            if field in LOOKUP:
-                replace_to = LOOKUP[field].replace_to  # for readability
+        # 1: collect all the resource IDs we need to look up
+        result, xref_query = Xref.collect(record)
 
-                if isinstance(record[field], (list, tuple)):
-                    post[replace_to] = []
+        # 2: look up all the cross-reference resources at once
+        xrefs = yield Xref.lookup(xref_query)
 
-                    for value in record[field]:
-                        resp = yield util.ask_solr_by_id(LOOKUP[field].type, value)
-                        if len(resp) > 0 and LOOKUP[field].replace_with in resp[0]:
-                            post[replace_to].append(resp[0][LOOKUP[field].replace_with])
+        # 3: fill in the cross-referenced fields
+        result = Xref.fill(record, result, xrefs)
 
-                    # if nothing the list was found, remove the empty list
-                    if not post[replace_to]:
-                        del post[replace_to]
-                        continue  # avoid writing the "resources" block for a missing xref resource
+        # 4: fill in the cross-references resources links
+        if self.hparams['include_resources']:
+            resources = Xref.resources(record, result, xrefs, self.make_resource_url)
 
-                else:
-                    resp = yield util.ask_solr_by_id(LOOKUP[field].type, record[field])
-                    if resp:
-                        post[replace_to] = resp[0][LOOKUP[field].replace_with]
-                    else:
-                        # In this issue...
-                        # https://bitbucket.org/ned/coveragepy/issues/198/
-                        # ... the Coverage.py people say that this situation (where a "suite"
-                        #     consists only of a "continue" statement) will be optimized in such
-                        #     a way that the "continue" statement isn't actually executed, and
-                        #     therefore cannot be properly checked by Coverage.py.
-                        # However, this branch is tested in test_field_not_found_1().
-
-                        # avoid writing the "resources" block for a missing xref resource
-                        continue  # pragma: no cover
-
-                # fill in "resources" URLs
-                if self.hparams['include_resources']:
-                    plural = util.singular_resource_to_plural(LOOKUP[field].type)
-                    if isinstance(record[field], (list, tuple)):
-                        resource_url = [self.make_resource_url(x, plural) for x in record[field]]
-                        resource_id = [x for x in record[field]]
-                    else:
-                        resource_url = self.make_resource_url(record[field], plural)
-                        resource_id = record[field]
-                    resources[replace_to] = resource_url
-                    resources['{0}_id'.format(replace_to)] = resource_id
-
-            elif field in self.returned_fields or field == 'drupal_path':
-                # This is for non-cross-referenced fields. Because cross-referenced fields must
-                # also appear in self.returned_fields, this branch must appear after the cross-
-                # referencing branch, or else cross-references would never work correctly. The one
-                # exception is "drupal_path," which won't appear in "returned_fields" because it's
-                # not stored in Solr.
-                post[field] = record[field]
-
-        return post, resources
+        return result, resources
 
     @gen.coroutine
     def make_extra_fields(self, record, orig_record):

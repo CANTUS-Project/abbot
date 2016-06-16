@@ -37,17 +37,328 @@ from tornado import httpclient, testing
 from abbot import __main__ as main
 from abbot import complex_handler
 ComplexHandler = complex_handler.ComplexHandler
+Xref = complex_handler.Xref
 import shared
 
 
-class TestLookUpXrefs(shared.TestHandler):
+class TestXref(shared.TestHandler):
+    '''
+    Tests for the static methods in the Xref class.
+    '''
+
+    def setUp(self):
+        "Make a ComplexHandler instance for testing."
+        super(TestXref, self).setUp()
+        request = httpclient.HTTPRequest(url='/zool/', method='GET')
+        request.connection = mock.Mock()  # required for Tornado magic things
+        self.handler = ComplexHandler(self.get_app(), request, type_name='source')
+
+    def test_collect_1(self):
+        "When the 'record' is empty."
+        post, xref_query = Xref.collect({})
+        assert post == {}
+        assert xref_query == set([])
+
+    def test_collect_2(self):
+        "When the 'record' has only non-cross-referenced fields."
+        record = {'id': '123', 'incipit': 'Deus rawr'}
+        post, xref_query = Xref.collect(record)
+        assert post == record
+        assert xref_query == set([])
+
+    def test_collect_3(self):
+        "When the 'record' has a simple cross-reference (not a list)."
+        record = {'id': '123', 'incipit': 'Deus rawr', 'feast_id': '666'}
+        post, xref_query = Xref.collect(record)
+        assert post == {'id': '123', 'incipit': 'Deus rawr'}
+        assert xref_query == set(['id:666'])
+
+    def test_collect_4(self):
+        "When the 'record' has a list cross-reference."
+        record = {'id': '123', 'incipit': 'Deus rawr', 'indexers': ['416', '905']}
+        post, xref_query = Xref.collect(record)
+        assert post == {'id': '123', 'incipit': 'Deus rawr'}
+        assert isinstance(xref_query, set)
+        self.assertCountEqual(xref_query, ['id:416', 'id:905'])
+
+    def test_collect_5(self):
+        "When the 'record' has a simple and a list cross-reference."
+        record = {'id': '123', 'incipit': 'Deus rawr', 'indexers': ['416', '905'], 'feast_id': '666'}
+        post, xref_query = Xref.collect(record)
+        assert post == {'id': '123', 'incipit': 'Deus rawr'}
+        assert isinstance(xref_query, set)
+        self.assertCountEqual(xref_query, ['id:416', 'id:905', 'id:666'])
+
+    def test_collect_6(self):
+        "When the 'record' has a duplicate cross-reference."
+        record = {'id': '123', 'incipit': 'Deus rawr', 'indexers': ['416', '905', '416']}
+        post, xref_query = Xref.collect(record)
+        assert post == {'id': '123', 'incipit': 'Deus rawr'}
+        assert isinstance(xref_query, set)
+        self.assertCountEqual(xref_query, ['id:416', 'id:905'])
+
+    @testing.gen_test
+    def test_lookup_1(self):
+        "Returns an empty dictionary when the xref_query is an empty list."
+        actual = yield Xref.lookup(set([]))
+        assert actual == {}
+
+    @testing.gen_test
+    def test_lookup_2(self):
+        "Returns an empty dictionary when the query returns no results."
+        self.solr = self.setUpSolr()
+
+        actual = yield Xref.lookup(set(['id:123']))
+
+        assert actual == {}
+
+    @testing.gen_test
+    def test_lookup_3(self):
+        "Returns a single-element dictionary when the query returns one result."
+        self.solr = self.setUpSolr()
+        self.solr.search_se.add('id:123', {'id': '123', 'display_name': 'Carte Blanche'})
+
+        actual = yield Xref.lookup(set(['id:123']))
+
+        assert actual == {'123': {'id': '123', 'display_name': 'Carte Blanche'}}
+
+    @testing.gen_test
+    def test_lookup_4(self):
+        "Returns a three-element dictionary when the query returns three results."
+        self.solr = self.setUpSolr()
+        self.solr.search_se.add('id:123', {'id': '123', 'display_name': 'Carte Blanche'})
+        self.solr.search_se.add('id:124', {'id': '124', 'display_name': 'Blarte Canche'})
+        self.solr.search_se.add('id:125', {'id': '125', 'display_name': 'Shmarte Shmanche'})
+
+        actual = yield Xref.lookup(set(['id:123', 'id:124', 'id:125']))
+
+        assert actual == {
+            '123': {'id': '123', 'display_name': 'Carte Blanche'},
+            '124': {'id': '124', 'display_name': 'Blarte Canche'},
+            '125': {'id': '125', 'display_name': 'Shmarte Shmanche'},
+        }
+
+    @testing.gen_test
+    def test_lookup_5(self):
+        "Submits the proper search query when there's one element in xref_query."
+        self.solr = self.setUpSolr()
+
+        yield Xref.lookup(set(['id:123']))
+
+        self.solr.search.assert_called_with('id:123', df='default_search', rows=1)
+
+    @testing.gen_test
+    def test_lookup_6(self):
+        "Submits the proper search query when there are three elements in xref_query."
+        # NOTE: this test submits a list to lookup() rather than a set. That's because the order of
+        #       a set is indeterminate, so the assertion would be MUCH more complicated.
+        self.solr = self.setUpSolr()
+
+        yield Xref.lookup(['id:123', 'id:124', 'id:125'])
+
+        self.solr.search.assert_called_with('id:123 OR id:124 OR id:125', df='default_search', rows=3)
+
+    def test_fill_1(self):
+        "Fills a single, non-list field."
+        record = {'id': '123', 'feast_id': '5733'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {'id': '123', 'feast': 'Thanksgiving'}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_fill_2(self):
+        "Fills a single field that's a list."
+        record = {'id': '123', 'editors': ['444', '555']}
+        result = {'id': '123'}
+        xrefs = {'444': {'display_name': 'D. Smith'}, '555': {'display_name': 'F. Johnson'}}
+        expected = {'id': '123', 'editors': ['D. Smith', 'F. Johnson']}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_fill_3(self):
+        "Fills several fields."
+        record = {'id': '123', 'feast_id': '5733', 'editors': ['444', '555']}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
+            '555': {'display_name': 'F. Johnson'}}
+        expected = {'id': '123', 'feast': 'Thanksgiving', 'editors': ['D. Smith', 'F. Johnson']}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_fill_4(self):
+        "Leaves empty a field for which the cross-reference wasn't found."
+        record = {'id': '123', 'feast_id': '5733', 'office_id': '9882'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {'id': '123', 'feast': 'Thanksgiving'}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_fill_5(self):
+        "Still works when no cross-reference results were found."
+        record = {'id': '123', 'feast_id': '5733'}
+        result = {'id': '123'}
+        xrefs = {}
+        expected = {'id': '123'}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_fill_6(self):
+        "Still works when there are many more cross-references than needed in the resource."
+        record = {'id': '123', 'feast_id': '5733'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
+            '555': {'display_name': 'F. Johnson'}}
+        expected = {'id': '123', 'feast': 'Thanksgiving'}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_fill_7(self):
+        "Still works when there are no fields to cross-reference."
+        record = {'id': '123'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {'id': '123'}
+
+        actual = Xref.fill(record, result, xrefs)
+
+        assert actual == expected
+
+    def test_resources_1(self):
+        "Fills a single, non-list field."
+        record = {'id': '123', 'feast_id': '5733'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/'}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_2(self):
+        "Fills a single field that's a list."
+        record = {'id': '123', 'editors': ['444', '555']}
+        result = {'id': '123'}
+        xrefs = {'444': {'display_name': 'D. Smith'}, '555': {'display_name': 'F. Johnson'}}
+        expected = {'editors_id': ['444', '555'], 'editors': ['https://cantus.org/indexers/444/',
+            'https://cantus.org/indexers/555/']}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_3(self):
+        "Fills several fields."
+        record = {'id': '123', 'feast_id': '5733', 'editors': ['444', '555']}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
+            '555': {'display_name': 'F. Johnson'}}
+        expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/',
+            'editors_id': ['444', '555'], 'editors': ['https://cantus.org/indexers/444/',
+            'https://cantus.org/indexers/555/']}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_4a(self):
+        "Leaves empty a field for which the cross-reference wasn't found (non-list not found)."
+        record = {'id': '123', 'feast_id': '5733', 'office_id': '9882'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/'}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_4b(self):
+        "Leaves empty a field for which the cross-reference wasn't found (list not found)."
+        record = {'id': '123', 'feast_id': '5733', 'editors': ['438', '514']}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/'}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_5(self):
+        "Still works when no cross-reference results were found."
+        record = {'id': '123', 'feast_id': '5733'}
+        result = {'id': '123'}
+        xrefs = {}
+        expected = {}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_6(self):
+        "Still works when there are many more cross-references than needed in the resource."
+        record = {'id': '123', 'feast_id': '5733'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
+            '555': {'display_name': 'F. Johnson'}}
+        expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/'}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    def test_resources_7(self):
+        "Still works when there are no fields to cross-reference."
+        record = {'id': '123'}
+        result = {'id': '123'}
+        xrefs = {'5733': {'name': 'Thanksgiving'}}
+        expected = {}
+
+        actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
+
+        assert actual == expected
+
+    @testing.gen_test
+    def test_issue_96(self):
+        '''
+        This is a regression test for GitHub issue 96.
+
+        In this issue, cross-references to Notation resources were found to be incorrect. This test
+        is to guarantee that look_up_xrefs() uses the "type" member of the LOOKUP object.
+        '''
+        record = {'id': '123656', 'notation_style_id': '3895'}
+        self.solr = self.setUpSolr()
+        self.solr.search_se.add('id:3895', {'id': '3895', 'name': 'German - neumatic'})
+        expected = ({'id': '123656', 'notation_style': 'German - neumatic'},
+                    {'notation_style': 'https://cantus.org/notations/3895/',
+                     'notation_style_id': '3895'})
+
+        actual = yield self.handler.look_up_xrefs(record)
+
+        self.assertEqual(expected[0], actual[0])
+        self.assertEqual(expected[1], actual[1])
+
+
+class TestLookupNameForResponse(shared.TestHandler):
     '''
     Tests for the ComplexHandler.look_up_xrefs().
     '''
 
     def setUp(self):
         "Make a ComplexHandler instance for testing."
-        super(TestLookUpXrefs, self).setUp()
+        super(TestLookupNameForResponse, self).setUp()
         self.solr = self.setUpSolr()
         request = httpclient.HTTPRequest(url='/zool/', method='GET')
         request.connection = mock.Mock()  # required for Tornado magic things
@@ -61,86 +372,6 @@ class TestLookUpXrefs(shared.TestHandler):
                                                          'indexers', 'editors', 'proofreaders',
                                                          'provenance_detail'])
 
-    @testing.gen_test
-    def test_field_is_string_with_id(self):
-        "when the xreffed field is a string with an id"
-        record = {'id': '123656', 'provenance_id': '3624'}
-        self.solr.search_se.add('id:3624', {'id': '3624', 'name': 'Klosterneuburg'})
-        expected = ({'id': '123656', 'provenance': 'Klosterneuburg'},
-                    {'provenance': 'https://cantus.org/provenances/3624/',
-                     'provenance_id': '3624'})
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
-
-    @testing.gen_test
-    def test_field_is_list_of_string(self):
-        "when the xreffed field is a list of strings"
-        record = {'id': '123656', 'proofreaders': ['124104']}
-        self.solr.search_se.add('id:124104', {'id': '124104', 'display_name': 'Debra Lacoste'})
-        expected = ({'id': '123656', 'proofreaders': ['Debra Lacoste']},
-                    {'proofreaders': ['https://cantus.org/indexers/124104/'],
-                     'proofreaders_id': ['124104']})
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
-
-    @testing.gen_test
-    def test_field_not_found_1(self):
-        "when the xreffed field is a string, but it's not found in Solr"
-        record = {'id': '123656', 'provenance_id': '3624'}
-        expected = ({'id': '123656'}, {})
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        self.solr.search.assert_called_with('+type:provenance +id:3624', df='default_search')
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
-
-    @testing.gen_test
-    def test_field_not_found_2(self, ):
-        "when the xreffed field is a list of strings, but nothing is ever found in Solr"
-        record = {'id': '123656', 'proofreaders': ['124104']}
-        expected = ({'id': '123656'}, {})
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        self.solr.search.assert_called_with('+type:indexer +id:124104', df='default_search')
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
-
-    @testing.gen_test
-    def test_many_xreffed_fields(self):
-        "with many xreffed fields"
-        record = {'id': '123656', 'provenance_id': '3624', 'segment_id': '4063',
-                  'proofreaders': ['124104'], 'source_status_id': '4212', 'century_id': '3841'}
-        expected = ({'id': '123656', 'provenance': 'Klosterneuburg', 'segment': 'CANTUS Database',
-                     'proofreaders': ['Debra Lacoste'], 'source_status': 'Published / Complete',
-                     'century': '14th century'},
-                    {'provenance': 'https://cantus.org/provenances/3624/',
-                     'provenance_id': '3624',
-                     'segment': 'https://cantus.org/segments/4063/',
-                     'segment_id': '4063',
-                     'proofreaders': ['https://cantus.org/indexers/124104/'],
-                     'proofreaders_id': ['124104'],
-                     'source_status': 'https://cantus.org/statii/4212/',
-                     'source_status_id': '4212',
-                     'century': 'https://cantus.org/centuries/3841/',
-                     'century_id': '3841'})
-        self.solr.search_se.add('id:3624', {'id': '3624', 'name': 'Klosterneuburg'})
-        self.solr.search_se.add('id:4063', {'id': '4063', 'name': 'CANTUS Database'})
-        self.solr.search_se.add('id:124104', {'id': '124104', 'display_name': 'Debra Lacoste'})
-        self.solr.search_se.add('id:4212', {'id': '4212', 'name': 'Published / Complete'})
-        self.solr.search_se.add('id:3841', {'id': '3841', 'name': '14th century'})
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
 
     def test_lookup_name_for_response_1(self):
         '''
@@ -167,25 +398,6 @@ class TestLookUpXrefs(shared.TestHandler):
         expected = 'source'
         actual = self.handler._lookup_name_for_response(in_val)
         self.assertEqual(expected, actual)
-
-    @testing.gen_test
-    def test_issue_96(self):
-        '''
-        This is a regression test for GitHub issue 96.
-
-        In this issue, cross-references to Notation resources were found to be incorrect. This test
-        is to guarantee that look_up_xrefs() uses the "type" member of the LOOKUP object.
-        '''
-        record = {'id': '123656', 'notation_style_id': '3895'}
-        self.solr.search_se.add('id:3895', {'id': '3895', 'name': 'German - neumatic'})
-        expected = ({'id': '123656', 'notation_style': 'German - neumatic'},
-                    {'notation_style': 'https://cantus.org/notations/3895/',
-                     'notation_style_id': '3895'})
-
-        actual = yield self.handler.look_up_xrefs(record)
-
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
 
 
 class TestMakeExtraFields(shared.TestHandler):
