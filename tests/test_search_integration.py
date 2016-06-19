@@ -281,10 +281,10 @@ class TestComplex(test_get_integration.TestComplex):
         exp_century_call = 'century:  ( 20th  OR 21st  ) '
         self.solr.search_se.add(exp_century_call, {'type': 'century', 'id': '829', 'name': '20th century'})
         self.solr.search_se.add(exp_century_call, {'type': 'century', 'id': '830', 'name': '21st century'})
-        self.solr.search_se.add('id:829 OR id:757', {'type': 'century', 'id': '829', 'name': '20th century'})
-        self.solr.search_se.add('id:757 OR id:829', {'type': 'century', 'id': '829', 'name': '20th century'})
-        self.solr.search_se.add('id:830 OR id:767', {'type': 'century', 'id': '830', 'name': '21st century'})
-        self.solr.search_se.add('id:767 OR id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('id:829 OR id', {'type': 'century', 'id': '829', 'name': '20th century'})
+        self.solr.search_se.add('OR id:829', {'type': 'century', 'id': '829', 'name': '20th century'})
+        self.solr.search_se.add('id:830 OR id', {'type': 'century', 'id': '830', 'name': '21st century'})
+        self.solr.search_se.add('OR id:830', {'type': 'century', 'id': '830', 'name': '21st century'})
         #
         self.solr.search_se.add(
             'type:notation_style AND (square)',
@@ -294,10 +294,10 @@ class TestComplex(test_get_integration.TestComplex):
             'type:notation_style AND (triangle)',
             {'type': 'notation', 'id': '767', 'name': 'triangle notation'}
         )
-        self.solr.search_se.add('id:829 OR id:757', {'type': 'notation', 'id': '757', 'name': 'square notation'})
-        self.solr.search_se.add('id:757 OR id:829', {'type': 'notation', 'id': '757', 'name': 'square notation'})
-        self.solr.search_se.add('id:830 OR id:767', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
-        self.solr.search_se.add('id:767 OR id:830', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
+        self.solr.search_se.add('id:757 OR id', {'type': 'notation', 'id': '757', 'name': 'square notation'})
+        self.solr.search_se.add('OR id:757', {'type': 'notation', 'id': '757', 'name': 'square notation'})
+        self.solr.search_se.add('id:767 OR id', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
+        self.solr.search_se.add('OR id:767', {'type': 'notation', 'id': '767', 'name': 'triangle notation'})
         # for the "NOT"
         self.solr.search_se.add('19th', {'type': 'century', 'id': '800', 'name': '19th century'})
         # results of the main query itself

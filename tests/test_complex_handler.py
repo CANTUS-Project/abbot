@@ -338,17 +338,20 @@ class TestXref(shared.TestHandler):
         In this issue, cross-references to Notation resources were found to be incorrect. This test
         is to guarantee that look_up_xrefs() uses the "type" member of the LOOKUP object.
         '''
-        record = {'id': '123656', 'notation_style_id': '3895'}
+        results = {'123656': {'id': '123656', 'notation_style_id': '3895'},
+                   'resources': {'123656': {'self': 'wee!'}},
+                   'sort_order': []}
         self.solr = self.setUpSolr()
         self.solr.search_se.add('id:3895', {'id': '3895', 'name': 'German - neumatic'})
-        expected = ({'id': '123656', 'notation_style': 'German - neumatic'},
-                    {'notation_style': 'https://cantus.org/notations/3895/',
-                     'notation_style_id': '3895'})
+        expected = {'123656': {'id': '123656', 'notation_style': 'German - neumatic'},
+                    'resources': {'123656': {'notation_style': 'https://cantus.org/notations/3895/',
+                                             'notation_style_id': '3895', 'self': 'wee!'}},
+                    'sort_order': [],
+                   }
 
-        actual = yield self.handler.look_up_xrefs(record)
+        actual = yield self.handler.look_up_xrefs(results, True)
 
-        self.assertEqual(expected[0], actual[0])
-        self.assertEqual(expected[1], actual[1])
+        assert expected == actual
 
 
 class TestLookupNameForResponse(shared.TestHandler):
@@ -504,66 +507,61 @@ class TestGetHandler(shared.TestHandler):
     @mock.patch('abbot.complex_handler.ComplexHandler.look_up_xrefs')
     @mock.patch('abbot.complex_handler.ComplexHandler.basic_get')
     @testing.gen_test
-    def test_normal_behaviour(self, mock_basic, mock_xrefs, mock_extra):
+    def test_normal_behaviour_1(self, mock_basic, mock_xrefs, mock_extra):
         '''
         A request that goes normally.
 
-        - self.hparams['include_resources'] is False
-        - output doesn't include "resources"
-        - self.look_up_xrefs() is called with every record
-        - self.make_extra_fields() is called with the output of look_up_xrefs()
-        - a returned resource is whatever make_extra_fields() returns
+        - self.hparams['include_resources'] is True
+        # - output doesn't include "resources"
+        # - self.look_up_xrefs() is called with every record
+        # - self.make_extra_fields() is called with the output of look_up_xrefs()
+        # - a returned resource is whatever make_extra_fields() returns
         '''
-        self.handler.hparams['include_resources'] = False
-        mock_basic.return_value = shared.make_future(({
-            '1': 'resource 1',
-            '2': 'resource 2',
-            '3': 'resource 3',
-            'sort_order': ['1', '2', '3']
-        }, 23))
-        # returns like ('resource 1x', {})
-        mock_xrefs.side_effect = lambda x: shared.make_future(('{}x'.format(x), {}))
-        # returns lik 'resource 1xe'
-        mock_extra.side_effect = lambda x, y: shared.make_future('{}e'.format(x))
+        self.handler.hparams['include_resources'] = True
+        mock_basic.return_value = shared.make_future(
+            ({'sort_order': ['1', '2', '3'], 'resources': 'res', '1': 'r1', '2': 'r2', '3': 'r3'}, 23))
+        mock_xrefs.side_effect = lambda res, incl: shared.make_future(
+            {'sort_order': ['1', '2', '3'], 'resources': 'res', '1': 'r1x', '2': 'r2x', '3': 'r3x'})
+        # returns like 'r1xx'
+        mock_extra.side_effect = lambda x, y: shared.make_future('{}x'.format(x))
 
         actual = yield self.handler.get_handler()
 
         assert actual[1] == 23
-        actual = actual[0]
-        assert len(actual) == 4
-        assert actual['sort_order'] == ['1', '2', '3']
-        assert 'resources' not in actual
-        for each_id in actual['sort_order']:
-            assert actual[each_id] == 'resource {}xe'.format(each_id)
+        assert actual[0] == {
+            '1': 'r1xx',
+            '2': 'r2xx',
+            '3': 'r3xx',
+            'resources': 'res',
+            'sort_order': ['1', '2', '3'],
+        }
+        mock_basic.assert_called_once_with(resource_id=None, query=None)
+        # mock_xrefs.assert_called_once_with((yield mock_basic.return_value)[0], True)
+        assert mock_extra.call_count == 3
+        mock_extra.assert_any_call('r1x', 'r1')
+        mock_extra.assert_any_call('r2x', 'r2')
+        mock_extra.assert_any_call('r3x', 'r3')
 
     @mock.patch('abbot.complex_handler.ComplexHandler.make_extra_fields')
     @mock.patch('abbot.complex_handler.ComplexHandler.look_up_xrefs')
     @mock.patch('abbot.complex_handler.ComplexHandler.basic_get')
     @testing.gen_test
-    def test_include_resources(self, mock_basic, mock_xrefs, mock_extra):
+    def test_normal_behaviour_2(self, mock_basic, mock_xrefs, mock_extra):
         '''
-        A request that goes normally.
-
-        - self.hparams['include_resources'] is True
-        - output includes "resources"
-        - each record has its URL in "resources"
-        - cross-referenced fields also have URLs in "resources"
+        Same as def test_normal_behaviour_1() BUT self.hparams['include_resources'] is False.
         '''
-        self.handler.hparams['include_resources'] = True
-        mock_basic.return_value = shared.make_future(({
-            '1': 'resource 1',
-            '2': 'resource 2',
-            '3': 'resource 3',
-            'sort_order': ['1', '2', '3'],
-            'resources': {'1': {'self': '1'}, '2': {'self': '2'}, '3': {'self': '3'}},
-        }, 23))
-        # returns like ('resource 1x', {'a': 'b'})
-        mock_xrefs.side_effect = lambda x: shared.make_future(('{}x'.format(x), {'a': 'b'}))
-        # returns lik 'resource 1xe'
-        mock_extra.side_effect = lambda x, y: shared.make_future('{}e'.format(x))
+        self.handler.hparams['include_resources'] = False
+        mock_basic.return_value = shared.make_future(
+            ({'sort_order': ['1', '2', '3'], '1': 'r1', '2': 'r2', '3': 'r3'}, 23))
+        mock_xrefs.side_effect = lambda res, incl: shared.make_future(
+            {'sort_order': ['1', '2', '3'], '1': 'r1x', '2': 'r2x', '3': 'r3x'})
+        mock_extra.side_effect = lambda x, y: shared.make_future('{}x'.format(x))
 
         actual = yield self.handler.get_handler()
 
-        actual = actual[0]
-        for each_id in ('1', '2', '3'):
-            assert actual['resources'][each_id] == {'a': 'b', 'self': each_id}
+        assert actual[0] == {
+            '1': 'r1xx',
+            '2': 'r2xx',
+            '3': 'r3xx',
+            'sort_order': ['1', '2', '3'],
+        }

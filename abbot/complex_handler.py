@@ -227,51 +227,54 @@ class ComplexHandler(simple_handler.SimpleHandler):
     '''
 
     @gen.coroutine
-    def look_up_xrefs(self, record):
+    def look_up_xrefs(self, results, include_resources):
         '''
-        Given a record, fetch fields that reside in other resources. This uses the substitutions
-        indicated by :const:`ComplexHandler.LOOKUP`.
+        Given the results of a query, fetch fields that reside in other resources. This uses the
+        substitutions indicated by :const:`ComplexHandler.LOOKUP`.
 
-        Two dictionaries are returned:
-
-        - In the first, all the keys in ``self.returned_fields`` are copied without modification.
-          All the keys in :const:`ComplexHandler.LOOKUP` are replaced with keys and values as
-          indicated in that constant's documentation.
-        - In the second are a series of URLs intended to be added to the relevant "resources" member.
+        The return value is the response body---in other words, the "results" argument with cross-
+        referenced fields substituted and appropriate "resources" information added.
 
         :param dict record: A resource that may have some keys matching a key in
             :const:`ComplexHandler.LOOKUP`.
+        :param bool include_resources: Whether to include the "resources" block.
         :returns: Two new dictionaries. Refer to the note above.
         :rtype: 2-tuple of dict
-
-        **Examples**
-
-        For a "chant" resource:
-
-        >>> in_val = {'genre_id': '162', 'incipit': 'Deux ex machina'}
-        >>> result = look_up_xrefs(in_val)
-        >>> result[0]
-        {'genre': 'Versicle', 'incipit', 'Deus ex machina'}
-        >>> result[1]
-        {'genre': '/genres/162/'}
         '''
 
-        resources = {}
+        post = {}
+        if include_resources:
+            resources = results['resources']
 
         # 1: collect all the resource IDs we need to look up
-        result, xref_query = Xref.collect(record)
+        xref_query = set()
+        for each_id, each_result in results.items():
+            if each_id in ('sort_order', 'resources'):
+                continue
+            collected = Xref.collect(each_result)
+            post[each_id] = collected[0]
+            xref_query = xref_query.union(collected[1])
 
         # 2: look up all the cross-reference resources at once
         xrefs = yield Xref.lookup(xref_query)
 
-        # 3: fill in the cross-referenced fields
-        result = Xref.fill(record, result, xrefs)
+        for each_id, each_result in results.items():
+            if each_id in ('sort_order', 'resources'):
+                continue
+            # 3: fill in the cross-referenced fields
+            filled = Xref.fill(each_result, post[each_id], xrefs)
+            post[each_id] = filled
 
-        # 4: fill in the cross-references resources links
-        if self.hparams['include_resources']:
-            resources = Xref.resources(record, result, xrefs, self.make_resource_url)
+            # 4: fill in the cross-references resources links
+            if include_resources:
+                resources[each_id].update(Xref.resources(each_result, filled, xrefs, self.make_resource_url))
 
-        return result, resources
+        # 5: copy over last-minute things
+        post['sort_order'] = results['sort_order']
+        if include_resources:
+            post['resources'] = resources
+
+        return post
 
     @gen.coroutine
     def make_extra_fields(self, record, orig_record):
@@ -323,16 +326,9 @@ class ComplexHandler(simple_handler.SimpleHandler):
         if self.hparams['include_resources']:
             post['resources'] = results['resources']
 
+        post = yield self.look_up_xrefs(results, self.hparams['include_resources'])
+
         for record in results['sort_order']:
-            # look up basic fields with ComplexHandler.LOOKUP
-            xreffed = yield self.look_up_xrefs(results[record])
-            post[record] = xreffed[0]
-
-            # add resources' URLs to "resources" member
-            if self.hparams['include_resources']:
-                for key, value in xreffed[1].items():
-                    post['resources'][record][key] = value
-
             # fill in extra fields, like descriptions, when relevant
             post[record] = yield self.make_extra_fields(post[record], results[record])
 
