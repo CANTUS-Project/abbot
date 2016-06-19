@@ -452,30 +452,32 @@ class TestComplex(TestSimple):
         '''
         self.add_resource_complex()
         headers = {'X-Cantus-Include-Resources': 'true'}
-        exp_ids = ['123', '234']
 
         actual = yield self.http_client.fetch(self._browse_url, method=self._method,
             allow_nonstandard_methods=True, body=b'{"query":"+id:*"}', headers=headers)
 
         self.check_standard_header(actual)
         actual = escape.json_decode(actual.body)
-        assert len(actual) == 4  # two resources, "resources", and "sort_order"
-        assert exp_ids == actual['sort_order']
-        assert actual['123'] == {'id': '123', 'type': 'source', 'century': '10th', 'indexers': ['Danceathon Smith', 'Fortitude Johnson']}
-        assert actual['234'] == {'id': '234', 'type': 'source', 'century': '14th', 'indexers': ['Danceathon Smith', 'Fortitude Johnson']}
-        assert actual['resources']['123'] == {
-            'self': 'https://cantus.org/sources/123/',
-            'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
-            'indexers_id': ['900', '901'],
-            'century': 'https://cantus.org/centuries/61/',
-            'century_id': '61',
-        }
-        assert actual['resources']['234'] == {
-            'self': 'https://cantus.org/sources/234/',
-            'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
-            'indexers_id': ['900', '901'],
-            'century': 'https://cantus.org/centuries/62/',
-            'century_id': '62',
+        assert actual == {
+            'sort_order': ['123', '234'],
+            '123': {'id': '123', 'type': 'source', 'century': '10th', 'indexers': ['Danceathon Smith', 'Fortitude Johnson']},
+            '234': {'id': '234', 'type': 'source', 'century': '14th', 'indexers': ['Danceathon Smith', 'Fortitude Johnson']},
+            'resources': {
+                '123': {
+                    'self': 'https://cantus.org/sources/123/',
+                    'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
+                    'indexers_id': ['900', '901'],
+                    'century': 'https://cantus.org/centuries/61/',
+                    'century_id': '61',
+                },
+                '234': {
+                    'self': 'https://cantus.org/sources/234/',
+                    'indexers': ['https://cantus.org/indexers/900/', 'https://cantus.org/indexers/901/'],
+                    'indexers_id': ['900', '901'],
+                    'century': 'https://cantus.org/centuries/62/',
+                    'century_id': '62',
+                }
+            }
         }
 
     @testing.gen_test
