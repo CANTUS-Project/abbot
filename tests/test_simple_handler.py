@@ -1073,7 +1073,7 @@ class TestCorsMethods(shared.TestHandler):
         for header in exp_missing_headers:
             assert header not in self.handler._headers
 
-    def test_preflight_4(self):
+    def test_preflight_5(self):
         '''
         - Origin request header is correct,
         - Access-Control-Request-Method is valid,
@@ -1092,7 +1092,7 @@ class TestCorsMethods(shared.TestHandler):
         for header in exp_missing_headers:
             assert header not in self.handler._headers
 
-    def test_preflight_5(self):
+    def test_preflight_6(self):
         '''
         - Origin request header is correct,
         - Access-Control-Request-Method is valid,
@@ -1111,7 +1111,7 @@ class TestCorsMethods(shared.TestHandler):
         assert self.handler._headers['Access-Control-Allow-Methods'] == b'GET'
         assert 'Access-Control-Allow-Headers' not in self.handler._headers
 
-    def test_preflight_6(self):
+    def test_preflight_7(self):
         '''
         - Origin request header is correct,
         - Access-Control-Request-Method is valid,

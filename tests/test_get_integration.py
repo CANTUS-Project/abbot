@@ -529,7 +529,7 @@ class TestComplex(TestSimple):
             assert each_id in actual
 
     @testing.gen_test
-    def test_xref_adding_fields(self):
+    def test_xref_adding_fields_1(self):
         '''
         - ensure we'll look up the "feast_desc"
 
@@ -548,7 +548,7 @@ class TestComplex(TestSimple):
         assert actual['678']['feast_desc'] == 'turkey dinner'
 
     @testing.gen_test
-    def test_xref_adding_fields(self):
+    def test_xref_adding_fields_2(self):
         '''
         - ensure we'll look up the "source_status_desc"
         '''
@@ -666,10 +666,10 @@ class TestBadRequestHeadersSimple(shared.TestHandler):
         assert 0 == self.solr.search.call_count
         self.check_standard_header(actual)
         self.assertEqual(507, actual.code)
-        self.assertEqual(simple_handler._INVALID_PER_PAGE, actual.reason)
+        self.assertEqual(simple_handler._TOO_BIG_PER_PAGE, actual.reason)
 
     @testing.gen_test
-    def test_per_page_2(self):
+    def test_per_page_3(self):
         "returns 507 when X-Cantus-Per-Page is less than 0"
         actual = yield self.http_client.fetch(self._browse_url,
                                               method=self._method,

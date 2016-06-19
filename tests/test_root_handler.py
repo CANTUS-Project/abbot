@@ -273,7 +273,7 @@ class TestEverythingElseHandler(shared.TestHandler):
     @testing.gen_test
     def test_put(self):
         '''
-        Ensure the 404 works properly with a PUT request.
+        PUT requests aren't allowed at the root URL; expect a 405.
         '''
         actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='PUT',
                                               follow_redirects=False, raise_error=False,
@@ -282,9 +282,9 @@ class TestEverythingElseHandler(shared.TestHandler):
         self.check_standard_header(actual)
 
     @testing.gen_test
-    def test_put(self):
+    def test_post(self):
         '''
-        Ensure the 404 works properly with a POST request.
+        POST requests aren't allowed at the root URL; expect a 405.
         '''
         actual = yield self.http_client.fetch(self.get_url('/christopher/'), method='POST',
                                               follow_redirects=False, raise_error=False,

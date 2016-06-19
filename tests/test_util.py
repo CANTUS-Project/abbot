@@ -1036,7 +1036,7 @@ class TestQueryParserAsync(shared.TestHandler):
         assert 0 == self.solr.search.call_count
 
     @testing.gen_test
-    def test_run_subqueries_7(self):
+    def test_run_subqueries_8(self):
         '''
         Several "joining elements" and a cross-referenced field.
         '''
@@ -1049,7 +1049,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
 
     @testing.gen_test
-    def test_run_subqueries_8(self):
+    def test_run_subqueries_9(self):
         '''
         Complicated thing from this query:
 
@@ -1071,7 +1071,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
 
     @testing.gen_test
-    def test_run_subqueries_9(self):
+    def test_run_subqueries_10(self):
         '''
         Complicated thing from this query:
 
@@ -1099,7 +1099,7 @@ class TestQueryParserAsync(shared.TestHandler):
         self.assertEqual(expected, actual)
 
     @testing.gen_test
-    def test_run_subqueries_10(self):
+    def test_run_subqueries_11(self):
         '''
         Complicated thing that returns no results, from this query:
 
