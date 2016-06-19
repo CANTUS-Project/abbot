@@ -186,9 +186,9 @@ class TestConvertUpdate(unittest.TestCase):
         '''
         mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
                                                   tzinfo=datetime.timezone.utc)
-        temp_directory = '/tmp/hollabackgirls'
+        fake_directory = '/tmp/hollabackgirls'
         update = '<xml quality="best"></xml>'
-        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
+        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(fake_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
         mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
@@ -198,7 +198,7 @@ class TestConvertUpdate(unittest.TestCase):
         expected = mock_dts.convert.return_value
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            actual = holy_orders.convert_update(temp_directory, update)
+            actual = holy_orders.convert_update(fake_directory, update)
 
         assert expected == actual
         mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
@@ -212,7 +212,7 @@ class TestConvertUpdate(unittest.TestCase):
         '''
         mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
                                                   tzinfo=datetime.timezone.utc)
-        temp_directory = '/tmp/hollabackgirls'
+        fake_directory = '/tmp/hollabackgirls'
         update = '<xml quality="best"></xml>'
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
@@ -220,7 +220,7 @@ class TestConvertUpdate(unittest.TestCase):
         mock_open.return_value.write.return_value = 0  # pylint: disable=no-member
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, fake_directory, update)
 
         mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
         assert mock_dts.convert.call_count == 0
@@ -233,9 +233,9 @@ class TestConvertUpdate(unittest.TestCase):
         '''
         mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
                                                   tzinfo=datetime.timezone.utc)
-        temp_directory = '/tmp/hollabackgirls'
+        fake_directory = '/tmp/hollabackgirls'
         update = '<xml quality="best"></xml>'
-        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(temp_directory)
+        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(fake_directory)
         # setup mock on open() as a context manager
         mock_open = mock.mock_open()
         mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
@@ -243,7 +243,7 @@ class TestConvertUpdate(unittest.TestCase):
         mock_dts.convert.side_effect = KeyError  # doesn't matter what it is
 
         with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, temp_directory, update)
+            self.assertRaises(RuntimeError, holy_orders.convert_update, fake_directory, update)
 
         mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
         mock_dts.convert.assert_called_with(drupal_xml_pathname)
