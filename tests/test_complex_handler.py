@@ -30,16 +30,17 @@ Tests for the Abbot server's ComplexHandler.
 #       asynchronous TestCase classes.
 
 # pylint: disable=protected-access
-# That's an important part of testing! For me, at least.
+# pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
 
 from unittest import mock
 import pysolrtornado
 from tornado import httpclient, testing
 from abbot import __main__ as main
 from abbot import complex_handler
+import shared
 ComplexHandler = complex_handler.ComplexHandler
 Xref = complex_handler.Xref
-import shared
 
 
 class TestXref(shared.TestHandler):
@@ -199,7 +200,7 @@ class TestXref(shared.TestHandler):
         record = {'id': '123', 'feast_id': '5733', 'editors': ['444', '555']}
         result = {'id': '123'}
         xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
-            '555': {'display_name': 'F. Johnson'}}
+                 '555': {'display_name': 'F. Johnson'}}
         expected = {'id': '123', 'feast': 'Thanksgiving', 'editors': ['D. Smith', 'F. Johnson']}
 
         actual = Xref.fill(record, result, xrefs)
@@ -233,7 +234,7 @@ class TestXref(shared.TestHandler):
         record = {'id': '123', 'feast_id': '5733'}
         result = {'id': '123'}
         xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
-            '555': {'display_name': 'F. Johnson'}}
+                 '555': {'display_name': 'F. Johnson'}}
         expected = {'id': '123', 'feast': 'Thanksgiving'}
 
         actual = Xref.fill(record, result, xrefs)
@@ -268,7 +269,7 @@ class TestXref(shared.TestHandler):
         result = {'id': '123'}
         xrefs = {'444': {'display_name': 'D. Smith'}, '555': {'display_name': 'F. Johnson'}}
         expected = {'editors_id': ['444', '555'], 'editors': ['https://cantus.org/indexers/444/',
-            'https://cantus.org/indexers/555/']}
+                                                              'https://cantus.org/indexers/555/']}
 
         actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
 
@@ -279,10 +280,10 @@ class TestXref(shared.TestHandler):
         record = {'id': '123', 'feast_id': '5733', 'editors': ['444', '555']}
         result = {'id': '123'}
         xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
-            '555': {'display_name': 'F. Johnson'}}
+                 '555': {'display_name': 'F. Johnson'}}
         expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/',
-            'editors_id': ['444', '555'], 'editors': ['https://cantus.org/indexers/444/',
-            'https://cantus.org/indexers/555/']}
+                    'editors_id': ['444', '555'], 'editors': ['https://cantus.org/indexers/444/',
+                                                              'https://cantus.org/indexers/555/']}
 
         actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
 
@@ -326,7 +327,7 @@ class TestXref(shared.TestHandler):
         record = {'id': '123', 'feast_id': '5733'}
         result = {'id': '123'}
         xrefs = {'5733': {'name': 'Thanksgiving'}, '444': {'display_name': 'D. Smith'},
-            '555': {'display_name': 'F. Johnson'}}
+                 '555': {'display_name': 'F. Johnson'}}
         expected = {'feast_id': '5733', 'feast': 'https://cantus.org/feasts/5733/'}
 
         actual = Xref.resources(record, result, xrefs, self.handler.make_resource_url)
@@ -476,7 +477,7 @@ class TestMakeExtraFields(shared.TestHandler):
 
         actual = yield self.handler.make_extra_fields(record, orig_record)
 
-        assert 0 == self.solr.search.call_count
+        assert self.solr.search.call_count == 0
         self.assertEqual(expected, actual)
 
     @mock.patch('abbot.complex_handler.log.warn')

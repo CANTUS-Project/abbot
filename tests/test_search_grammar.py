@@ -26,6 +26,10 @@
 Tests for the "Parsimonious" grammar for SEARCH queries.
 '''
 
+# pylint: disable=protected-access
+# pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
+
 from abbot.search_grammar import it_parses
 
 

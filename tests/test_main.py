@@ -26,6 +26,10 @@
 Tests for the __main__ module.
 '''
 
+# pylint: disable=protected-access
+# pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
+
 import logging
 from unittest import mock
 

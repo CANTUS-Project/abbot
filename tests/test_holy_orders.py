@@ -28,6 +28,7 @@ Tests for Holy Orders.
 
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
 
 import datetime
 import json

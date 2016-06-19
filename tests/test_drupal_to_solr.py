@@ -26,6 +26,10 @@
 Tests for the "holy_orders.drupal_to_solr" module.
 '''
 
+# pylint: disable=protected-access
+# pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
+
 from unittest import mock
 from xml.etree import ElementTree as etree
 

@@ -30,7 +30,8 @@ Tests for OPTIONS requests in SimpleHandler and ComplexHandler.
 #       asynchronous TestCase classes.
 
 # pylint: disable=protected-access
-# That's an important part of testing! For me, at least.
+# pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
 
 from unittest import mock
 

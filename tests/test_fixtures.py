@@ -26,6 +26,10 @@
 Tests for the test suite and its fixtures.
 '''
 
+# pylint: disable=protected-access
+# pylint: disable=no-self-use
+# pylint: disable=too-many-public-methods
+
 from tornado import testing
 import pytest
 
