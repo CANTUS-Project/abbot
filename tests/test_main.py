@@ -118,19 +118,19 @@ class TestSetLogLevel(object):
         mock_log.gen_log.setLevel.assert_called_with(levelobj)
 
     def test_debug(self):
-        self.the_tester('DEbuG', logging.DEBUG)
+        self.the_tester('DEbuG', logging.DEBUG)  # pylint: disable=no-value-for-parameter
 
     def test_info(self):
-        self.the_tester('infO', logging.INFO)
+        self.the_tester('infO', logging.INFO)  # pylint: disable=no-value-for-parameter
 
     def test_warn(self):
-        self.the_tester('wArN', logging.WARN)
+        self.the_tester('wArN', logging.WARN)  # pylint: disable=no-value-for-parameter
 
     def test_error(self):
-        self.the_tester('ERRor', logging.ERROR)
+        self.the_tester('ERRor', logging.ERROR)  # pylint: disable=no-value-for-parameter
 
     def test_whaaaa(self):
-        self.the_tester('whaaaAAAAaaa?!?!?!!???!!', logging.WARN)
+        self.the_tester('whaaaAAAAaaa?!?!?!!???!!', logging.WARN)  # pylint: disable=no-value-for-parameter
 
 
 class TestSetAddresses(object):

@@ -458,11 +458,10 @@ class TestRequestWrapper(testing.AsyncHTTPTestCase):
         actual = yield some.get()
 
         # check
-        # self.assertIsNone(actual)
         some.write.assert_called_once_with('five')
         assert self._log.debug.call_count > 5
         assert self._log.error.call_count == 1
-        self.assertTrue(self._log.error.call_args[0][0].endswith(exp_log_ending))
+        assert self._log.error.call_args[0][0].endswith(exp_log_ending)
         some.send_error.assert_called_once_with(500, reason='Programmer Error')
 
 
@@ -891,7 +890,7 @@ class TestQueryParserSync(TestCase):
         start = 2
 
         with pytest.raises(ValueError):
-            actual = util._make_xref_group(components, start)
+            util._make_xref_group(components, start)
 
     def test_xref_group_5(self):
         '''
@@ -908,7 +907,7 @@ class TestQueryParserSync(TestCase):
         start = 2
 
         with pytest.raises(ValueError):
-            actual = util._make_xref_group(components, start)
+            util._make_xref_group(components, start)
 
     def test_xref_group_6(self):
         '''
@@ -924,7 +923,7 @@ class TestQueryParserSync(TestCase):
         start = 40
 
         with pytest.raises(ValueError):
-            actual = util._make_xref_group(components, start)
+            util._make_xref_group(components, start)
 
 
 class TestQueryParserAsync(shared.TestHandler):
@@ -1018,7 +1017,7 @@ class TestQueryParserAsync(shared.TestHandler):
         With a single cross-referenced field that has no results.
         '''
         components = [('genre', 'antiphon')]
-        with pytest.raises(util.InvalidQueryError) as excinfo:
+        with pytest.raises(util.InvalidQueryError):
             yield util.run_subqueries(components)
         self.solr.search.assert_called_with('type:genre AND (antiphon)', df='default_search')
 
@@ -1107,20 +1106,14 @@ class TestQueryParserAsync(shared.TestHandler):
 
         (Ensure the weird subquery works when it's in the middle of the query).
         '''
-        exp_subquery = 'century:  ( 20th  OR 21st  ) '
         components = [
             ('incipit', 'deus*'), 'AND',
             ('century', ''), '(', ('default', '20th'), 'OR', ('default', '21st'), ')',
             ('genre', 'antiphon')
         ]
-        expected = [
-            ('incipit', 'deus*'), 'AND',
-            ('default', '(century_id:666 OR century_id:777)'),
-            ('genre_id', '4567')
-        ]
 
         with pytest.raises(util.InvalidQueryError):
-            actual = yield util.run_subqueries(components)
+            yield util.run_subqueries(components)
 
 
 class TestVerifyResourceId(object):

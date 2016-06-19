@@ -81,9 +81,9 @@ def it_parses(it, reraise=False):
         that it was successfully parsed.
     '''
     try:
-        result = SEARCH_GRAMMAR.parse(it)
+        SEARCH_GRAMMAR.parse(it)
         return True
-    except (exceptions.ParseError, exceptions.IncompleteParseError, exceptions.VisitationError) as exc:
+    except (exceptions.ParseError, exceptions.IncompleteParseError, exceptions.VisitationError):
         return False
 
 

@@ -341,9 +341,6 @@ class TestSimple(shared.TestHandler):
         - the CORS headers are missing
         '''
         self.add_default_resources()
-        exp_allow_headers = ','.join(abbot.CANTUS_REQUEST_HEADERS)
-        exp_expose_headers = ','.join(abbot.CANTUS_RESPONSE_HEADERS)
-        exp_allow_origin = self._simple_options.cors_allow_origin
         headers = {'Origin': 'https://something.arbitrary.example.org'}
 
         actual = yield self.http_client.fetch(self._browse_url, method=self._method,
