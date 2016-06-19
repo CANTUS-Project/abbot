@@ -303,13 +303,21 @@ class ComplexHandler(simple_handler.SimpleHandler):
 
         # (for Chant) fill in fest_desc if we have a feast_id
         if 'feast_id' in self.returned_fields and 'feast_id' in orig_record:
-            resp = yield util.ask_solr_by_id('feast', orig_record['feast_id'])
+            try:
+                resp = yield util.ask_solr_by_id('feast', orig_record['feast_id'])
+            except pysolrtornado.SolrError as err:
+                log.warn('Solr problem: {0}'.format(err.args[0]))
+                resp = []
             if len(resp) > 0 and 'description' in resp[0]:
                 record['feast_desc'] = resp[0]['description']
 
         # (for Source) fill in source_status_desc if we have a source_status_id (probably never used)
         if 'source_status_id' in self.returned_fields and 'source_status_id' in orig_record:
-            resp = yield util.ask_solr_by_id('source_status', orig_record['source_status_id'])
+            try:
+                resp = yield util.ask_solr_by_id('source_status', orig_record['source_status_id'])
+            except pysolrtornado.SolrError as err:
+                log.warn('Solr problem: {0}'.format(err.args[0]))
+                resp = []
             if len(resp) > 0 and 'description' in resp[0]:
                 record['source_status_desc'] = resp[0]['description']
 

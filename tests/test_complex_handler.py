@@ -479,6 +479,62 @@ class TestMakeExtraFields(shared.TestHandler):
         assert 0 == self.solr.search.call_count
         self.assertEqual(expected, actual)
 
+    @mock.patch('abbot.complex_handler.log.warn')
+    @testing.gen_test
+    def test_feast_lookup_fails(self, mock_warn):
+        '''
+        Both a feast_id and source_status_id to look up, but the feast lookup fails. The source
+        status lookup should still succeed.
+        '''
+        record = {}
+        orig_record = {'feast_id': '123', 'source_status_id': '456'}
+        expected = {'source_status_desc': 'Ready'}
+        self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
+        def local_search_side_effect(query, **kwargs):
+            '''
+            This is a test-specific side effect for the util.search_solr() function.
+            '''
+            if '456' in query:
+                return shared.make_future(shared.make_results([
+                    {'id': '456', 'description': 'Ready'},
+                ]))
+            else:
+                raise pysolrtornado.SolrError('test_feast_lookup_fails()')
+        self.solr.search = mock.Mock(side_effect=local_search_side_effect)
+
+        actual = yield self.handler.make_extra_fields(record, orig_record)
+
+        assert expected == actual
+        assert mock_warn.call_args[0][0].endswith('test_feast_lookup_fails()')
+
+    @mock.patch('abbot.complex_handler.log.warn')
+    @testing.gen_test
+    def test_status_lookup_fails(self, mock_warn):
+        '''
+        Both a feast_id and source_status_id to look up, but the source status lookup fails. The
+        feast lookup should still succeed.
+        '''
+        record = {}
+        orig_record = {'feast_id': '123', 'source_status_id': '456'}
+        expected = {'feast_desc': 'boiled goose and collard greens'}
+        self.handler.returned_fields.append('feast_id')  # otherwise Source wouldn't usually do it!
+        def local_search_side_effect(query, **kwargs):
+            '''
+            This is a test-specific side effect for the util.search_solr() function.
+            '''
+            if '123' in query:
+                return shared.make_future(shared.make_results([
+                    {'id': '123', 'description': 'boiled goose and collard greens'},
+                ]))
+            else:
+                raise pysolrtornado.SolrError('test_feast_lookup_fails()')
+        self.solr.search = mock.Mock(side_effect=local_search_side_effect)
+
+        actual = yield self.handler.make_extra_fields(record, orig_record)
+
+        assert expected == actual
+        assert mock_warn.call_args[0][0].endswith('test_feast_lookup_fails()')
+
 
 class TestGetHandler(shared.TestHandler):
     '''
