@@ -33,7 +33,6 @@ import datetime
 import json
 import logging
 import pathlib
-import subprocess
 from sys import argv
 import tempfile
 import time as time_module

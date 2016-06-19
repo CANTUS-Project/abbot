@@ -35,7 +35,6 @@ Convert Drupal XML to Solr XML.
     underscore, and the "id" field. It's because Drupal "id" only has to be unique within a data type.
 '''
 
-from collections import defaultdict
 import hashlib
 from xml.etree import ElementTree as etree
 

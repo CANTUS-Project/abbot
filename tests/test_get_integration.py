@@ -32,14 +32,12 @@ Integration tests for GET requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
-import unittest
 from unittest import mock
 
 from tornado import escape, testing
 import pysolrtornado
 
 import abbot
-from abbot import complex_handler
 from abbot import simple_handler
 import shared
 

@@ -26,7 +26,7 @@
 Configuration for installation with setuptools.
 '''
 
-from setuptools import setup, Command
+from setuptools import setup
 import abbot  # for __version__
 
 

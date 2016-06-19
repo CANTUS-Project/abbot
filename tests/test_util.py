@@ -33,13 +33,11 @@ Tests for abbot/util.py of the Abbot server.
 # That's an important part of testing! For me, at least.
 
 from unittest import mock, TestCase
+
+from hypothesis import given, strategies as strats
+import parsimonious
 import pytest
 from tornado import gen, testing, web
-import parsimonious
-import pysolrtornado
-
-from hypothesis import assume, given, strategies as strats
-import pytest
 
 from abbot import __main__ as main
 from abbot import util

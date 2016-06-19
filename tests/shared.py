@@ -38,7 +38,6 @@ from tornado.options import options
 import pysolrtornado
 import abbot
 from abbot import __main__ as main
-from abbot import util
 
 # ensure we have a consistent "server_name" for all the tests
 options.server_name = 'https://cantus.org/'

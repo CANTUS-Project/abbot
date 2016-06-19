@@ -800,7 +800,7 @@ class SimpleHandler(web.RequestHandler):
         else:
             try:
                 query = util.assemble_query((yield util.run_subqueries(query)))
-            except util.InvalidQueryError as iqe:
+            except util.InvalidQueryError:
                 self.send_error(404, reason=_NO_SEARCH_RESULTS)
             except ValueError as val_err:
                 self.send_error(400, reason=_INVALID_SEARCH_FIELD.format(val_err.the_field))

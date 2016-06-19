@@ -32,7 +32,6 @@ Tests for Holy Orders.
 import datetime
 import json
 import os.path
-import pathlib
 import unittest
 from unittest import mock
 

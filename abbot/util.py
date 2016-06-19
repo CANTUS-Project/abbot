@@ -26,8 +26,6 @@
 Utility functions for the Abbot server.
 '''
 
-import re
-
 from tornado import gen
 from tornado.log import app_log as log
 from tornado.options import options
