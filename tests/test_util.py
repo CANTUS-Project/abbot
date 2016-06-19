@@ -91,6 +91,17 @@ class TestSolrAskers(shared.TestHandler):
         self.solr.search.assert_called_with(query, df='default_search', start=5, rows=50, sort='lol')
 
     @testing.gen_test
+    def test_search_solr_3(self):
+        '''
+        When the "query" is empty, search_solr() shouldn't bother asking Solr, and should simply
+        return an empty set of results.
+        '''
+        query = ''
+        actual = yield util.search_solr(query)
+        assert len(actual) == 0
+        assert self.solr.search.call_count == 0
+
+    @testing.gen_test
     def test_ask_solr_by_id_1(self):
         "Ensure everything gets passed to search_solr()."
         expected = {'a': 'search results'}

@@ -339,8 +339,12 @@ def search_solr(query, start=None, rows=None, sort=None):
     if sort:
         extra_params['sort'] = sort
 
-    log.debug('util.search_solr() submits "{}"'.format(query))
-    return (yield SOLR.search(query, df='default_search', **extra_params))
+    if query:
+        log.debug('util.search_solr() submits "{}"'.format(query))
+        return (yield SOLR.search(query, df='default_search', **extra_params))
+    else:
+        log.debug('util.search_solr() received empty query')
+        return pysolrtornado.Results({})
 
 
 def request_wrapper(func):
