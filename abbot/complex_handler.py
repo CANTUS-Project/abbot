@@ -31,6 +31,8 @@ from collections import namedtuple
 from tornado.log import app_log as log
 from tornado import gen
 
+import pysolrtornado
+
 from abbot import util
 from abbot import simple_handler
 
@@ -93,6 +95,8 @@ class Xref(object):
         '''
         Step 2: look up all the cross-reference resources at once.
 
+        .. note:: This method is a Tornado coroutine, so you must call it with a ``yield`` statement.
+
         :param xref_query: The second element in the 2-tuple returned by :meth:`collect`. This is an
             iterable of strings that contain the resource IDs to retrieve from Solr. Each resource
             ID should be prefaced with ``'id:'``, like ``'id:123'``.
@@ -100,13 +104,21 @@ class Xref(object):
             and the resources themselves are values.
         :rtype: dict
 
-        .. note:: If ``xref_query`` is an empty list, this function returns an empty dictionary.
-        .. note:: This static method is a coroutine and must be called with ``yield``.
+        If ``xref_query`` is an empty list, this method returns an empty dictionary.
+
+        This method also returns an empty dictionary (and emits a log message) if the Solr request
+        fails. While this will return incomplete data to the user agent (because the cross-referenced
+        fields will be missing) it will be better than returning no data.
         '''
         post = {}
 
         if len(xref_query):
-            xreffed = yield util.search_solr(' OR '.join(xref_query), rows=len(xref_query))
+            try:
+                xreffed = yield util.search_solr(' OR '.join(xref_query), rows=len(xref_query))
+            except pysolrtornado.SolrError as err:
+                log.warn('Solr problem: {0}'.format(err.args[0]))
+                xreffed = []
+
             for result in xreffed:
                 post[result['id']] = result
 

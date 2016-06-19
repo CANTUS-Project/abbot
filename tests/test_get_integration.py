@@ -32,9 +32,11 @@ Integration tests for GET requests in SimpleHandler and ComplexHandler.
 # pylint: disable=protected-access
 # That's an important part of testing! For me, at least.
 
-import pysolrtornado
-from tornado import escape, testing
 import unittest
+from unittest import mock
+
+from tornado import escape, testing
+import pysolrtornado
 
 import abbot
 from abbot import complex_handler
@@ -581,6 +583,40 @@ class TestComplex(TestSimple):
         actual = escape.json_decode(actual.body)
         assert 'century' not in actual['498']
         assert 'century_id' not in actual['498']
+
+    @testing.gen_test
+    def test_xref_request_fails(self):
+        '''
+        The cross-reference request to Solr fails. We should receive partial results (i.e., with the
+        cross-reference fields missing) but the overall request should still succeed.
+        '''
+        def local_search_side_effect(query, **kwargs):
+            '''
+            This is a test-specific side effect for the util.search_solr() function.
+
+            Only the initial query should contain "id:*", for which this function returns two false
+            Source resources. For all other queries, this function raises a SolrError.
+            '''
+            if 'id:*' in query:
+                return shared.make_future(shared.make_results([
+                    {'id': '123', 'type': 'source', 'century_id': '61', 'indexers': ['900', '901']},
+                    {'id': '234', 'type': 'source', 'century_id': '62', 'indexers': ['900', '901']},
+                ]))
+            else:
+                raise pysolrtornado.SolrError('test_xref_request_fails()')
+        self.solr.search = mock.Mock(side_effect=local_search_side_effect)
+        headers = {'X-Cantus-Include-Resources': 'false'}
+
+        actual = yield self.http_client.fetch(self._browse_url, method=self._method,
+            allow_nonstandard_methods=True, body=b'{"query":"+id:*"}', headers=headers)
+
+        self.check_standard_header(actual)
+        actual = escape.json_decode(actual.body)
+        assert actual == {
+            'sort_order': ['123', '234'],
+            '123': {'id': '123', 'type': 'source'},
+            '234': {'id': '234', 'type': 'source'},
+        }
 
 
 class TestBadRequestHeadersSimple(shared.TestHandler):

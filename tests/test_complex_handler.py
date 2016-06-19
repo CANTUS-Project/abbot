@@ -33,6 +33,7 @@ Tests for the Abbot server's ComplexHandler.
 # That's an important part of testing! For me, at least.
 
 from unittest import mock
+import pysolrtornado
 from tornado import httpclient, testing
 from abbot import __main__ as main
 from abbot import complex_handler
@@ -157,6 +158,19 @@ class TestXref(shared.TestHandler):
         yield Xref.lookup(['id:123', 'id:124', 'id:125'])
 
         self.solr.search.assert_called_with('id:123 OR id:124 OR id:125', df='default_search', rows=3)
+
+    @mock.patch('abbot.complex_handler.log.warn')
+    @testing.gen_test
+    def test_lookup_7(self, mock_warn):
+        "Returns an empty dictionary when the Solr request produces a SolrError."
+        self.solr = self.setUpSolr()
+        self.solr.search = mock.Mock(side_effect=pysolrtornado.SolrError('test_lookup_7()'))
+
+        actual = yield Xref.lookup(set(['id:123']))
+
+        assert actual == {}
+        assert mock_warn.call_count == 1
+        assert mock_warn.call_args[0][0].endswith('test_lookup_7()')
 
     def test_fill_1(self):
         "Fills a single, non-list field."
