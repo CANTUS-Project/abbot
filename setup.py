@@ -37,7 +37,7 @@ setup(
 
     install_requires = [
         'parsimonious>=0.6,<0.7',
-        'pysolr-tornado==4.0.0a2',
+        'pysolr-tornado>=4,<5',
         'systemdream==0.0.2',
         'tornado>=4,<5',
         'tornado_systemd>=1,<2',
