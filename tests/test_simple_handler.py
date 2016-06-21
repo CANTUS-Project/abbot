@@ -987,7 +987,7 @@ class TestCorsMethods(shared.TestHandler):
         assert 'Vary' not in self.handler._headers
         assert 'Access-Control-Expose-Headers' not in self.handler._headers
 
-    def test_actual_3(self):
+    def test_actual_3a(self):
         '''
         Origin request header is in cors_allow_origin, which is a string. Response headers are added.
         '''
@@ -998,6 +998,20 @@ class TestCorsMethods(shared.TestHandler):
         self.handler._cors_actual()
 
         assert self.handler._headers['Access-Control-Allow-Origin'] == bytes(origin, encoding='utf-8')
+        assert self.handler._headers['Vary'] == b'Origin'
+        assert self.handler._headers['Access-Control-Expose-Headers'] == exp_expose_headers
+
+    def test_actual_3b(self):
+        '''
+        Same as test_actual_3a() except "cors_allow_origin" is a space-separated list of values.
+        '''
+        self._simple_options.cors_allow_origin = 'http://one.ca http://two.ca'
+        self.handler.request.headers['Origin'] = 'http://two.ca'
+        exp_expose_headers = bytes(','.join(abbot.CANTUS_RESPONSE_HEADERS), encoding='utf-8')
+
+        self.handler._cors_actual()
+
+        assert self.handler._headers['Access-Control-Allow-Origin'] == b'http://two.ca'
         assert self.handler._headers['Vary'] == b'Origin'
         assert self.handler._headers['Access-Control-Expose-Headers'] == exp_expose_headers
 

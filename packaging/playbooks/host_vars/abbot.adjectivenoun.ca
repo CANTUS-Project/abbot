@@ -5,3 +5,6 @@ vitrail_version: master
 
 # override the default in group_vars
 holyorders_frequency: 24h
+
+# override the default in group_vars
+abbot_cors_origin: '{{ abbot_scheme }}://{{ hostname }} http://localhost:8000'

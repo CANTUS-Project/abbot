@@ -41,8 +41,11 @@ ciphers = 'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA
 
 ## Cross-Origin Resource Sharing (CORS) -----------------------------------------------------------
 
-# "cors_allow_origin" will be the value of the Access-Control-Allow-Origin response header. If this
-# is set to None, none of the CORS response headers will be used.
+# "cors_allow_origin" includes all acceptable values of the Access-Control-Allow-Origin response
+# header. The value is always a string, but the string may be a space-separated list of values. For
+# example, the following value allows CORS reqeusts from both vitrail.ca and vitrail.de:
+#     cors_allow_origin = 'https://vitrail.ca https://vitrail.de'
+# If this option is set to None, none of the CORS response headers will be used.
 cors_allow_origin = None
 
 
