@@ -1,8 +1,9 @@
-#
-# Options Configuration File
-#
-# This file is part of the "Abbot" Web server for the Cantus API.
-# Abbot Copyright (C) 2015, 2016 Christopher Antila
+'''
+Options Configuration File
+
+This file is part of the "Abbot" Web server for the Cantus API.
+Abbot Copyright (C) 2015, 2016 Christopher Antila
+'''
 
 # The octothorpe character ("hashtag") begins a comment. Every other line is a possible
 # configuration option for Abbot. The file is parsed as Python.

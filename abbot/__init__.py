@@ -1,6 +1,6 @@
 __all__ = ['complex_handler', 'handlers', 'simple_handler', 'util']
-__version__ = '0.6.12'
-__cantus_version__ = '0.2.3+'
+__version__ = '0.7.0'
+__cantus_version__ = '0.3.0'
 
 
 # When importing Abbot during the installation, Tornado won't be installed yet, and we also don't
