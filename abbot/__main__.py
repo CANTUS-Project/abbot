@@ -133,8 +133,11 @@ def _load_options():
     if len(options.options_file) > 1:
         try:
             options.parse_config_file(options.options_file, final=True)
-        except (FileNotFoundError, OptionsError):
+        except FileNotFoundError:
             print('Could not find the options file "{}"\nQuitting.'.format(options.options_file))
+            raise SystemExit(1)
+        except OptionsError as err:
+            print('Could not parse the options file "{}"\nQuitting.\n{}'.format(options.options_file, err))
             raise SystemExit(1)
 
 
