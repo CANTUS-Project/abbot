@@ -160,7 +160,7 @@ class TestSimpleIntegration(shared.TestHandler):
         request_headers = {
             'Origin': origin,
             'Access-Control-Request-Method': 'GET',
-            'Access-Control-Request-Headers': 'x-cantus-page,CONTENT-TYPE',
+            'Access-Control-Request-Headers': 'x-cantus-page,X-CANTUS-SORT',
         }
         actual = yield self.http_client.fetch(self.get_url('/{}/233/'.format(self.rtype)),
                                               method='OPTIONS',
@@ -170,7 +170,25 @@ class TestSimpleIntegration(shared.TestHandler):
         assert actual.headers['Vary'] == 'Origin'
         assert actual.headers['Access-Control-Max-Age'] == '86400'
         assert actual.headers['Access-Control-Allow-Methods'] == 'GET'
-        assert actual.headers['Access-Control-Allow-Headers'] == 'x-cantus-page,CONTENT-TYPE'
+        assert actual.headers['Access-Control-Allow-Headers'] == 'x-cantus-page,X-CANTUS-SORT'
+
+    @testing.gen_test
+    def test_cors_preflight_3(self):
+        '''
+        Same as test_cors_preflight_2() but with some of what CORS calls "simple headers."
+        '''
+        self.solr.search_se.add('233', {'id': '233'})
+        origin = self._simple_options.cors_allow_origin
+        request_headers = {
+            'Origin': origin,
+            'Access-Control-Request-Method': 'GET',
+            'Access-Control-Request-Headers': 'accept,CONTENT-TYPE',
+        }
+        actual = yield self.http_client.fetch(self.get_url('/{}/233/'.format(self.rtype)),
+                                              method='OPTIONS',
+                                              headers=request_headers)
+        #
+        assert actual.headers['Access-Control-Allow-Headers'] == 'accept,CONTENT-TYPE'
 
 
 class TestComplexIntegration(TestSimpleIntegration):

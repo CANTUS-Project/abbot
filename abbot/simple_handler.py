@@ -125,6 +125,8 @@ class SimpleHandler(web.RequestHandler):
     _HEADERS_FOR_VIEW = ['X-Cantus-Include-Resources', 'X-Cantus-Fields']
     # the Cantus extension headers that can sensibly be used with a "view" URL
 
+    _CORS_SIMPLE_HEADERS = ('accept', 'accept-language', 'content-language', 'content-type')
+
     def __init__(self, *args, **kwargs):
         '''
         Just for the sake of being Pythonic, all the attributes are set to default values here.
@@ -262,7 +264,8 @@ class SimpleHandler(web.RequestHandler):
         # step 6
         valid_headers = [x.lower() for x in abbot.CANTUS_REQUEST_HEADERS]
         for header in header_field_names:
-            if header.lower() not in valid_headers:
+            header = header.lower()
+            if header not in valid_headers and header not in SimpleHandler._CORS_SIMPLE_HEADERS:
                 return
 
         # step 7

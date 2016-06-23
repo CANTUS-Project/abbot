@@ -1130,13 +1130,13 @@ class TestCorsMethods(shared.TestHandler):
         '''
         - Origin request header is correct,
         - Access-Control-Request-Method is valid,
-        - Access-Control-Request-Headers has some headers
+        - Access-Control-Request-Headers has some Cantus-API-specific headers
         All repsonse headers are added.
         '''
         origin = self._simple_options.cors_allow_origin
         self.handler.request.headers['Origin'] = origin
         self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
-        self.handler.request.headers['Access-Control-Request-Headers'] = 'x-cantus-page,CONTENT-TYPE'
+        self.handler.request.headers['Access-Control-Request-Headers'] = 'x-cantus-page,X-CANTUS-SORT'
 
         self.handler._cors_preflight()
 
@@ -1144,4 +1144,20 @@ class TestCorsMethods(shared.TestHandler):
         assert self.handler._headers['Vary'] == b'Origin'
         assert self.handler._headers['Access-Control-Max-Age'] == b'86400'
         assert self.handler._headers['Access-Control-Allow-Methods'] == b'GET'
-        assert self.handler._headers['Access-Control-Allow-Headers'] == b'x-cantus-page,CONTENT-TYPE'
+        assert self.handler._headers['Access-Control-Allow-Headers'] == b'x-cantus-page,X-CANTUS-SORT'
+
+    def test_preflight_8(self):
+        '''
+        test_preflight_7() with Access-Control-Request-Headers that includes some of what CORS calls
+        "simple headers."
+        '''
+        request_headers = 'accept, content-type, x-cantus-page, x-cantus-per-page'
+        expected = b'accept,content-type,x-cantus-page,x-cantus-per-page'
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
+        self.handler.request.headers['Access-Control-Request-Headers'] = request_headers
+
+        self.handler._cors_preflight()
+
+        assert self.handler._headers['Access-Control-Allow-Headers'] == expected
