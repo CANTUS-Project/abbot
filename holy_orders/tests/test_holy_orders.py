@@ -402,6 +402,7 @@ class TestLoadConfig(unittest.TestCase):
         When the "config_path" exists, is a directory, and is valid JSON, load it.
         '''
         config_path = os.path.join(os.path.split(__file__)[0], 'test.json')
+        print(config_path)
         expected = {'a': 'b', 'c': 'd'}
         actual = holy_orders.load_config(config_path)
         self.assertEqual(expected, actual)

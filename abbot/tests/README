@@ -5,7 +5,7 @@ Abbot Test Suite README
 Test Module Organization
 ------------------------
 
-The test suite contains the following modules. They goal was to strike a balance between making it
+The test suite contains the following modules. The goal was to strike a balance between making it
 easy to find the test for a component, while also making it easy to ensure that corresponding aspects
 of similar components are tested similarly. (For example, to ensure a 404 is tested in GET requests
 for both SimpleHandler and ComplexHandler).
@@ -27,7 +27,6 @@ Module- and class-level methods and functions:
 Other modules:
 
 - test_fixtures.py for the test fixtures themselves, which are held in shared.py
-- test_holy_orders.py for HolyOrders
 - test_root_handler.py for the the "abbot.handlers" module
 - test_search_grammar.py for the "abbot.search_grammar" module
 - test_util.py for the "abbot.util" module
