@@ -97,37 +97,26 @@ def test_convert_1():
             <chant><b>bsdf</b></chant>
         </chants>
         '''
-    exp_file = ('''<?xml version='1.0' encoding='utf-8'?>\n'''
-                '''<add><doc><field name="type">chant</field><field name="a">asdf</field></doc>'''
+    exp_file = ('''<add><doc><field name="type">chant</field><field name="a">asdf</field></doc>'''
                 '''<doc><field name="type">chant</field><field name="b">bsdf</field></doc></add>''')
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        exp_path = pathlib.Path(tempdir)
-        exp_path = exp_path.joinpath(hashlib.sha256(bytes(document, encoding='utf-8')).hexdigest() + '.xml')
+    actual = drupal_to_solr.convert(document)
 
-        actual = drupal_to_solr.convert(tempdir, document)
-
-        assert actual == str(exp_path)
-        assert exp_path.exists()
-        with exp_path.open('r') as lol:
-            assert exp_file == lol.read()
+    assert isinstance(actual, etree.ElementTree)
+    assert exp_file == etree.tostring(actual.getroot(), encoding='unicode')
 
 
 def test_convert_2():
     '''
     Test convert() with a document that has nothing in it to convert.
     '''
-    document = '''
-        <chants>
-        </chants>
-        '''
-    exp_file = ('''<?xml version='1.0' encoding='utf-8'?>\n'''
-                '''<add />''')
+    document = '<chants></chants>'
+    exp_file = '<add />'
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        actual = drupal_to_solr.convert(tempdir, document)
-        with open(actual, 'r') as lol:
-            assert exp_file == lol.read()
+    actual = drupal_to_solr.convert(document)
+
+    assert isinstance(actual, etree.ElementTree)
+    assert exp_file == etree.tostring(actual.getroot(), encoding='unicode')
 
 
 def test_xreffed_ids():

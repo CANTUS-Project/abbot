@@ -30,8 +30,10 @@ name is inspired by a method of communication to abbots: through holy orders.
 '''
 
 import datetime
+import hashlib
 import json
 import logging
+import os.path
 import pathlib
 from sys import argv
 import tempfile
@@ -453,14 +455,19 @@ def convert_update(temp_directory, update):
         appropriate log entries.
     '''
     try:
-        solr_xml_filename = drupal_to_solr.convert(temp_directory, update)
-        _log.debug('We got a Solr XML file at {}'.format(solr_xml_filename))
+        solr_xml = drupal_to_solr.convert(update)
     except Exception as cperr:
         err_msg = 'Conversion to Solr XML failed ({})'.format(cperr)
         _log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    return solr_xml_filename
+    output_filename = hashlib.sha256(bytes(update, encoding='utf-8')).hexdigest()
+    output_filename = '{0}.xml'.format(output_filename)
+    output_filename = os.path.join(temp_directory, output_filename)
+
+    solr_xml.write(output_filename, encoding='utf-8', xml_declaration=True)
+
+    return output_filename
 
 
 def submit_update(update_pathname, solr_url):
