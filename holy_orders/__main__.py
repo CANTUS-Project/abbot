@@ -441,36 +441,19 @@ def download_update(resource_type, config):
 def convert_update(temp_directory, update):
     '''
     Convert a Drupal XML document into a Solr XML document. The Drupal XML document is supplied to
-    this function as a string, outputted to the temporary directory, and the conversion module is
-    called. The pathname of the converted file is returned.
+    this function as a string, the conversion module is called, and the *pathname* of the converted
+    file is returned.
 
     :param str temp_directory: The pathname of a (temporary) directory into which the XML documents
         should be saved.
-    :param str update: The Drupal XML document that should be converted. This is *not* the path to
-        the already-outputted document!
+    :param str update: The Drupal XML document that should be converted.
     :returns: The pathname to the file expected as output from the conversion script.
     :rtype: str
     :raises: :exc:`RuntimeError` if the conversion failed for any reason. This function will write
         appropriate log entries.
     '''
-
-    # calculate filenames
-    drupal_xml_filename = '{dir}/{file}'.format(dir=temp_directory,
-                                                file=_now_wrapper().strftime('%Y%m%d%H%M%S%f'))
-    drupal_xml_filename = '{}.xml'.format(drupal_xml_filename)
-    _log.debug('Saving a Drupal XML file to {}'.format(drupal_xml_filename))
-
-    # output the Drupal XML file
-    with open(drupal_xml_filename, 'w') as the_file:
-        written = the_file.write(update)
-    if written < len(update):
-        err_msg = 'Could not write Drupal XML file to {}'.format(drupal_xml_filename)
-        _log.error(err_msg)
-        raise RuntimeError(err_msg)
-
-    # run the conversion module
     try:
-        solr_xml_filename = drupal_to_solr.convert(drupal_xml_filename)
+        solr_xml_filename = drupal_to_solr.convert(temp_directory, update)
         _log.debug('We got a Solr XML file at {}'.format(solr_xml_filename))
     except Exception as cperr:
         err_msg = 'Conversion to Solr XML failed ({})'.format(cperr)

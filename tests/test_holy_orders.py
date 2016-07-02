@@ -33,6 +33,8 @@ Tests for Holy Orders.
 import datetime
 import json
 import os.path
+import pathlib
+import tempfile
 import unittest
 from unittest import mock
 
@@ -178,75 +180,39 @@ class TestConvertUpdate(unittest.TestCase):
     Tests for convert_update().
     '''
 
-    @mock.patch('holy_orders.__main__.drupal_to_solr')
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_everything_works(self, mock_now, mock_dts):
+    def test_everything_works(self):
         '''
         convert_update() when everything goes according to plan.
         '''
-        mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
-                                                  tzinfo=datetime.timezone.utc)
-        fake_directory = '/tmp/hollabackgirls'
-        update = '<xml quality="best"></xml>'
-        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(fake_directory)
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
-        # setup mock on "drupal_to_solr" module
-        mock_dts.convert.return_value = 'five'
-        #
-        expected = mock_dts.convert.return_value
+        document = '''
+            <chants>
+                <chant><a>asdf</a></chant>
+                <chant><b>bsdf</b></chant>
+            </chants>
+            '''
+        exp_file = ('''<?xml version='1.0' encoding='utf-8'?>\n'''
+                    '''<add><doc><field name="type">chant</field><field name="a">asdf</field></doc>'''
+                    '''<doc><field name="type">chant</field><field name="b">bsdf</field></doc></add>''')
 
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            actual = holy_orders.convert_update(fake_directory, update)
+        with tempfile.TemporaryDirectory() as tempdir:
+            actual = holy_orders.convert_update(tempdir, document)
+            assert pathlib.Path(actual).exists()
+            with open(actual, 'r') as lol:
+                assert exp_file == lol.read()
 
-        assert expected == actual
-        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        mock_dts.convert.assert_called_with(drupal_xml_pathname)
-
-    @mock.patch('holy_orders.__main__.drupal_to_solr')
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_drupal_output_fails(self, mock_now, mock_dts):
-        '''
-        convert_update() when writing Drupal XML to a file fails.
-        '''
-        mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
-                                                  tzinfo=datetime.timezone.utc)
-        fake_directory = '/tmp/hollabackgirls'
-        update = '<xml quality="best"></xml>'
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        # NOTE: this next line causes the failure
-        mock_open.return_value.write.return_value = 0  # pylint: disable=no-member
-
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, fake_directory, update)
-
-        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        assert mock_dts.convert.call_count == 0
-
-    @mock.patch('holy_orders.__main__.drupal_to_solr')
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_conversion_script_fails(self, mock_now, mock_dts):
+    def test_conversion_script_fails(self):
         '''
         convert_update() when the conversion module fails
         '''
-        mock_now.return_value = datetime.datetime(2020, 1, 3, 4, 20, 45, 1024,
-                                                  tzinfo=datetime.timezone.utc)
-        fake_directory = '/tmp/hollabackgirls'
-        update = '<xml quality="best"></xml>'
-        drupal_xml_pathname = '{}/20200103042045001024.xml'.format(fake_directory)
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        mock_open.return_value.write.return_value = len(update)  # pylint: disable=no-member
-        # NOTE: this next line causes the failure
-        mock_dts.convert.side_effect = KeyError  # doesn't matter what it is
+        document = '''
+            <chants>
+                <chant><a>asdf</a></chant></chant>
+                <chant><b>bsdf</b></chant>
+            </chants>
+            '''
 
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.convert_update, fake_directory, update)
-
-        mock_open.return_value.write.assert_called_once_with(update)  # pylint: disable=no-member
-        mock_dts.convert.assert_called_with(drupal_xml_pathname)
+        with tempfile.TemporaryDirectory() as tempdir:
+            self.assertRaises(RuntimeError, holy_orders.convert_update, tempdir, document)
 
 
 class TestSubmitUpdate(unittest.TestCase):

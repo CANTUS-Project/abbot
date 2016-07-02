@@ -36,6 +36,7 @@ Convert Drupal XML to Solr XML.
 '''
 
 import hashlib
+import os.path
 from xml.etree import ElementTree as etree
 
 
@@ -145,24 +146,28 @@ def convert_doc_node(document):
     return out
 
 
-def convert(input_filename):
+def convert(temp_directory, input_doc):
     '''
     Convert a Drupal XML file to a Solr XML file.
 
-    :param str input_file: The full pathname of the Drupal XML file to convert.
+    :param str temp_directory: The pathname of a (temporary) directory into which the XML documents
+        should be saved.
+    :param str input_doc: The Drupal XML file to convert.
     :returns: The full pathname of the outputted Solr XML file.
     :rtype: str
+
+    When this function receives an ``input_doc`` with no documents in it, an empty ``<add/>`` element
+    is outputted. Solr doesn't seem to have a problem when this is submitted, so it's easier.
     '''
-    input_tree = etree.parse(input_filename)
+    input_tree = etree.fromstring(input_doc)
     output_root = etree.Element('add')
 
     for drupal_node in input_tree.iterfind('*'):
         output_root.append(convert_doc_node(drupal_node))
 
-    if input_filename[-4:] == '.xml':
-        output_filename = '{}-out.xml'.format(input_filename[:-4])
-    else:
-        output_filename = '{}-out.xml'.format(input_filename)
+    output_filename = hashlib.sha256(bytes(input_doc, encoding='utf-8')).hexdigest()
+    output_filename = '{0}.xml'.format(output_filename)
+    output_filename = os.path.join(temp_directory, output_filename)
 
     output_tree = etree.ElementTree(output_root)
     output_tree.write(output_filename, encoding='utf-8', xml_declaration=True)

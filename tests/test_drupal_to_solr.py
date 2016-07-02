@@ -30,6 +30,10 @@ Tests for the "holy_orders.drupal_to_solr" module.
 # pylint: disable=no-self-use
 # pylint: disable=too-many-public-methods
 
+import hashlib
+import os.path
+import pathlib
+import tempfile
 from unittest import mock
 from xml.etree import ElementTree as etree
 
@@ -83,60 +87,47 @@ def test_convert_doc_node():
     assert kids[3].text == 'tasty'
 
 
-@mock.patch('holy_orders.drupal_to_solr.convert_doc_node')
-@mock.patch('holy_orders.drupal_to_solr.etree')
-def test_convert_1(mock_etree, mock_cdn):
+def test_convert_1():
     '''
-    Test convert() with an input filename that ends with ".xml".
+    Test convert() with a document that has things in it to convert.
     '''
     document = '''
         <chants>
             <chant><a>asdf</a></chant>
-            <chant><a>asdf</a></chant>
+            <chant><b>bsdf</b></chant>
         </chants>
         '''
-    document = etree.fromstring(document)
-    mock_etree.parse.return_value = document
-    #
-    output_tree = mock.Mock()
-    output_tree.write = mock.Mock()
-    mock_etree.ElementTree.return_value = output_tree
-    #
-    expected = 'jiushi_ai-out.xml'
+    exp_file = ('''<?xml version='1.0' encoding='utf-8'?>\n'''
+                '''<add><doc><field name="type">chant</field><field name="a">asdf</field></doc>'''
+                '''<doc><field name="type">chant</field><field name="b">bsdf</field></doc></add>''')
 
-    actual = drupal_to_solr.convert('jiushi_ai.xml')
+    with tempfile.TemporaryDirectory() as tempdir:
+        exp_path = pathlib.Path(tempdir)
+        exp_path = exp_path.joinpath(hashlib.sha256(bytes(document, encoding='utf-8')).hexdigest() + '.xml')
 
-    assert actual == expected
-    assert mock_cdn.call_count == 2
-    output_tree.write.assert_called_with(expected, encoding='utf-8', xml_declaration=True)
+        actual = drupal_to_solr.convert(tempdir, document)
+
+        assert actual == str(exp_path)
+        assert exp_path.exists()
+        with exp_path.open('r') as lol:
+            assert exp_file == lol.read()
 
 
-@mock.patch('holy_orders.drupal_to_solr.convert_doc_node')
-@mock.patch('holy_orders.drupal_to_solr.etree')
-def test_convert_2(mock_etree, mock_cdn):
+def test_convert_2():
     '''
-    Test convert() with an input filename that does not end with ".xml".
+    Test convert() with a document that has nothing in it to convert.
     '''
     document = '''
         <chants>
-            <chant><a>asdf</a></chant>
-            <chant><a>asdf</a></chant>
         </chants>
         '''
-    document = etree.fromstring(document)
-    mock_etree.parse.return_value = document
-    #
-    output_tree = mock.Mock()
-    output_tree.write = mock.Mock()
-    mock_etree.ElementTree.return_value = output_tree
-    #
-    expected = 'jiushi_ai-out.xml'
+    exp_file = ('''<?xml version='1.0' encoding='utf-8'?>\n'''
+                '''<add />''')
 
-    actual = drupal_to_solr.convert('jiushi_ai')
-
-    assert actual == expected
-    assert mock_cdn.call_count == 2
-    output_tree.write.assert_called_with(expected, encoding='utf-8', xml_declaration=True)
+    with tempfile.TemporaryDirectory() as tempdir:
+        actual = drupal_to_solr.convert(tempdir, document)
+        with open(actual, 'r') as lol:
+            assert exp_file == lol.read()
 
 
 def test_xreffed_ids():
