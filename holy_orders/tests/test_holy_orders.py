@@ -37,6 +37,7 @@ import pathlib
 import tempfile
 import unittest
 from unittest import mock
+from xml.etree import ElementTree as etree
 
 from tornado import httpclient
 
@@ -226,10 +227,10 @@ class TestSubmitUpdate(unittest.TestCase):
         submit_update() when everything goes according to plan, and the submission URL has a
         trailing slash.
         '''
-        update_pathname = '123abc.xml'
         solr_url = 'http::/com.checkit/'
         exp_update_url = '{}update?commit=false'.format(solr_url)
-        update_body = '<xml funlevel="woo"/>'
+        update = etree.Element('something', {'funlevel': 'wöo'})
+        update_body = '<something funlevel="wöo" />'
         # setup the httpclient mock
         mock_httpclient.HTTPError = httpclient.HTTPError
         mock_client = mock.Mock()
@@ -237,14 +238,9 @@ class TestSubmitUpdate(unittest.TestCase):
         mock_httpclient.HTTPClient.return_value = mock_client
         mock_client.close = mock.Mock()
         mock_client.fetch = mock.Mock()
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        mock_open.return_value.read.return_value = update_body  # pylint: disable=no-member
 
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            holy_orders.submit_update(update_pathname, solr_url)
+        holy_orders.submit_update(update, solr_url)
 
-        mock_open.return_value.read.assert_called_once_with()  # pylint: disable=no-member
         mock_client.fetch.assert_called_once_with(exp_update_url, method='POST', body=update_body,
                                                   headers={'Content-Type': 'application/xml'})
 
@@ -257,7 +253,8 @@ class TestSubmitUpdate(unittest.TestCase):
         update_pathname = '123abc.xml'
         solr_url = 'http::/com.trailingslash'
         exp_update_url = '{}/update?commit=false'.format(solr_url)
-        update_body = '<xml funlevel="woo"/>'
+        update = etree.Element('something', {'funlevel': 'wöo'})
+        update_body = '<something funlevel="wöo" />'
         # setup the httpclient mock
         mock_httpclient.HTTPError = httpclient.HTTPError
         mock_client = mock.Mock()
@@ -266,14 +263,9 @@ class TestSubmitUpdate(unittest.TestCase):
         mock_client.close = mock.Mock()
         mock_client.fetch = mock.Mock()
         mock_client.fetch.side_effect = IOError('whatever, man')
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        mock_open.return_value.read.return_value = update_body  # pylint: disable=no-member
 
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            self.assertRaises(RuntimeError, holy_orders.submit_update, update_pathname, solr_url)
+        self.assertRaises(RuntimeError, holy_orders.submit_update, update, solr_url)
 
-        mock_open.return_value.read.assert_called_once_with()  # pylint: disable=no-member
         mock_client.fetch.assert_called_once_with(exp_update_url, method='POST', body=update_body,
                                                   headers={'Content-Type': 'application/xml'})
 

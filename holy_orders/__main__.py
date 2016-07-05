@@ -470,12 +470,12 @@ def convert_update(temp_directory, update):
     return output_filename
 
 
-def submit_update(update_pathname, solr_url):
+def submit_update(update, solr_url):
     '''
     Submit a Solr XML file as an update to the Solr server.
 
-    :param str update_pathname: The pathname to a file that holds a Solr XML document that should
-        be loaded and submitted to the Solr server.
+    :param update: A Solr XML document to submit to the Solr server.
+    :type update: :class:`xml.etree.ElementTree.Element`
     :param str solr_url: The full URL to the Solr server, including protocol and port, plus the
         collection name. For example, ``'http://localhost:8983/solr/collection1'``.
     :returns: ``None``
@@ -484,8 +484,7 @@ def submit_update(update_pathname, solr_url):
 
     _log.info('Will submit an update to the Solr server at {}'.format(solr_url))
 
-    with open(update_pathname, 'r') as the_file:
-        update = the_file.read()
+    update = etree.tostring(update, encoding='unicode')
 
     if solr_url.endswith('/'):
         solr_url = solr_url[:-1]
