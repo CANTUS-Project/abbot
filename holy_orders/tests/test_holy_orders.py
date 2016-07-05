@@ -176,46 +176,6 @@ class TestShouldUpdateThis(unittest.TestCase):
         mock_now.assert_called_once_with()
 
 
-class TestConvertUpdate(unittest.TestCase):
-    '''
-    Tests for convert_update().
-    '''
-
-    def test_everything_works(self):
-        '''
-        convert_update() when everything goes according to plan.
-        '''
-        document = '''
-            <chants>
-                <chant><a>asdf</a></chant>
-                <chant><b>bsdf</b></chant>
-            </chants>
-            '''
-        exp_file = ('''<?xml version='1.0' encoding='utf-8'?>\n'''
-                    '''<add><doc><field name="type">chant</field><field name="a">asdf</field></doc>'''
-                    '''<doc><field name="type">chant</field><field name="b">bsdf</field></doc></add>''')
-
-        with tempfile.TemporaryDirectory() as tempdir:
-            actual = holy_orders.convert_update(tempdir, document)
-            assert pathlib.Path(actual).exists()
-            with open(actual, 'r') as lol:
-                assert exp_file == lol.read()
-
-    def test_conversion_script_fails(self):
-        '''
-        convert_update() when the conversion module fails
-        '''
-        document = '''
-            <chants>
-                <chant><a>asdf</a></chant></chant>
-                <chant><b>bsdf</b></chant>
-            </chants>
-            '''
-
-        with tempfile.TemporaryDirectory() as tempdir:
-            self.assertRaises(RuntimeError, holy_orders.convert_update, tempdir, document)
-
-
 class TestSubmitUpdate(unittest.TestCase):
     '''
     Tests for submit_update().

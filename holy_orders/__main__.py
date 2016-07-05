@@ -432,36 +432,6 @@ def download_update(resource_type, config):
     return download_from_urls(update_url)
 
 
-def convert_update(temp_directory, update):
-    '''
-    Convert a Drupal XML document into a Solr XML document. The Drupal XML document is supplied to
-    this function as a string, the conversion module is called, and the *pathname* of the converted
-    file is returned.
-
-    :param str temp_directory: The pathname of a (temporary) directory into which the XML documents
-        should be saved.
-    :param str update: The Drupal XML document that should be converted.
-    :returns: The pathname to the file expected as output from the conversion script.
-    :rtype: str
-    :raises: :exc:`RuntimeError` if the conversion failed for any reason. This function will write
-        appropriate log entries.
-    '''
-    try:
-        solr_xml = drupal_to_solr.convert(update)
-    except Exception as cperr:
-        err_msg = 'Conversion to Solr XML failed ({})'.format(cperr)
-        _log.error(err_msg)
-        raise RuntimeError(err_msg)
-
-    output_filename = hashlib.sha256(bytes(update, encoding='utf-8')).hexdigest()
-    output_filename = '{0}.xml'.format(output_filename)
-    output_filename = os.path.join(temp_directory, output_filename)
-
-    solr_xml.write(output_filename, encoding='utf-8', xml_declaration=True)
-
-    return output_filename
-
-
 def submit_update(update, solr_url):
     '''
     Submit a Solr XML file as an update to the Solr server.
