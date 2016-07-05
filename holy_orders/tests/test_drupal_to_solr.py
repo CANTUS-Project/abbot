@@ -102,8 +102,8 @@ def test_convert_1():
 
     actual = drupal_to_solr.convert(document)
 
-    assert isinstance(actual, etree.ElementTree)
-    assert exp_file == etree.tostring(actual.getroot(), encoding='unicode')
+    assert isinstance(actual, etree.Element)
+    assert exp_file == etree.tostring(actual, encoding='unicode')
 
 
 def test_convert_2():
@@ -115,8 +115,8 @@ def test_convert_2():
 
     actual = drupal_to_solr.convert(document)
 
-    assert isinstance(actual, etree.ElementTree)
-    assert exp_file == etree.tostring(actual.getroot(), encoding='unicode')
+    assert isinstance(actual, etree.Element)
+    assert exp_file == etree.tostring(actual, encoding='unicode')
 
 
 def test_xreffed_ids():

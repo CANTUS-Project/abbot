@@ -162,4 +162,4 @@ def convert(input_doc):
     for drupal_node in input_tree.iterfind('*'):
         output_root.append(convert_doc_node(drupal_node))
 
-    return etree.ElementTree(output_root)
+    return output_root
