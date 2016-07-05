@@ -185,31 +185,23 @@ def process_and_submit_updates(updates, config):
     '''
 
     updates_have_failed = False
-    with tempfile.TemporaryDirectory() as temp_directory:
-        conversions_failed = False
-        converted = []
-        for update in updates:
-            try:
-                converted.append(convert_update(temp_directory, update))
-            except RuntimeError:
-                conversions_failed = True
-
-        if conversions_failed:
-            _log.error('At least some updates have failed during conversion to Solr XML!')
+    converted = []
+    for update in updates:
+        try:
+            converted.append(drupal_to_solr.convert(update))
+        except Exception as exc:
             updates_have_failed = True
 
-        submissions_failed = False
-        for i, update in enumerate(converted):
-            if i != 0 and i % 100 == 0:
-                time_module.sleep(5)
-            try:
-                submit_update(update, config['solr_url'])
-            except RuntimeError:
-                submissions_failed = True
-
-        if submissions_failed:
-            _log.error('At least some updates have failed during uploading to Solr!')
+    for i, update in enumerate(converted):
+        if i != 0 and i % 100 == 0:
+            time_module.sleep(5)
+        try:
+            submit_update(update, config['solr_url'])
+        except RuntimeError:
             updates_have_failed = True
+
+    if updates_have_failed:
+        _log.error('At least one update has failed during conversion and submission.')
 
     return not updates_have_failed
 

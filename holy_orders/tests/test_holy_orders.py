@@ -275,7 +275,7 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
     Tests for process_and_submit_updates().
     '''
 
-    @mock.patch('holy_orders.__main__.convert_update')
+    @mock.patch('holy_orders.drupal_to_solr.convert')
     @mock.patch('holy_orders.__main__.submit_update')
     def test_everything_works(self, mock_submit, mock_convert):
         '''
@@ -290,15 +290,15 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
 
         actual = holy_orders.process_and_submit_updates(updates, config)
 
-        self.assertEqual(expected, actual)
-        self.assertEqual(len(updates), mock_convert.call_count)
+        assert expected is actual
+        assert len(updates) == mock_convert.call_count
         for i, _ in enumerate(updates):
-            mock_convert.assert_any_call(mock.ANY, updates[i])
-        self.assertEqual(len(converted), mock_submit.call_count)
+            mock_convert.assert_any_call(updates[i])
+        assert len(converted) == mock_submit.call_count
         for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
-    @mock.patch('holy_orders.__main__.convert_update')
+    @mock.patch('holy_orders.drupal_to_solr.convert')
     @mock.patch('holy_orders.__main__.submit_update')
     def test_conversion_fails(self, mock_submit, mock_convert):
         '''
@@ -320,15 +320,15 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
 
         actual = holy_orders.process_and_submit_updates(updates, config)
 
-        self.assertEqual(expected, actual)
-        self.assertEqual(len(updates), mock_convert.call_count)
+        assert expected is actual
+        assert len(updates) == mock_convert.call_count
         for i, _ in enumerate(updates):
-            mock_convert.assert_any_call(mock.ANY, updates[i])
-        self.assertEqual(len(converted), mock_submit.call_count)
+            mock_convert.assert_any_call(updates[i])
+        assert len(converted) == mock_submit.call_count
         for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
-    @mock.patch('holy_orders.__main__.convert_update')
+    @mock.patch('holy_orders.drupal_to_solr.convert')
     @mock.patch('holy_orders.__main__.submit_update')
     def test_submission_fails(self, mock_submit, mock_convert):
         '''
@@ -350,11 +350,11 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
 
         actual = holy_orders.process_and_submit_updates(updates, config)
 
-        self.assertEqual(expected, actual)
-        self.assertEqual(len(updates), mock_convert.call_count)
+        assert expected is actual
+        assert len(updates) == mock_convert.call_count
         for i, _ in enumerate(updates):
-            mock_convert.assert_any_call(mock.ANY, updates[i])
-        self.assertEqual(len(converted), mock_submit.call_count)
+            mock_convert.assert_any_call(updates[i])
+        assert len(converted) == mock_submit.call_count
         for i, _ in enumerate(converted):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
