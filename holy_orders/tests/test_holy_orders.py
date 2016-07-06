@@ -319,98 +319,13 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
 
-class TestLoadConfig(unittest.TestCase):
-    '''
-    Tests for load_config().
-    '''
-
-    @given(strats.text())
-    def test_path_doesnt_exist(self, config_path):
-        '''
-        When the "config_path" doesn't exist, raise SystemExit.
-        '''
-        # don't test invalid EXT4 filenames
-        assume(config_path != '.')
-        assume(config_path != '..')
-        assume('\0' not in config_path)
-        self.assertRaises(SystemExit, holy_orders.load_config, config_path)
-
-    def test_path_isnt_file(self):
-        '''
-        When the "config_path" exists, but it's a directory, raise SystemExit.
-        '''
-        config_path = '/usr'
-        self.assertRaises(SystemExit, holy_orders.load_config, config_path)
-
-    def test_file_isnt_json(self):
-        '''
-        When the "config_path" exists, and it's a file, but it's not valid JSON, raise SystemExit.
-        '''
-        config_path = '/usr/bin/env'
-        self.assertRaises(SystemExit, holy_orders.load_config, config_path)
-
-    def test_loads_correctly(self):
-        '''
-        When the "config_path" exists, is a directory, and is valid JSON, load it.
-        '''
-        config_path = os.path.join(os.path.split(__file__)[0], 'test.json')
-        print(config_path)
-        expected = {'a': 'b', 'c': 'd'}
-        actual = holy_orders.load_config(config_path)
-        self.assertEqual(expected, actual)
-
-
-class TestUpdateSaveConfig(unittest.TestCase):
-    '''
-    Test for update_save_config().
-    '''
-
-    @mock.patch('holy_orders.__main__.json')
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    @given(strats.lists(strats.sampled_from(['a', 'b', 'c', 'd', 'e', 'genres', 'chants', 'feasts']),
-                        unique=True, min_size=1),
-           strats.lists(strats.sampled_from(['a', 'b', 'c', 'd', 'e', 'genres', 'chants', 'feasts']),
-                        unique=True))
-    def test_update_works(self, mock_now, mock_json, to_update, failed_types):
-        '''
-        That update_save_config() works as expected. This uses the "hypothesis" library to test all
-        sorts of combinations of "to_update" and "failed_types".
-        '''
-        config = {'last_updated': {}}
-        config_path = '/usr/local/whatever'
-        # 1443803520.0  is  2015/09/02  16:32
-        mock_now.return_value = datetime.datetime(2015, 10, 2, 16, 32, tzinfo=datetime.timezone.utc)
-        timestamp = 1443803520.0
-        # setup mock on open() as a context manager
-        mock_open = mock.mock_open()
-        # setup mock on "json" module
-        mock_json.dump = mock.Mock()
-
-        with mock.patch('holy_orders.__main__.open', mock_open, create=True):
-            holy_orders.update_save_config(to_update, failed_types, config, config_path)
-
-        mock_open.assert_called_once_with(config_path, 'w')
-        mock_json.dump.assert_called_once_with(
-            config,
-            mock_open.return_value,  # mock.ANY doesn't work here with CPython 3.5 ...
-            indent='\t',
-            sort_keys=True)
-        # Ensure everything saved in the dict was in "to_update" and not "failed_types", and has
-        # the proper timestamp.
-        saved_conf = mock_json.dump.call_args[0][0]
-        for key in saved_conf['last_updated']:
-            self.assertTrue(key in to_update)
-            self.assertFalse(key in failed_types)
-            self.assertEqual(timestamp, saved_conf['last_updated'][key])
-
-
 class TestMain(unittest.TestCase):
     '''
     Tests for main().
     '''
 
     @mock.patch('holy_orders.__main__.commit_then_optimize')
-    @mock.patch('holy_orders.__main__.update_save_config')
+    @mock.patch('holy_orders.configuration.update_save_config')
     @mock.patch('holy_orders.__main__.process_and_submit_updates')
     @mock.patch('holy_orders.__main__.download_update')
     @mock.patch('holy_orders.__main__.should_update_this')

@@ -7,7 +7,7 @@
 # Filename:               holy_orders/__main__.py
 # Purpose:                Main file for Holy Orders.
 #
-# Copyright (C) 2015 Christopher Antila
+# Copyright (C) 2015, 2016 Christopher Antila
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -44,6 +44,7 @@ from tornado import httpclient
 import tornado.log
 from systemdream.journal import handler as journalctl
 
+from holy_orders import configuration
 from holy_orders import drupal_to_solr
 
 # settings
@@ -65,7 +66,7 @@ def main(config_path):
     Run Holy Orders. Perform an update of the Solr server running on localhost:8983.
     '''
 
-    config = load_config(config_path)
+    config = configuration.load_config(config_path)
 
     failed_types = []  # resource types that couldn't be updated for some reason
 
@@ -109,68 +110,9 @@ def main(config_path):
 
     _log.info('Updating configuration file')
     try:
-        update_save_config(types_to_update, failed_types, config, config_path)
+        configuration.update_save_config(types_to_update, failed_types, config, config_path)
     except (OSError, IOError) as err:
         _log.error('Unable to save updated configuration file: {}'.format(err))
-
-
-def update_save_config(to_update, failed_types, config, config_path):
-    '''
-    Update the "last updated" times in the configuration file, taking into account the types that
-    required an update and which of those failed to be updated for some reason. Then save the
-    updated configuration object.
-
-    :param to_update: A list of the types that we tried to update.
-    :type to_update: list of str
-    :param failed_types: A list of the types that we tried to update but couldn't.
-    :type failed_types: list of str
-    :param dict config: Dictionary of the configuration file that has our data.
-    :returns: An updated version of ``config``.
-    :rtype: dict
-    :raises: :exc:`OSError` when the file cannot be written.
-    :raises: :exc:`IOError` when the file cannot be written.
-    '''
-
-    for each_type in to_update:
-        if each_type not in failed_types:
-            _log.info('Updating "last update" time for {}'.format(each_type))
-            config['last_updated'][each_type] = _now_wrapper().timestamp()
-        else:
-            _log.error('Failed to update "{}" resources!'.format(each_type))
-
-    _log.info('Saving configuration file')
-    with open(config_path, 'w') as fp:
-        json.dump(config, fp, indent='\t', sort_keys=True)
-
-
-def load_config(config_path):
-    '''
-    Given the path to a "Holy Orders" configuration file, load the file and check that the conversion
-    script from Drupal XML to Solr XML is present ans seems to work.
-
-    :param str config_path: Pathname to the "Holy Orders" configuration file.
-    :returns: The configuration file's contents.
-    :rtype: dict
-    '''
-
-    config_path = pathlib.Path(config_path)
-    try:
-        if not (config_path.exists() and config_path.is_file()):
-            _log.error('Please provide the path to a valid JSON file for configuration.')
-            raise SystemExit(1)
-    except OSError:
-        # e.g., the file name is too long
-        _log.error('Please provide the path to a valid JSON file for configuration.')
-        raise SystemExit(1)
-
-    try:
-        with config_path.open() as config_file:
-            config = json.load(config_file)
-    except ValueError as val_err:
-        _log.error('JSON configuration file failed to load.\n{}'.format(val_err.args[0]))
-        raise SystemExit(1)
-
-    return config
 
 
 def process_and_submit_updates(updates, config):
