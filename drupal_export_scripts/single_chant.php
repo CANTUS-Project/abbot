@@ -1,9 +1,9 @@
 $view = new view();
-$view->name = 'abbot_export_chants';
-$view->description = '';
+$view->name = 'abbott_export_a_chant';
+$view->description = 'Given a Chant\'s Node ID in the URL, export that chant\'s data to XML.';
 $view->tag = 'default';
 $view->base_table = 'node';
-$view->human_name = 'Abbot: Export Chants';
+$view->human_name = 'Abbott: Export a Chant';
 $view->core = 7;
 $view->api_version = '3.0';
 $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
@@ -11,7 +11,7 @@ $view->disabled = FALSE; /* Edit this to true to make a default view disabled in
 /* Display: Master */
 $handler = $view->new_display('default', 'Master', 'default');
 $handler->display->display_options['use_more_always'] = FALSE;
-$handler->display->display_options['access']['type'] = 'perm';
+$handler->display->display_options['access']['type'] = 'none';
 $handler->display->display_options['cache']['type'] = 'none';
 $handler->display->display_options['query']['type'] = 'views_query';
 $handler->display->display_options['exposed_form']['type'] = 'basic';
@@ -280,18 +280,27 @@ $handler->display->display_options['fields']['field_siglum_chant']['alter']['tri
 $handler->display->display_options['fields']['field_siglum_chant']['alter']['strip_tags'] = TRUE;
 $handler->display->display_options['fields']['field_siglum_chant']['hide_empty'] = TRUE;
 $handler->display->display_options['fields']['field_siglum_chant']['type'] = 'text_plain';
-/* Contextual filter: Content: Updated date */
-$handler->display->display_options['arguments']['changed_fulldate']['id'] = 'changed_fulldate';
-$handler->display->display_options['arguments']['changed_fulldate']['table'] = 'node';
-$handler->display->display_options['arguments']['changed_fulldate']['field'] = 'changed_fulldate';
-$handler->display->display_options['arguments']['changed_fulldate']['default_action'] = 'empty';
-$handler->display->display_options['arguments']['changed_fulldate']['default_argument_type'] = 'fixed';
-$handler->display->display_options['arguments']['changed_fulldate']['summary']['number_of_records'] = '0';
-$handler->display->display_options['arguments']['changed_fulldate']['summary']['format'] = 'default_summary';
-$handler->display->display_options['arguments']['changed_fulldate']['summary_options']['items_per_page'] = '25';
-$handler->display->display_options['arguments']['changed_fulldate']['specify_validation'] = TRUE;
-$handler->display->display_options['arguments']['changed_fulldate']['validate']['type'] = 'numeric';
-$handler->display->display_options['arguments']['changed_fulldate']['validate']['fail'] = 'empty';
+/* Field: Content: Updated date */
+$handler->display->display_options['fields']['changed']['id'] = 'changed';
+$handler->display->display_options['fields']['changed']['table'] = 'node';
+$handler->display->display_options['fields']['changed']['field'] = 'changed';
+$handler->display->display_options['fields']['changed']['label'] = 'updated';
+$handler->display->display_options['fields']['changed']['alter']['trim_whitespace'] = TRUE;
+$handler->display->display_options['fields']['changed']['alter']['strip_tags'] = TRUE;
+$handler->display->display_options['fields']['changed']['element_label_colon'] = FALSE;
+$handler->display->display_options['fields']['changed']['element_default_classes'] = FALSE;
+$handler->display->display_options['fields']['changed']['date_format'] = 'custom';
+$handler->display->display_options['fields']['changed']['custom_date_format'] = 'c';
+$handler->display->display_options['fields']['changed']['second_date_format'] = 'long';
+/* Contextual filter: Content: Nid */
+$handler->display->display_options['arguments']['nid']['id'] = 'nid';
+$handler->display->display_options['arguments']['nid']['table'] = 'node';
+$handler->display->display_options['arguments']['nid']['field'] = 'nid';
+$handler->display->display_options['arguments']['nid']['default_action'] = 'not found';
+$handler->display->display_options['arguments']['nid']['default_argument_type'] = 'fixed';
+$handler->display->display_options['arguments']['nid']['summary']['number_of_records'] = '0';
+$handler->display->display_options['arguments']['nid']['summary']['format'] = 'default_summary';
+$handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
 /* Filter criterion: Content: Published */
 $handler->display->display_options['filters']['status']['id'] = 'status';
 $handler->display->display_options['filters']['status']['table'] = 'node';
@@ -324,4 +333,5 @@ $handler->display->display_options['style_options']['no_entity_encode'] = array(
   'nid' => 'nid',
   'view_node' => 'view_node',
 );
-$handler->display->display_options['path'] = 'export-chants/%';
+$handler->display->display_options['defaults']['empty'] = FALSE;
+$handler->display->display_options['path'] = 'export-chant/%';
