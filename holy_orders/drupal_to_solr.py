@@ -44,7 +44,7 @@ FIELD = 'field'
 NAME = 'name'
 IMAGE = 'Image'
 IMAGE_LINK = 'image_link'
-SOLR_UNIQUE_ID = 'solr_unique_id'
+UPDATED = 'updated'
 
 
 def make_solr_id(rtype, rid):
@@ -137,6 +137,8 @@ def convert_doc_node(document):
     # iter them all!
     for each in kids:
         if each.tag == IMAGE_LINK and each.text == IMAGE:
+            pass  # skip this element
+        elif each.tag == UPDATED:
             pass  # skip this element
         elif each.get('text') is not None:
             out.extend(with_text_attr(each, rtype))

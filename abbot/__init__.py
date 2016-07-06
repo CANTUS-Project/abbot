@@ -1,5 +1,5 @@
 __all__ = ['complex_handler', 'handlers', 'simple_handler', 'util']
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 __cantus_version__ = '0.3.0'
 
 

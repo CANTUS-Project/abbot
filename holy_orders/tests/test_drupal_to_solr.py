@@ -66,6 +66,7 @@ def test_convert_doc_node():
         <chant>
             <image_link>Image</image_link>                                   <!-- this should be ignored -->
             <image_link>https://whatever.com/chants_galore.jpg</image_link>  <!-- this should work -->
+            <updated>2010-05-08T23:41:54-0400</updated>  <!-- this should be ignored -->
             <bologna text="not tasty"/>
             <pancetta>tasty</pancetta>
         </chant>
