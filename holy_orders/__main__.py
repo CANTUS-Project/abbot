@@ -66,7 +66,7 @@ def main(config_path):
     Run Holy Orders. Perform an update of the Solr server running on localhost:8983.
     '''
 
-    config = configuration.load_config(config_path)
+    config = configuration.load(config_path)
 
     failed_types = []  # resource types that couldn't be updated for some reason
 

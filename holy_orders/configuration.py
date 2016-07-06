@@ -26,13 +26,17 @@
 Configuration management for Holy Orders.
 '''
 
+import configparser
 import datetime
 import json
-import pathlib
 
 # set up logging
 import tornado.log
 _log = tornado.log.app_log
+
+
+# translatable strings
+_OPEN_INI_ERROR = 'Could not open INI configuration file:\n{0}'
 
 
 def _now_wrapper():
@@ -71,31 +75,23 @@ def update_save_config(to_update, failed_types, config, config_path):
         json.dump(config, fp, indent='\t', sort_keys=True)
 
 
-def load_config(config_path):
+def load(config_path):
     '''
-    Given the path to a "Holy Orders" configuration file, load the file and check that the conversion
-    script from Drupal XML to Solr XML is present ans seems to work.
+    Load a "Holy Orders" configuration file in INI format.
 
     :param str config_path: Pathname to the "Holy Orders" configuration file.
-    :returns: The configuration file's contents.
-    :rtype: dict
+    :returns: The configuration file.
+    :rtype: :class:`configparser.ConfigParser`
+    :raises: :exc:`configparser.Error` when the configuration file is invalid.
+    :raises: :exc:`RuntimeError` when `config_path` doesn't exist or similar.
     '''
 
-    config_path = pathlib.Path(config_path)
-    try:
-        if not (config_path.exists() and config_path.is_file()):
-            _log.error('Please provide the path to a valid JSON file for configuration.')
-            raise SystemExit(1)
-    except OSError:
-        # e.g., the file name is too long
-        _log.error('Please provide the path to a valid JSON file for configuration.')
-        raise SystemExit(1)
+    config = configparser.ConfigParser()
+    files_read = config.read(config_path)
 
-    try:
-        with config_path.open() as config_file:
-            config = json.load(config_file)
-    except ValueError as val_err:
-        _log.error('JSON configuration file failed to load.\n{}'.format(val_err.args[0]))
-        raise SystemExit(1)
+    if len(files_read) == 0:
+        err_msg = _OPEN_INI_ERROR.format(config_path)
+        _log.error(err_msg)
+        raise RuntimeError(err_msg)
 
     return config

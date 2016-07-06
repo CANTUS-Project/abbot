@@ -30,19 +30,21 @@ Tests for Holy Orders' "configuration" module.
 # pylint: disable=no-self-use
 # pylint: disable=too-many-public-methods
 
+import configparser
 import datetime
 import os.path
 import unittest
 from unittest import mock
 
 from hypothesis import assume, given, strategies as strats
+import pytest
 
 from holy_orders import configuration
 
 
-class TestLoadConfig(unittest.TestCase):
+class TestLoad(unittest.TestCase):
     '''
-    Tests for load_config().
+    Tests for load().
     '''
 
     @given(strats.text())
@@ -54,30 +56,35 @@ class TestLoadConfig(unittest.TestCase):
         assume(config_path != '.')
         assume(config_path != '..')
         assume('\0' not in config_path)
-        self.assertRaises(SystemExit, configuration.load_config, config_path)
+        with pytest.raises(RuntimeError) as err:
+            configuration.load(config_path)
+        assert err.value.args[0] == configuration._OPEN_INI_ERROR.format(config_path)
 
     def test_path_isnt_file(self):
         '''
         When the "config_path" exists, but it's a directory, raise SystemExit.
         '''
         config_path = '/usr'
-        self.assertRaises(SystemExit, configuration.load_config, config_path)
+        with pytest.raises(RuntimeError) as err:
+            configuration.load(config_path)
+        assert err.value.args[0] == configuration._OPEN_INI_ERROR.format(config_path)
 
-    def test_file_isnt_json(self):
+    def test_file_isnt_ini(self):
         '''
-        When the "config_path" exists, and it's a file, but it's not valid JSON, raise SystemExit.
+        When the "config_path" exists and is a file, but not a valid INI file, raise SystemExit.
         '''
-        config_path = '/usr/bin/env'
-        self.assertRaises(SystemExit, configuration.load_config, config_path)
+        config_path = os.path.join(os.path.split(__file__)[0], 'test_drupal_to_solr.py')
+        with pytest.raises(configparser.Error) as err:
+            configuration.load(config_path)
+        assert config_path in err.value.args[0]
 
     def test_loads_correctly(self):
         '''
         When the "config_path" exists, is a directory, and is valid JSON, load it.
         '''
-        config_path = os.path.join(os.path.split(__file__)[0], 'test.json')
-        expected = {'a': 'b', 'c': 'd'}
-        actual = configuration.load_config(config_path)
-        self.assertEqual(expected, actual)
+        config_path = os.path.join(os.path.split(__file__)[0], 'sample.ini')
+        actual = configuration.load(config_path)
+        assert actual['just']['basic'] == 'ini file'
 
 
 class TestUpdateSaveConfig(unittest.TestCase):
