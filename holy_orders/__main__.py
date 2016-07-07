@@ -72,7 +72,7 @@ def main(config_path):
 
     _log.info('Checking which types to update')
     types_to_update = []
-    for resource_type in config['resource_types']:
+    for resource_type in config['general']['resource_types'].split(','):
         yes_update = False
 
         try:
@@ -106,7 +106,7 @@ def main(config_path):
                 _log.debug('main() hears that process_and_submit_updates() failed for {}'.format(resource_type))
                 failed_types.append(resource_type)
 
-    commit_then_optimize(config['solr_url'])
+    commit_then_optimize(config['general']['solr_url'])
 
     _log.info('Updating configuration file')
     try:

@@ -30,6 +30,7 @@ Tests for Holy Orders.
 # pylint: disable=no-self-use
 # pylint: disable=too-many-public-methods
 
+import configparser
 import datetime
 import json
 import os.path
@@ -339,9 +340,9 @@ class TestMain(unittest.TestCase):
         - feast, which fails during the call to process_and_submit_updates().
         - chant, which works.
         '''
-        config_path = os.path.join(os.path.split(__file__)[0], 'test_config.json')
-        with open(config_path, 'r') as conf_p:
-            config_file = json.load(conf_p)
+        config_path = os.path.join(os.path.split(__file__)[0], 'sample_config.ini')
+        config_file = configparser.ConfigParser()
+        config_file.read(config_path)
         # everything but "provenance" needs to be updated
         mock_should_update.side_effect = lambda x, y: False if x == 'provenance' else True
         # the "source" Drupal URL is missing in the config
@@ -371,7 +372,7 @@ class TestMain(unittest.TestCase):
                                             config_file,
                                             config_path)
         # commit_then_optimize()
-        mock_cto.assert_called_once_with(config_file['solr_url'])
+        mock_cto.assert_called_once_with(config_file['general']['solr_url'])
 
 
 class TestUpdateDownloading(unittest.TestCase):
