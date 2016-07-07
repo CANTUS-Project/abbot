@@ -56,23 +56,25 @@ def update_save_config(to_update, failed_types, config, config_path):
     :type to_update: list of str
     :param failed_types: A list of the types that we tried to update but couldn't.
     :type failed_types: list of str
-    :param dict config: Dictionary of the configuration file that has our data.
-    :returns: An updated version of ``config``.
-    :rtype: dict
-    :raises: :exc:`OSError` when the file cannot be written.
-    :raises: :exc:`IOError` when the file cannot be written.
+    :param config: The configuration file that has our data.
+    :type config: :class:`configparser.ConfigParser`
+    :returns: The updated of ``config``.
+    :rtype: :class:`configparser.ConfigParser`
+    :raises: :exc:`OSError` subclass when the file cannot be written for some reason.
     '''
 
     for each_type in to_update:
-        if each_type not in failed_types:
-            _log.info('Updating "last update" time for {}'.format(each_type))
-            config['last_updated'][each_type] = _now_wrapper().timestamp()
-        else:
+        if each_type in failed_types:
             _log.error('Failed to update "{}" resources!'.format(each_type))
+        else:
+            _log.info('Updating "last update" time for {}'.format(each_type))
+            config['last_updated'][each_type] = str(_now_wrapper().timestamp())
 
     _log.info('Saving configuration file')
     with open(config_path, 'w') as fp:
-        json.dump(config, fp, indent='\t', sort_keys=True)
+        config.write(fp)
+
+    return config
 
 
 def load(config_path):
