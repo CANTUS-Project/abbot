@@ -516,8 +516,8 @@ class TestUpdateDownloading(unittest.TestCase):
         '''
         Make sure it works.
         '''
-        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}/b/{date}',
-                                  'chant_id': '{drupal_url}/c/{id}'}}
+        config = configparser.ConfigParser()
+        config['drupal_urls'] = {'chants_updated': 'a/b/{date}', 'chant_id': 'a/c/{id}'}
         mock_download.return_value = 'check it out'  # just needs to be identifiable
         # first call to download_from_urls(): date-specific URLs
         mock_calcup.return_value = ['2012', '2013', '2014']
@@ -541,8 +541,8 @@ class TestUpdateDownloading(unittest.TestCase):
         '''
         download_chant_updates() returns empty list when given bad "chants_updated"
         '''
-        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}/b/{}',
-                                  'chant_id': '{drupal_url}/c/{id}'}}
+        config = configparser.ConfigParser()
+        config['drupal_urls'] = {'chants_updated': 'a/b/{}', 'chant_id': 'a/c/{id}'}
         expected = []
 
         actual = holy_orders.download_chant_updates(config)
@@ -558,8 +558,8 @@ class TestUpdateDownloading(unittest.TestCase):
         '''
         download_chant_updates() returns empty list when given bad "chant_id"
         '''
-        config = {'drupal_urls': {'drupal_url': 'a', 'chants_updated': '{drupal_url}/b/{date}',
-                                  'chant_id': '{drupal_url}/c/{}'}}
+        config = configparser.ConfigParser()
+        config['drupal_urls'] = {'chants_updated': 'a/b/{date}', 'chant_id': 'a/c/{}'}
         mock_download.return_value = 'check it out'  # just needs to be identifiable
         # only one call to download_from_urls(): date-specific URLs
         mock_calcup.return_value = ['2012', '2013', '2014']

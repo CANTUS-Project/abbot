@@ -306,7 +306,8 @@ def download_chant_updates(config):
     '''
     Download required data for updating chant resources.
 
-    :param dict config: Dictionary of the configuration file that has our data.
+    :param config: The configuration file that has our data.
+    :type config: :class:`configparser.ConfigParser`
     :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
     :rtype: list of str
 
@@ -323,13 +324,12 @@ def download_chant_updates(config):
     _log.info('Starting download_chant_updates()')
 
     # get the lists of chant IDs that were updated, by day
-    drupal_url = config['drupal_urls']['drupal_url']
     base_url = config['drupal_urls']['chants_updated']
-    if '{drupal_url}' not in base_url or '{date}' not in base_url:
+    if '{date}' not in base_url:
         # this turns out to be a serious problem, when the URLs are improperly formatted
         _log.error('Cannot download chants: improper "chants_updated" URL')
         return []
-    update_urls = [base_url.format(drupal_url=drupal_url, date=x) for x in calculate_chant_updates(config)]
+    update_urls = [base_url.format(date=x) for x in calculate_chant_updates(config)]
     ids_lists = download_from_urls(update_urls)
 
     # pull out the IDs of all the chants we need to download
@@ -337,11 +337,11 @@ def download_chant_updates(config):
 
     # download all the chants by ID
     chant_url = config['drupal_urls']['chant_id']
-    if '{drupal_url}' not in chant_url or '{id}' not in chant_url:
+    if '{id}' not in chant_url:
         # this turns out to be a serious problem, when the URLs are improperly formatted
         _log.error('Cannot download chants: improper "chant_id" URL')
         return []
-    update_urls = [chant_url.format(drupal_url=drupal_url, id=each_id) for each_id in chant_ids]
+    update_urls = [chant_url.format(id=each_id) for each_id in chant_ids]
     return download_from_urls(update_urls)
 
 
