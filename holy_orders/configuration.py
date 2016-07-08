@@ -116,6 +116,7 @@ def verify(config):
     - "resource_types" is defined in "general" as a comma-separated set of lowercase ASCII names
       separated by commas
     - "solr_url" is defined in "general"
+    - "updates_db" is defined in "general"
     - "drupal_url" is defined in "drupal_urls"
     - every resource type has an entry in the "update_frequency" section
     - every resource type has an entry in the "drupal_urls" section
@@ -137,6 +138,10 @@ def verify(config):
     # - "solr_url" is defined in "general"
     if 'solr_url' not in config['general']:
         raise KeyError('Missing "solr_url" setting')
+
+    # - "updates_db" is defined in "general"
+    if 'updates_db' not in config['general']:
+        raise KeyError('Missing "updates_db" setting')
 
     # - "drupal_url" is defined in "drupal_urls"
     if 'drupal_url' not in config['drupal_urls']:

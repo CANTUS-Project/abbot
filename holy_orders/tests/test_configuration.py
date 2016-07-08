@@ -153,7 +153,8 @@ class TestVerify(object):
         The file is valid.
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
         config['drupal_urls'] = {
             'drupal_url': '444',
@@ -172,7 +173,8 @@ class TestVerify(object):
         - the "general," "update_frequency," and "drupal_urls" sections are all defined
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
 
         with pytest.raises(KeyError):
@@ -185,7 +187,8 @@ class TestVerify(object):
           separated by commas
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': '14', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': '14', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'source': '4h'}
         config['drupal_urls'] = {'drupal_url': '444', 'source': '444/source'}
 
@@ -198,7 +201,20 @@ class TestVerify(object):
         - "solr_url" is defined in "general"
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'source'}
+        config['general'] = {'resource_types': 'source', 'updates_db': 'something.db'}
+        config['update_frequency'] = {'source': '4h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'source': '444/source'}
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_4_1(self):
+        '''
+        Fail with this check:
+        - "updates_db" is defined in "general"
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'source', 'solr_url': 'http://solr'}
         config['update_frequency'] = {'source': '4h'}
         config['drupal_urls'] = {'drupal_url': '444', 'source': '444/source'}
 
@@ -211,7 +227,8 @@ class TestVerify(object):
         - "drupal_url" is defined in "drupal_urls"
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
         config['drupal_urls'] = {
             'chants_updated': '444/chantup/{date}',
@@ -230,7 +247,8 @@ class TestVerify(object):
         - every resource type has an entry in the "update_frequency" section
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h'}  # missing "source"
         config['drupal_urls'] = {
             'drupal_url': '444',
@@ -250,7 +268,8 @@ class TestVerify(object):
         - every resource type has an entry in the "drupal_urls" section
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
         config['drupal_urls'] = {
             'drupal_url': '444',
@@ -270,7 +289,8 @@ class TestVerify(object):
         - every "drupal_urls" entry begins with the value of "drupal_url"
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
         config['drupal_urls'] = {
             'drupal_url': '444',
@@ -293,7 +313,7 @@ class TestVerify(object):
         (one of the URLs is missing)
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr', 'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h'}
         config['drupal_urls'] = {'drupal_url': '444', 'chants_updated': '444/chantup/{date}'}
 
@@ -309,7 +329,7 @@ class TestVerify(object):
         (substitution keyword is missing from "chants_updated")
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr', 'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h'}
         config['drupal_urls'] = {'drupal_url': '444', 'chants_updated': '444/chantup', 'chant_id': '444/chantid/{id}'}
 
@@ -325,7 +345,7 @@ class TestVerify(object):
         (substitution keyword is missing from "chant_id")
         '''
         config = configparser.ConfigParser()
-        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr'}
+        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr', 'updates_db': 'something.db'}
         config['update_frequency'] = {'chant': '1h'}
         config['drupal_urls'] = {'drupal_url': '444', 'chants_updated': '444/chantup/{date}', 'chant_id': '444/chantid/'}
 
