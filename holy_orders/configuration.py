@@ -29,6 +29,8 @@ Configuration management for Holy Orders.
 import configparser
 import datetime
 import json
+import pathlib
+import sqlite3
 
 # set up logging
 import tornado.log
@@ -174,3 +176,20 @@ def verify(config):
             raise ValueError('Missing "{id}" part of "chant_id" Drupal URL')
 
     return config
+
+
+def load_db(config):
+    '''
+    Load the SQL database that stores the time of the most recent updates.
+
+    :param config: The configuration file.
+    :type config: :class:`configparser.ConfigParser`
+    :returns: 2-tuple with ``config`` (unmodified) and a connection to the SQL database.
+    :rtype: :class:`configparser.ConfigParser` and :class:`sqlite3.Connection`
+    :raises: :exc:`RuntimeError` when the database file doesn't exist or similar.
+    '''
+    db_path = pathlib.Path(config['general']['updates_db'])
+    if db_path.exists() and db_path.is_file():
+        return config, sqlite3.connect(str(db_path))
+    else:
+        raise RuntimeError('The configured "updates_db" value is incorrect.')

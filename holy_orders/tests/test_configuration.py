@@ -34,6 +34,7 @@ import configparser
 import datetime
 import os.path
 import pathlib
+import sqlite3
 import tempfile
 import unittest
 from unittest import mock
@@ -351,3 +352,42 @@ class TestVerify(object):
 
         with pytest.raises(ValueError):
             configuration.verify(config)
+
+
+class TestLoadDb(object):
+    '''
+    Tests for load_db().
+    '''
+
+    def test_works(self, tmpdir):
+        '''
+        When the configured path leads to a file that exists and is loaded.
+        NB: "tmpdir" is a pytest fixture
+        '''
+        db_path = os.path.join(str(tmpdir), 'updates.db')
+        with open(db_path, 'w') as db:
+            db.write('something')
+        config = configparser.ConfigParser()
+        config['general'] = {'updates_db': db_path}
+
+        actual = configuration.load_db(config)
+        assert actual[0] is config
+        assert isinstance(actual[1], sqlite3.Connection)
+
+    def test_not_exist(self):
+        '''
+        When the configured path doesn't exist.
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'updates_db': '/broccoli/washer.db'}
+        with pytest.raises(RuntimeError):
+            configuration.load_db(config)
+
+    def test_not_file(self):
+        '''
+        When the configured path exists but is not a file.
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'updates_db': '/etc'}
+        with pytest.raises(RuntimeError):
+            configuration.load_db(config)
