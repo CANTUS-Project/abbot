@@ -97,3 +97,75 @@ def load(config_path):
         raise RuntimeError(err_msg)
 
     return config
+
+
+def verify(config):
+    '''
+    Verify a HolyOrders configuration file.
+
+    :param config: The configuration file.
+    :type config: :class:`configparser.ConfigParser`
+    :returns: The configuration file.
+    :rtype: :class:`configparser.ConfigParser`
+    :raises: :exc:`KeyError` when the configuration file is missing required values.
+    :raises: :exc:`ValueError` when a configuration value is incorrect.
+
+    The following characteristics are verified:
+
+    - the "general," "update_frequency," and "drupal_urls" sections are all defined
+    - "resource_types" is defined in "general" as a comma-separated set of lowercase ASCII names
+      separated by commas
+    - "solr_url" is defined in "general"
+    - "drupal_url" is defined in "drupal_urls"
+    - every resource type has an entry in the "update_frequency" section
+    - every resource type has an entry in the "drupal_urls" section
+    - every "drupal_urls" entry begins with the value of "drupal_url"
+    - if "chant" is in "resource_types" then "chants_updated" and "chant_id" URLs are in the
+      "drupal_urls" section rather than "chant", containing "{date}" and "{id}" respectively
+    '''
+    # - the "general," "update_frequency," and "drupal_urls" sections are all defined
+    if 'general' not in config or 'update_frequency' not in config or 'drupal_urls' not in config:
+        raise KeyError('Missing section: general, update_frequency, or drupal_urls.')
+
+    # - "resource_types" is defined in "general" as a comma-separated set of lowercase ASCII names
+    #   separated by commas
+    allowed_chars = 'abcdefghijklmnopqrstuvwxyz,'
+    for each_char in config['general']['resource_types']:
+        if each_char not in allowed_chars:
+            raise ValueError('Invalid "resource_types" value.')
+
+    # - "solr_url" is defined in "general"
+    if 'solr_url' not in config['general']:
+        raise KeyError('Missing "solr_url" setting')
+
+    # - "drupal_url" is defined in "drupal_urls"
+    if 'drupal_url' not in config['drupal_urls']:
+        raise KeyError('Missing "drupal_url" setting in "drupal_urls" section')
+
+    # - every resource type has an entry in the "update_frequency" section
+    for rtype in config['general']['resource_types'].split(','):
+        if rtype not in config['update_frequency']:
+            raise KeyError('Missing "{0}" setting in "update_frequency" section'.format(rtype))
+
+    # - every resource type has an entry in the "drupal_urls" section
+    for rtype in config['general']['resource_types'].split(','):
+        if rtype != 'chant' and rtype not in config['drupal_urls']:
+            raise KeyError('Missing "{0}" setting in "drupal_urls" section'.format(rtype))
+
+    # - every "drupal_urls" entry begins with the value of "drupal_url"
+    drupal_url = config['drupal_urls']['drupal_url']
+    for url in config['drupal_urls']:
+        if url != 'drupal_url' and not config['drupal_urls'][url].startswith(drupal_url):
+            raise ValueError('Drupal URL for {0} does not start with the URL to Drupal.'.format(url))
+
+    # - if "chant" is in "resource_types" then "chants_updated" and "chant_id" URLs are in the
+    #   "drupal_urls" section rather than "chant", containing "{date}" and "{id}" respectively
+    if 'chant' in config['general']['resource_types'].split(','):
+        if 'chants_updated' not in config['drupal_urls'] or 'chant_id' not in config['drupal_urls']:
+            raise KeyError('Missing Drupal URL for chants.')
+        if '{date}' not in config['drupal_urls']['chants_updated']:
+            raise ValueError('Missing "{date}" part of "chants_updated" Drupal URL')
+        if '{id}' not in config['drupal_urls']['chant_id']:
+            raise ValueError('Missing "{id}" part of "chant_id" Drupal URL')
+
+    return config

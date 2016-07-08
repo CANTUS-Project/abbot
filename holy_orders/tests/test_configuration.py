@@ -141,3 +141,193 @@ class TestUpdateSaveConfig(unittest.TestCase):
                 configuration.update_save_config(to_update, failed_types, config, str(config_path))
             assert str(config_path) == err.value.filename
             assert 'directory' in err.value.strerror
+
+
+class TestVerify(object):
+    '''
+    Tests for configuration.verify().
+    '''
+
+    def test_1(self):
+        '''
+        The file is valid.
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
+        config['drupal_urls'] = {
+            'drupal_url': '444',
+            'chants_updated': '444/chantup/{date}',
+            'chant_id': '444/chantid/{id}',
+            'feast': '444/feast',
+            'genre': '444/jean',
+            'source': '444/source'
+        }
+
+        assert configuration.verify(config) is config
+
+    def test_2(self):
+        '''
+        Fail with this check:
+        - the "general," "update_frequency," and "drupal_urls" sections are all defined
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_3(self):
+        '''
+        Fail with this check:
+        - "resource_types" is defined in "general" as a comma-separated set of lowercase ASCII names
+          separated by commas
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': '14', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'source': '4h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'source': '444/source'}
+
+        with pytest.raises(ValueError):
+            configuration.verify(config)
+
+    def test_4(self):
+        '''
+        Fail with this check:
+        - "solr_url" is defined in "general"
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'source'}
+        config['update_frequency'] = {'source': '4h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'source': '444/source'}
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_5(self):
+        '''
+        Fail with this check:
+        - "drupal_url" is defined in "drupal_urls"
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
+        config['drupal_urls'] = {
+            'chants_updated': '444/chantup/{date}',
+            'chant_id': '444/chantid/{id}',
+            'feast': '444/feast',
+            'genre': '444/jean',
+            'source': '444/source'
+        }
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_6(self):
+        '''
+        Fail with this check:
+        - every resource type has an entry in the "update_frequency" section
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h'}  # missing "source"
+        config['drupal_urls'] = {
+            'drupal_url': '444',
+            'chants_updated': '444/chantup/{date}',
+            'chant_id': '444/chantid/{id}',
+            'feast': '444/feast',
+            'genre': '444/jean',
+            'source': '444/source'
+        }
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_7(self):
+        '''
+        Fail with this check:
+        - every resource type has an entry in the "drupal_urls" section
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
+        config['drupal_urls'] = {
+            'drupal_url': '444',
+            'chants_updated': '444/chantup/{date}',
+            'chant_id': '444/chantid/{id}',
+            'feast': '444/feast',
+            'genre': '444/jean',
+            # missing "source"
+        }
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_8(self):
+        '''
+        Fail with this check:
+        - every "drupal_urls" entry begins with the value of "drupal_url"
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant,feast,genre,source', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h', 'feast': '2h', 'genre': '3h', 'source': '4h'}
+        config['drupal_urls'] = {
+            'drupal_url': '444',
+            'chants_updated': '444/chantup/{date}',
+            'chant_id': '444/chantid/{id}',
+            'feast': '/feast',  # purposely missing the "444"
+            'genre': '444/jean',
+            'source': '444/source'
+        }
+
+        with pytest.raises(ValueError):
+            configuration.verify(config)
+
+    def test_9a(self):
+        '''
+        Fail with this check:
+        - if "chant" is in "resource_types" then "chants_updated" and "chant_id" URLs are in the
+          "drupal_urls" section rather than "chant", containing "{date}" and "{id}" respectively
+
+        (one of the URLs is missing)
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'chants_updated': '444/chantup/{date}'}
+
+        with pytest.raises(KeyError):
+            configuration.verify(config)
+
+    def test_9b(self):
+        '''
+        Fail with this check:
+        - if "chant" is in "resource_types" then "chants_updated" and "chant_id" URLs are in the
+          "drupal_urls" section rather than "chant", containing "{date}" and "{id}" respectively
+
+        (substitution keyword is missing from "chants_updated")
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'chants_updated': '444/chantup', 'chant_id': '444/chantid/{id}'}
+
+        with pytest.raises(ValueError):
+            configuration.verify(config)
+
+    def test_9c(self):
+        '''
+        Fail with this check:
+        - if "chant" is in "resource_types" then "chants_updated" and "chant_id" URLs are in the
+          "drupal_urls" section rather than "chant", containing "{date}" and "{id}" respectively
+
+        (substitution keyword is missing from "chant_id")
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'chant', 'solr_url': 'http://solr'}
+        config['update_frequency'] = {'chant': '1h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'chants_updated': '444/chantup/{date}', 'chant_id': '444/chantid/'}
+
+        with pytest.raises(ValueError):
+            configuration.verify(config)
