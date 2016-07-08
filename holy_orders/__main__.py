@@ -349,15 +349,14 @@ def download_update(resource_type, config):
     '''
     Download the data for the indicated resource type, according to the URL stored in "config."
 
-    .. note:: When there is a problem, this function logs the error and returns an empty list.
-
     :param str resource_type: The resource type for which to fetch updates.
-    :param dict config: Dictionary of the configuration file that has our data.
+    :param config: The configuration file that has our data.
+    :type config: :class:`configparser.ConfigParser`
     :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
     :rtype: list of str
 
-    .. note:: The return type is a *list* of bytestrings, not a single one. Some resource types
-        (chant) may require updates for multiple days, which will produce multiple XML documents.
+    .. note:: The return type is always a *list* of bytestrings, not a single one. Some resource
+        types (chants) may require multiple XML documents for the update.
     '''
 
     if 'chant' == resource_type:
@@ -365,13 +364,7 @@ def download_update(resource_type, config):
 
     _log.info('Starting download_update() for {}'.format(resource_type))
 
-    try:
-        update_url = [config['drupal_urls'][resource_type].format(drupal_url=config['drupal_urls']['drupal_url'])]
-    except KeyError as err:
-        _log.error('download_update(): "{}" while accessing config file'.format(err.args[0]))
-        return []
-
-    return download_from_urls(update_url)
+    return download_from_urls([config['drupal_urls'][resource_type]])
 
 
 def submit_update(update, solr_url):

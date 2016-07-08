@@ -577,7 +577,7 @@ class TestUpdateDownloading(unittest.TestCase):
     @mock.patch('holy_orders.__main__.download_from_urls')
     def test_download_update_1(self, mock_urls, mock_chants):
         '''
-        download_update() with 'chant'
+        download_update() with 'chant' (it should call download_chant_updates())
         '''
         resource_type = 'chant'
         config = 'lolz'
@@ -596,31 +596,15 @@ class TestUpdateDownloading(unittest.TestCase):
         download_update() with 'feast'
         '''
         resource_type = 'feast'
-        config = {'drupal_urls': {'drupal_url': 'a', 'feast': '{drupal_url}b'}}
+        config = configparser.ConfigParser()
+        config['drupal_urls'] = {'drupal_url': 'a', 'feast': 'a/b'}
         mock_urls.return_value = 42
 
         actual = holy_orders.download_update(resource_type, config)
 
         self.assertEqual(mock_urls.return_value, actual)
-        mock_urls.assert_called_once_with(['ab'])
+        mock_urls.assert_called_once_with(['a/b'])
         self.assertEqual(0, mock_chants.call_count)
-
-    @mock.patch('holy_orders.__main__.download_chant_updates')
-    @mock.patch('holy_orders.__main__.download_from_urls')
-    def test_download_update_3(self, mock_urls, mock_chants):
-        '''
-        download_update() when the URL can't be formed from the config
-        '''
-        resource_type = 'beast'
-        config = {'drupal_urls': {'drupal_url': 'a', 'feast': '{drupal_url}b'}}
-        expected = []
-
-        actual = holy_orders.download_update(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(0, mock_chants.call_count)
-        self.assertEqual(0, mock_urls.call_count)
-
 
 class TestCommitThenOptimize(unittest.TestCase):
     '''
