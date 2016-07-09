@@ -47,136 +47,6 @@ from hypothesis import assume, given, strategies as strats
 import holy_orders.__main__ as holy_orders
 
 
-class TestShouldUpdateThis(unittest.TestCase):
-    '''
-    Tests for should_update_this().
-    '''
-
-    def test_should_update_1(self):
-        '''
-        When the resource type isn't in the "update_frequency" config member, raise KeyError.
-        '''
-        config = {'update_frequency': {'chant': 'never'}, 'last_updated': {'feast': 'Tuesday'}}
-        resource_type = 'feast'
-        self.assertRaises(KeyError, holy_orders.should_update_this, resource_type, config)
-
-    def test_should_update_2(self):
-        '''
-        When the resource type isn't in the "last_updated" config member, raise KeyError.
-        '''
-        config = {'update_frequency': {'chant': 'never'}, 'last_updated': {'feast': 'Tuesday'}}
-        resource_type = 'chant'
-        self.assertRaises(KeyError, holy_orders.should_update_this, resource_type, config)
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_d_freq_too_soon(self, mock_now):
-        '''
-        When the update frequency is in days, and it's too soon to update.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4d'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 8, tzinfo=datetime.timezone.utc)
-        expected = False
-
-        actual = holy_orders.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_d_freq_equal(self, mock_now):
-        '''
-        When the update frequency is in days, and the update frequency is equal to the delta.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4d'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 11, tzinfo=datetime.timezone.utc)
-        expected = True
-
-        actual = holy_orders.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_d_freq_update(self, mock_now):
-        '''
-        When the update frequency is in days, and it's been longer than that many.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4d'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 14, tzinfo=datetime.timezone.utc)
-        expected = True
-
-        actual = holy_orders.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_h_freq_too_soon(self, mock_now):
-        '''
-        When the update frequency is in hours, and it's too soon to update.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4h'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 7, hour=1, tzinfo=datetime.timezone.utc)
-        expected = False
-
-        actual = holy_orders.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_h_freq_equal(self, mock_now):
-        '''
-        When the update frequency is in hours, and the update frequency is equal to the delta.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4h'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 8, hour=4, tzinfo=datetime.timezone.utc)
-        expected = True
-
-        actual = holy_orders.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.__main__._now_wrapper')
-    def test_h_freq_update(self, mock_now):
-        '''
-        When the update frequency is in hours, and it's been longer than that many.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4h'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 8, hour=7, tzinfo=datetime.timezone.utc)
-        expected = True
-
-        actual = holy_orders.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-
 class TestSubmitUpdate(unittest.TestCase):
     '''
     Tests for submit_update().
@@ -329,7 +199,7 @@ class TestMain(unittest.TestCase):
     @mock.patch('holy_orders.configuration.update_save_config')
     @mock.patch('holy_orders.__main__.process_and_submit_updates')
     @mock.patch('holy_orders.__main__.download_update')
-    @mock.patch('holy_orders.__main__.should_update_this')
+    @mock.patch('holy_orders.current.should_update_this')
     def test_it_works(self, mock_should_update, mock_dl_update, mock_pasu, mock_usconf, mock_cto):
         '''
         When everything works (in that there are no exceptions).
@@ -510,7 +380,7 @@ class TestUpdateDownloading(unittest.TestCase):
         assert ['888'] == actual
 
     @mock.patch('holy_orders.__main__.download_from_urls')
-    @mock.patch('holy_orders.__main__.calculate_chant_updates')
+    @mock.patch('holy_orders.current.calculate_chant_updates')
     @mock.patch('holy_orders.__main__._collect_chant_ids')
     def test_download_chant_updates_1(self, mock_colids, mock_calcup, mock_download):
         '''
@@ -536,7 +406,7 @@ class TestUpdateDownloading(unittest.TestCase):
         mock_download.assert_any_call(exp_download_second_call)
 
     @mock.patch('holy_orders.__main__.download_from_urls')
-    @mock.patch('holy_orders.__main__.calculate_chant_updates')
+    @mock.patch('holy_orders.current.calculate_chant_updates')
     def test_download_chant_updates_2(self, mock_calcup, mock_download):
         '''
         download_chant_updates() returns empty list when given bad "chants_updated"
@@ -552,7 +422,7 @@ class TestUpdateDownloading(unittest.TestCase):
         self.assertEqual(0, mock_calcup.call_count)
 
     @mock.patch('holy_orders.__main__.download_from_urls')
-    @mock.patch('holy_orders.__main__.calculate_chant_updates')
+    @mock.patch('holy_orders.current.calculate_chant_updates')
     @mock.patch('holy_orders.__main__._collect_chant_ids')
     def test_download_chant_updates_3(self, mock_colids, mock_calcup, mock_download):
         '''
