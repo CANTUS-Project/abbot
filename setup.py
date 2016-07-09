@@ -36,6 +36,7 @@ setup(
     packages = ['abbot', 'holy_orders'],
 
     install_requires = [
+        'iso8601',
         'parsimonious>=0.6,<0.7',
         'pysolr-tornado>=4,<5',
         'systemdream==0.0.2',
