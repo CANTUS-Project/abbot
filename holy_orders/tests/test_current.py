@@ -31,137 +31,114 @@ Tests for the HolyOrders "current" module.
 # pylint: disable=too-many-public-methods
 
 import datetime
+import sqlite3
 import unittest
 from unittest import mock
+
+import iso8601
+import pytest
 
 from holy_orders import current
 
 
-class TestShouldUpdateThis(unittest.TestCase):
+@pytest.fixture
+def updates_db(request):
     '''
-    Tests for should_update_this().
+    Make an empty SQLite database in memory for use when testing the "updates DB."
+    '''
+    conn = sqlite3.connect(':memory:')
+    conn.cursor().execute('CREATE TABLE rtypes (id INTEGER PRIMARY KEY, name TEXT, updated TEXT);')
+    conn.commit()
+    def finalizer():
+        conn.close()
+    request.addfinalizer(finalizer)
+    return conn
+
+
+def test_get_last_updated_1(updates_db):
+    '''
+    get_last_updated() when the most recent update was "never"
+    '''
+    updates_db.cursor().execute(
+        'INSERT INTO rtypes (id, name, updated) VALUES (0, "feast", "never");')
+    actual = current.get_last_updated(updates_db, 'feast')
+    assert actual.year == 1969
+
+
+def test_get_last_updated_2(updates_db):
+    '''
+    get_last_updated() when the most recent update was a real time
+    '''
+    updates_db.cursor().execute(
+        'INSERT INTO rtypes (id, name, updated) VALUES (0, "feast", "2015-09-04T14:32:56-0000");')
+    expected = datetime.datetime(2015, 9, 4, 14, 32, 56, tzinfo=datetime.timezone(datetime.timedelta(0)))
+    actual = current.get_last_updated(updates_db, 'feast')
+    assert expected == actual
+
+
+class TestShouldUpdate(object):
+    '''
+    Tests for should_update().
     '''
 
-    def test_should_update_1(self):
+    def test_should_update_1(self, updates_db):
         '''
-        When the resource type isn't in the "update_frequency" config member, raise KeyError.
+        When the last update was "never," return True.
         '''
-        config = {'update_frequency': {'chant': 'never'}, 'last_updated': {'feast': 'Tuesday'}}
-        resource_type = 'feast'
-        self.assertRaises(KeyError, current.should_update_this, resource_type, config)
-
-    def test_should_update_2(self):
-        '''
-        When the resource type isn't in the "last_updated" config member, raise KeyError.
-        '''
-        config = {'update_frequency': {'chant': 'never'}, 'last_updated': {'feast': 'Tuesday'}}
-        resource_type = 'chant'
-        self.assertRaises(KeyError, current.should_update_this, resource_type, config)
+        rtype = 'chant'
+        config = {'update_frequency': {'chant': '4h'}}
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "never");')
+        assert current.should_update(rtype, config, updates_db) is True
 
     @mock.patch('holy_orders.current._now_wrapper')
-    def test_d_freq_too_soon(self, mock_now):
+    def test_should_update_2(self, mock_now, updates_db):
         '''
-        When the update frequency is in days, and it's too soon to update.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
+        When the last update was 4 days ago and the update frequency is 2 days, return True.
         '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4d'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 8, tzinfo=datetime.timezone.utc)
-        expected = False
+        rtype = 'chant'
+        config = {'update_frequency': {'chant': '2d'}}
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-04T00:00:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-08T00:00:00-0000')
 
-        actual = current.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
+        assert current.should_update(rtype, config, updates_db) is True
 
     @mock.patch('holy_orders.current._now_wrapper')
-    def test_d_freq_equal(self, mock_now):
+    def test_should_update_3(self, mock_now, updates_db):
         '''
-        When the update frequency is in days, and the update frequency is equal to the delta.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
+        When the last update was 2 hours ago and the update frequency is 4 hours, return False.
         '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4d'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 11, tzinfo=datetime.timezone.utc)
-        expected = True
+        rtype = 'chant'
+        config = {'update_frequency': {'chant': '4h'}}
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-08T12:05:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-08T14:05:00-0000')
 
-        actual = current.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
+        assert current.should_update(rtype, config, updates_db) is False
 
     @mock.patch('holy_orders.current._now_wrapper')
-    def test_d_freq_update(self, mock_now):
+    def test_should_update_4(self, mock_now, updates_db):
         '''
-        When the update frequency is in days, and it's been longer than that many.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
+        When the last update was 3 hours ago and the update frequency is 3 hours, return True.
         '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4d'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 14, tzinfo=datetime.timezone.utc)
-        expected = True
+        rtype = 'chant'
+        config = {'update_frequency': {'chant': '3h'}}
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-08T11:05:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-08T14:05:00-0000')
 
-        actual = current.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
+        assert current.should_update(rtype, config, updates_db) is True
 
     @mock.patch('holy_orders.current._now_wrapper')
-    def test_h_freq_too_soon(self, mock_now):
+    def test_should_update_5(self, mock_now, updates_db):
         '''
-        When the update frequency is in hours, and it's too soon to update.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
+        When the last update is 2 days in the future, return False.
         '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4h'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 7, hour=1, tzinfo=datetime.timezone.utc)
-        expected = False
+        rtype = 'chant'
+        config = {'update_frequency': {'chant': '3h'}}
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-10T14:05:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-08T14:05:00-0000')
 
-        actual = current.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.current._now_wrapper')
-    def test_h_freq_equal(self, mock_now):
-        '''
-        When the update frequency is in hours, and the update frequency is equal to the delta.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4h'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 8, hour=4, tzinfo=datetime.timezone.utc)
-        expected = True
-
-        actual = current.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
-
-    @mock.patch('holy_orders.current._now_wrapper')
-    def test_h_freq_update(self, mock_now):
-        '''
-        When the update frequency is in hours, and it's been longer than that many.
-
-        NB: we have to mock the now() function for else the tests would be different every time!
-        '''
-        # last_updated is 2015-09-07 00:00:00.0000
-        config = {'update_frequency': {'chant': '4h'}, 'last_updated': {'chant': '1441584000.0'}}
-        resource_type = 'chant'
-        mock_now.return_value = datetime.datetime(2015, 9, 8, hour=7, tzinfo=datetime.timezone.utc)
-        expected = True
-
-        actual = current.should_update_this(resource_type, config)
-
-        self.assertEqual(expected, actual)
-        mock_now.assert_called_once_with()
+        assert current.should_update(rtype, config, updates_db) is False

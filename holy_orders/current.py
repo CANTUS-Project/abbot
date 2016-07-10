@@ -31,6 +31,8 @@ import logging
 
 import tornado.log
 
+import iso8601
+
 # settings
 LOG_LEVEL = logging.DEBUG
 
@@ -45,38 +47,57 @@ def _now_wrapper():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def should_update_this(resource_type, config):
+def get_last_updated(updates_db, rtype):
     '''
-    Determine whether an update of ``resource_type`` is required, according to the configuration
-    given in ``config``.
+    Get a :class:`datetime` of the most recent update for a resource type.
 
-    :param str resource_type: The resource type to check.
-    :param dict config: Dictionary of the configuration file that has our data.
+    :param updates_db: A :class:`Connection` to the database that holds
+    :type updates_db: :class:`sqlite3.Connection`
+    :param str rtype: The resource type to check.
+    :returns: The time of the most recent update for the resource type.
+    :rtype: :class:`datetime.datetime`
+
+    If the database's most recent update is recorded as ``'never'``, meaning the resource type was
+    never updated, the :class:`datetime` returned corresponds to Unix time ``0``.
+    '''
+    last_update = updates_db.cursor().execute('SELECT updated FROM rtypes WHERE name=?', (rtype,))
+    last_update = last_update.fetchone()[0]
+    if last_update == 'never':
+        return datetime.datetime.fromtimestamp(0.0)
+    else:
+        return iso8601.parse_date(last_update)
+
+
+def should_update(rtype, config, updates_db):
+    '''
+    Check whether HolyOrders "should update" resources of a particular type.
+
+    :param str rtype: The resource type to check.
+    :param config: Dictionary of the configuration file that has our data.
+    :type config: :class:`configparser.ConfigParser`
+    :param updates_db: A :class:`Connection` to the database that holds
+    :type updates_db: :class:`sqlite3.Connection`
     :returns: Whether the resource type should be updated.
     :rtype: bool
-    :raises: :exc:`KeyError` if data for ``resource_type`` is not found in ``config``.
     '''
 
-    if (resource_type not in config['update_frequency'] or
-        resource_type not in config['last_updated']):
-        _log.warning('should_update_this(): missing data in config file for {}'.format(resource_type))
-        raise KeyError('missing data in config file')
-
-    last_update = datetime.datetime.fromtimestamp(float(config['last_updated'][resource_type]),
-                                                  datetime.timezone.utc)
+    last_update = get_last_updated(updates_db, rtype)
+    if last_update.year < 1990:
+        _log.info('should_update({0}) -> True (first update)'.format(rtype))
+        return True
     late_update_delta = _now_wrapper() - last_update
 
-    upd_req_delta = config['update_frequency'][resource_type]
-    if upd_req_delta.endswith('d'):
-        upd_req_delta = datetime.timedelta(days=int(upd_req_delta[:-1]))
+    update_freq_delta = config['update_frequency'][rtype]
+    if update_freq_delta.endswith('d'):
+        update_freq_delta = datetime.timedelta(days=int(update_freq_delta[:-1]))
     else:
-        upd_req_delta = datetime.timedelta(hours=int(upd_req_delta[:-1]))
+        update_freq_delta = datetime.timedelta(hours=int(update_freq_delta[:-1]))
 
-    if late_update_delta >= upd_req_delta:
-        _log.info('should_update_this(): should update {}'.format(resource_type))
+    if late_update_delta >= update_freq_delta:
+        _log.info('should_update({0}) -> True'.format(rtype))
         return True
     else:
-        _log.info('should_update_this(): should not update {}'.format(resource_type))
+        _log.info('should_update({0}) -> False'.format(rtype))
         return False
 
 
