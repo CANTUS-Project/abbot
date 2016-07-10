@@ -101,33 +101,31 @@ def should_update(rtype, config, updates_db):
         return False
 
 
-# TODO: this function is untested
-def calculate_chant_updates(config):
+def calculate_chant_updates(updates_db):
     '''
-    Determine which dates should be requested for updates of "chant" resources. This returns a list
-    of strings that can be appended to the Drupal URL.
+    Determine which dates should be requested for updates of "chant" resources.
 
-    To ensure no updates are missed, this function always asks for an update for one more day back
-    in time than the most recent update. This helps deal with the fact that we don't know which
-    timezone the server is using to server our updates.
-
-    :param dict config: Dictionary of the configuration file that has our data.
-    :returns: A list of the dates, formatted as YYYYMMDD, that require an update.
+    :param updates_db: A :class:`Connection` to the database that holds
+    :type updates_db: :class:`sqlite3.Connection`
+    :returns: The dates that require an update. These are formatted as YYYYMMD, so they may be used
+        directly in Drupal URLs.
     :rtype: list of str
 
-    .. note:: If the last update is in the future, the function returns an empty list.
+    If no updates are required, the function returns an empty list. To ensure no updates are missed,
+    this function always includes one additional day than required. For example, if the most recent
+    update was earlier today, then this function requests updates for both today and yesterday.
+
+    However, also note that "days ago" is determined in 24-hour periods, rather than the "yesterday"
+    style of thinking that humans use. The actual dates requested aren't especially important---it's
+    enough to know that this function errs on the side of requesting more days than required.
     '''
 
     post = []
 
-    last_update = config['last_updated']['chant']
-    last_update = datetime.datetime.fromtimestamp(float(last_update), datetime.timezone.utc)
+    last_update = get_last_updated(updates_db, 'chant')
     delta = _now_wrapper() - last_update
 
-    if delta.total_seconds() < 0:
-        # ... last updated in the future?!
-        _log.warning('Most recent chant update is in the future? ({})'.format(last_update.strftime('%Y/%m/%d %H:%M')))
-    else:
+    if delta.total_seconds() >= 0:
         days_to_request = delta.days + 2
         one_day = datetime.timedelta(days=1)
         cursor = _now_wrapper()

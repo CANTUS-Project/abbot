@@ -142,3 +142,52 @@ class TestShouldUpdate(object):
         mock_now.return_value = iso8601.parse_date('2015-09-08T14:05:00-0000')
 
         assert current.should_update(rtype, config, updates_db) is False
+
+
+class TestCalculateChantUpdates(object):
+    '''
+    Tests for calculate_chant_updates().
+    '''
+
+    @mock.patch('holy_orders.current._now_wrapper')
+    def test_calc_chant_up_(self, mock_now, updates_db):
+        '''
+        Most recent update is in the future. Return empty list.
+        '''
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-11T14:05:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-10T14:05:00-0000')
+        assert current.calculate_chant_updates(updates_db) == []
+
+    @mock.patch('holy_orders.current._now_wrapper')
+    def test_calc_chant_up_(self, mock_now, updates_db):
+        '''
+        Most recent update was earlier today. Return today and yesterday.
+        '''
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-10T12:05:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-10T14:05:00-0000')
+        expected = [
+            '20150910',
+            '20150909',
+        ]
+        assert current.calculate_chant_updates(updates_db) == expected
+
+    @mock.patch('holy_orders.current._now_wrapper')
+    def test_calc_chant_up_(self, mock_now, updates_db):
+        '''
+        Most recent update was five days ago. Return today up to six days ago.
+        '''
+        updates_db.cursor().execute(
+            'INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "2015-09-05T14:04:00-0000");')
+        mock_now.return_value = iso8601.parse_date('2015-09-10T14:05:00-0000')
+        expected = [
+            '20150910',
+            '20150909',
+            '20150908',
+            '20150907',
+            '20150906',
+            '20150905',
+            '20150904',
+        ]
+        assert current.calculate_chant_updates(updates_db) == expected
