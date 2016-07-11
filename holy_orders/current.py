@@ -135,3 +135,23 @@ def calculate_chant_updates(updates_db):
 
     _log.info('Requesting chant updates for {}'.format(post))
     return post
+
+
+def update_db(updates_db, rtype, time):
+    '''
+    Revise the updates database to show a new "last updated" time for a resource type.
+
+    :param updates_db: A :class:`Connection` to the database that holds
+    :type updates_db: :class:`sqlite3.Connection`
+    :param str rtype: The resource type that was updated.
+    :param time: The time at which the resource type is current.
+    :type time: :class:`datetime.datetime`
+
+    While it's tempting to think that the ``time`` argument should correspond to the moment this
+    function is called, that's not true---especially for resource types that take considerable time
+    to update (chants). Therefore the :class:`datetime` given to this function should correspond
+    to the moment just before data are requested from Drupal.
+    '''
+    time = time.isoformat()
+    updates_db.cursor().execute('UPDATE rtypes SET updated=? WHERE name=?;', (time, rtype))
+    updates_db.commit()

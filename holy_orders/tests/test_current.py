@@ -191,3 +191,17 @@ class TestCalculateChantUpdates(object):
             '20150904',
         ]
         assert current.calculate_chant_updates(updates_db) == expected
+
+
+def test_update_db(updates_db):
+    '''
+    A test for update_db().
+    '''
+    cursor = updates_db.cursor()
+    cursor.execute('INSERT INTO rtypes (id, name, updated) VALUES (0, "chant", "never");')
+    time = datetime.datetime(2015, 9, 4, 14, 32, 56, tzinfo=datetime.timezone(datetime.timedelta(0)))
+
+    current.update_db(updates_db, 'chant', time)
+    actual = cursor.execute('SELECT updated FROM rtypes WHERE name="chant"').fetchone()[0]
+
+    assert actual == '2015-09-04T14:32:56-00:00' or actual == '2015-09-04T14:32:56+00:00'
