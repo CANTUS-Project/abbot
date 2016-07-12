@@ -7,9 +7,11 @@ designed to be started periodically by "systemd" (hourly by default).
 Unfortunately HolyOrders is a mess, and I don't know whether I'll be able to clean it up before
 leaving it to someone else (you?) so it's all the more important that I try to explain what happened.
 
+NOTE: I've started doing that rewrite, and marked the outdated sections with "Old" in the name.
 
-Explanation
------------
+
+Old: Explanation
+----------------
 
 Understanding why HolyOrders is a mess will help you understand the structure. My initial plan was
 to write a simple bash script, without an automated test suite, that would use cURL to ask Drupal
@@ -42,8 +44,8 @@ individual requests, rather than with all resources in a single request, we also
 not to overload Solr.
 
 
-Workflow
---------
+Old: Workflow
+-------------
 
 The update process is run by the main() function. These are the steps:
 
@@ -59,8 +61,8 @@ By running the download/convert/submit steps as a unit for each resource type, w
 required in memory and for temporary files.
 
 
-The Configuration File
-----------------------
+Old: The Configuration File
+---------------------------
 
 The configuration file is currently JSON, and it holds *both* configuration data and runtime data.
 This should be adjusted so that configuration and application data are held in separate files; the
@@ -76,8 +78,8 @@ The configuration file holds the following members:
 - last_updated: by resource type, as a UNIX timestamp, the time of the most recent update
 
 
-Update Process for Chants
--------------------------
+Old: Update Process for Chants
+------------------------------
 
 At this point, everything should be pretty obvious (if you read the HolyOrders source files), except
 maybe for chants.
@@ -96,3 +98,19 @@ we download the updated chants.
 
 The rest of the chant update process is the same as for other resources, but with more resources
 and therefore a greater chance of something going wrong.
+
+
+The SQLite Updates Database
+---------------------------
+
+The time of the most recent update for a resource type is now stored in a SQLite database. The
+schema for this database follows:
+
+    CREATE TABLE rtypes (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        updated TEXT
+    );
+
+I admit it's very simple---so far. It simply stores the name of a resource type, the time it was
+most recently updated (as an ISO 8601 string), and an arbitrary integer for the primary key.
