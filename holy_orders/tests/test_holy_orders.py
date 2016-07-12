@@ -35,16 +35,19 @@ import datetime
 import json
 import os.path
 import pathlib
+import sqlite3
 import tempfile
 import unittest
 from unittest import mock
 from xml.etree import ElementTree as etree
 
+import pytest
+
 from tornado import httpclient
 
 from hypothesis import assume, given, strategies as strats
 
-import holy_orders.__main__ as holy_orders
+from holy_orders import current, __main__ as holy_orders
 
 
 class TestSubmitUpdate(unittest.TestCase):
@@ -190,59 +193,203 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
             mock_submit.assert_any_call(converted[i], config['solr_url'])
 
 
-class TestMain(unittest.TestCase):
+@pytest.fixture()
+def base_config(tmpdir):
+    '''
+    Make a base configuration for testing main(). It has one resource type ("source") and the
+    database has a last update for it at 1987-09-09T10:36:00-04:00.
+
+    :param tmpdir: A fixture form pytest.
+    :returns: A two-tuplet with the path to the INI file and the path to the database.
+    '''
+    # set time for last update
+    last_update = '1987-09-09T10:36:00-04:00'
+    # prepare the updates database
+    path_to_updates_db = os.path.join(str(tmpdir), 'updates.db')
+    updates_db = sqlite3.connect(path_to_updates_db)
+    updates_db.cursor().execute('CREATE TABLE rtypes (id INTEGER PRIMARY KEY,name TEXT,updated TEXT);')
+    updates_db.cursor().execute('INSERT INTO rtypes (id, name, updated) VALUES (2, "source", ?);', (last_update,))
+    updates_db.commit()
+    updates_db.close()
+    # prepare the configuration file
+    ini_file = '''
+    [general]
+    resource_types = source
+    solr_url = http://solr.example.com:8983/solr/collection1
+    updates_db = {0}
+    [update_frequency]
+    source = 1d
+    [drupal_urls]
+    drupal_url = http://cantus.example.com
+    source = %(drupal_url)s/export-sources
+    '''.format(path_to_updates_db)
+    path_to_ini = os.path.join(str(tmpdir), 'config.ini')
+    with open(path_to_ini, 'w') as configfile:
+        configfile.write(ini_file)
+
+    return path_to_ini, path_to_updates_db
+
+
+class TestMain(object):
     '''
     Tests for main().
     '''
 
-    @mock.patch('holy_orders.__main__.commit_then_optimize')
-    @mock.patch('holy_orders.configuration.update_save_config')
-    @mock.patch('holy_orders.__main__.process_and_submit_updates')
     @mock.patch('holy_orders.__main__.download_update')
-    @mock.patch('holy_orders.current.should_update_this')
-    def test_it_works(self, mock_should_update, mock_dl_update, mock_pasu, mock_usconf, mock_cto):
+    @mock.patch('holy_orders.__main__.process_and_submit_updates')
+    @mock.patch('holy_orders.__main__.commit_then_optimize')
+    def test_main_1(self, mock_commit, mock_process, mock_download, base_config):
         '''
-        When everything works (in that there are no exceptions).
+        There's one resource type ("source") and it:
+        - doesn't need to be updated
 
-        There are four resource types:
-        - provenance, which doesn't need to be updated.
-        - source, which fails during the call to download_update().
-        - feast, which fails during the call to process_and_submit_updates().
-        - chant, which works.
+        NB: tmpdir is a built-in pytest fixture.
         '''
-        config_path = os.path.join(os.path.split(__file__)[0], 'sample_config.ini')
-        config_file = configparser.ConfigParser()
-        config_file.read(config_path)
-        # everything but "provenance" needs to be updated
-        mock_should_update.side_effect = lambda x, y: False if x == 'provenance' else True
-        # the "source" Drupal URL is missing in the config
-        mock_dl_update.side_effect = lambda x, y: ['downloaded {}'.format(x)] if x == 'chant' else []
-        # "feast" fails in process_and_submit_updates()
-        def pasu_side_effect(updates, config):  # pylint: disable=unused-argument
-            "process_and_submit_updates() side_effect function."
-            return ['downloaded chant'] == updates
-        mock_pasu.side_effect = pasu_side_effect
+        path_to_ini, path_to_updates_db = base_config
+        # set what time "now" is---not using _now_wrapper()
+        now = datetime.datetime.now(datetime.timezone.utc)
+        current.update_db(sqlite3.connect(path_to_updates_db), 'source', now)
+        now = now.isoformat()
+        # prepare mock on download_updates()
+        # NB: unnecessary
+        # prepare mock on process_and_submit_updates()
+        # NB: unnecessary
 
-        holy_orders.main(config_path)
+        # run the test
+        holy_orders.main(path_to_ini)
 
-        # should_update_this()
-        self.assertEqual(4, mock_should_update.call_count)
-        mock_should_update.assert_any_call('provenance', config_file)
-        mock_should_update.assert_any_call('source', config_file)
-        mock_should_update.assert_any_call('feast', config_file)
-        mock_should_update.assert_any_call('chant', config_file)
-        # download_update()
-        mock_dl_update.assert_any_call('chant', config_file)
-        mock_dl_update.assert_any_call('source', config_file)
-        # process_and_submit_updates()
-        mock_pasu.assert_called_once_with(['downloaded chant'], config_file)
-        # update_save_config()
-        mock_usconf.assert_called_once_with(['chant', 'feast', 'source'],
-                                            ['feast', 'source'],
-                                            config_file,
-                                            config_path)
-        # commit_then_optimize()
-        mock_cto.assert_called_once_with(config_file['general']['solr_url'])
+        # check the mocks were called correctly
+        assert mock_download.call_count == 0
+        assert mock_process.call_count == 0
+        mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
+        # check the updates database is correct
+        updates_db = sqlite3.connect(path_to_updates_db)
+        assert current.get_last_updated(updates_db, 'source').isoformat() == now
+
+    @mock.patch('holy_orders.__main__.download_update')
+    @mock.patch('holy_orders.__main__.process_and_submit_updates')
+    @mock.patch('holy_orders.__main__.commit_then_optimize')
+    def test_main_2(self, mock_commit, mock_process, mock_download, base_config):
+        '''
+        There's one resource type ("source") and it:
+        - fails during download_update()
+
+        NB: tmpdir is a built-in pytest fixture.
+        '''
+        path_to_ini, path_to_updates_db = base_config
+        # set time for last update
+        last_update = '1987-09-09T10:36:00-04:00'
+        # prepare mock on download_updates()
+        mock_download.return_value = []
+        # prepare mock on process_and_submit_updates()
+        # NB: unnecessary
+
+        # run the test
+        holy_orders.main(path_to_ini)
+
+        # check the mocks were called correctly
+        mock_download.assert_called_once_with('source', mock.ANY)
+        assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        assert mock_process.call_count == 0
+        mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
+        # check the updates database is correct
+        updates_db = sqlite3.connect(path_to_updates_db)
+        assert current.get_last_updated(updates_db, 'source').isoformat() == last_update
+
+    @mock.patch('holy_orders.__main__.download_update')
+    @mock.patch('holy_orders.__main__.process_and_submit_updates')
+    @mock.patch('holy_orders.__main__.commit_then_optimize')
+    def test_main_3(self, mock_commit, mock_process, mock_download, base_config):
+        '''
+        There's one resource type ("source") and it:
+        - fails during process_and_submit_updates()
+
+        NB: tmpdir is a built-in pytest fixture.
+        '''
+        path_to_ini, path_to_updates_db = base_config
+        # set time for last update
+        last_update = '1987-09-09T10:36:00-04:00'
+        # prepare mock on download_updates()
+        mock_download.return_value = ['upd']
+        # prepare mock on process_and_submit_updates()
+        mock_process.return_value = False
+
+        # run the test
+        holy_orders.main(path_to_ini)
+
+        # check the mocks were called correctly
+        mock_download.assert_called_once_with('source', mock.ANY)
+        assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        mock_process.assert_called_once_with(mock_download.return_value, mock.ANY)
+        assert isinstance(mock_process.call_args_list[0][0][1], configparser.ConfigParser)
+        mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
+        # check the updates database is correct
+        updates_db = sqlite3.connect(path_to_updates_db)
+        assert current.get_last_updated(updates_db, 'source').isoformat() == last_update
+
+    @mock.patch('holy_orders.__main__.download_update')
+    @mock.patch('holy_orders.__main__.process_and_submit_updates')
+    @mock.patch('holy_orders.__main__.commit_then_optimize')
+    def test_main_4(self, mock_commit, mock_process, mock_download, base_config):
+        '''
+        There's one resource type ("source") and it:
+        - fails in an unexpected way (uses try/except in main() itself)
+
+        NB: tmpdir is a built-in pytest fixture.
+        '''
+        path_to_ini, path_to_updates_db = base_config
+        # set time for last update
+        last_update = '1987-09-09T10:36:00-04:00'
+        # prepare mock on download_updates()
+        mock_download.side_effect = RuntimeError('it broke!')  # NB: this causes the failure
+        # prepare mock on process_and_submit_updates()
+        # NB: unnecessary
+
+        # run the test
+        holy_orders.main(path_to_ini)
+
+        # check the mocks were called correctly
+        mock_download.assert_called_once_with('source', mock.ANY)
+        assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        assert mock_process.call_count == 0
+        mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
+        # check the updates database is correct
+        updates_db = sqlite3.connect(path_to_updates_db)
+        assert current.get_last_updated(updates_db, 'source').isoformat() == last_update
+
+    @mock.patch('holy_orders.__main__.download_update')
+    @mock.patch('holy_orders.__main__.process_and_submit_updates')
+    @mock.patch('holy_orders.__main__.commit_then_optimize')
+    def test_main_5(self, mock_commit, mock_process, mock_download, base_config):
+        '''
+        There's one resource type ("source") and it:
+        - succeeds
+
+        NB: tmpdir is a built-in pytest fixture.
+        '''
+        path_to_ini, path_to_updates_db = base_config
+        # set time for last update
+        now = datetime.datetime.now(datetime.timezone.utc)
+        last_update = '1987-09-09T10:36:00-04:00'
+        # prepare mock on download_updates()
+        mock_download.return_value = ['upd']
+        # prepare mock on process_and_submit_updates()
+        mock_process.return_value = True
+
+        # run the test
+        holy_orders.main(path_to_ini)
+
+        # check the mocks were called correctly
+        mock_download.assert_called_once_with('source', mock.ANY)
+        assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        mock_process.assert_called_once_with(mock_download.return_value, mock.ANY)
+        assert isinstance(mock_process.call_args_list[0][0][1], configparser.ConfigParser)
+        mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
+        # check the updates database is correct (should be enough to check year, month, and day)
+        new_time = current.get_last_updated(sqlite3.connect(path_to_updates_db), 'source')
+        assert new_time.year == now.year
+        assert new_time.month == now.month
+        assert new_time.day == now.day
 
 
 class TestUpdateDownloading(unittest.TestCase):

@@ -64,56 +64,33 @@ def _now_wrapper():
 
 def main(config_path):
     '''
-    Run Holy Orders. Perform an update of the Solr server running on localhost:8983.
+    Run Holy Orders.
+
+    :param str config_path: Pathname to the HolyOrders configuration file.
     '''
 
-    config = configuration.verify(configuration.load(config_path))
+    config, updates_db = configuration.load_db(configuration.verify(configuration.load(config_path)))
 
-    failed_types = []  # resource types that couldn't be updated for some reason
-
-    _log.info('Checking which types to update')
-    types_to_update = []
-    for resource_type in config['general']['resource_types'].split(','):
-        yes_update = False
-
+    for rtype in config['general']['resource_types'].split(','):
         try:
-            yes_update = current.should_update_this(resource_type, config)
-        except KeyError:
-            failed_types.append(resource_type)
+            if current.should_update(rtype, config, updates_db):
+                update_time = _now_wrapper()
+                list_of_updates = download_update(rtype, config)
 
-        if yes_update:
-            types_to_update.append(resource_type)
+                if list_of_updates:
+                    update_worked = process_and_submit_updates(list_of_updates, config)
+                    if update_worked:
+                        current.update_db(updates_db, rtype, update_time)
+                    else:
+                        _log.error('Conversion and submission failed for {0}'.format(rtype))
 
-    _log.info('Downloading updates')
-    for resource_type in types_to_update:
-        updates = []
+                else:
+                    _log.error('Failed to download {0} updates from Drupal'.format(rtype))
 
-        if (resource_type in config['drupal_urls']
-        or ('chant' == resource_type and 'chants_updated' in config['drupal_urls'])):
-            the_updates = download_update(resource_type, config)
-            if the_updates:
-                updates.extend(the_updates)
-            else:
-                _log.error('No updates donwloaded for {} resources!'.format(resource_type))
-                failed_types.append(resource_type)
-        else:
-            _log.error('Missing Drupal URL for "{}" in configuration file! Not updating.'.format(resource_type))
-            failed_types.append(resource_type)
-
-        if updates:
-            _log.info('Converting and submitting {} update'.format(resource_type))
-            updates_succeeded = process_and_submit_updates(updates, config)
-            if not updates_succeeded:
-                _log.debug('main() hears that process_and_submit_updates() failed for {}'.format(resource_type))
-                failed_types.append(resource_type)
+        except Exception as exc:
+            _log.error('Unexpected error in main(): "{0}: {1}"'.format(type(exc), exc))
 
     commit_then_optimize(config['general']['solr_url'])
-
-    _log.info('Updating configuration file')
-    try:
-        configuration.update_save_config(types_to_update, failed_types, config, config_path)
-    except (OSError, IOError) as err:
-        _log.error('Unable to save updated configuration file: {}'.format(err))
 
 
 def process_and_submit_updates(updates, config):
