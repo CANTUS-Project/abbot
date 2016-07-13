@@ -39,7 +39,7 @@ def _load(config_path):
     files_read = config.read(config_path)
 
     if len(files_read) == 0:
-        err_msg = _OPEN_INI_ERROR.format(config_path)
+        err_msg = 'Could not open INI configuration file:\n{0}'.format(config_path)
         _log.error(err_msg)
         raise RuntimeError(err_msg)
 
