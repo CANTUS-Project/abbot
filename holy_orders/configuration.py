@@ -58,6 +58,7 @@ def load(config_path):
     :raises: :exc:`configparser.Error` when the configuration file is invalid.
     :raises: :exc:`RuntimeError` when `config_path` doesn't exist or similar.
     '''
+    # NOTE: keep this in sync with the copy in "make_database.py"
 
     config = configparser.ConfigParser()
     files_read = config.read(config_path)
@@ -95,6 +96,8 @@ def verify(config):
     - if "chant" is in "resource_types" then "chants_updated" and "chant_id" URLs are in the
       "drupal_urls" section rather than "chant", containing "{date}" and "{id}" respectively
     '''
+    # NOTE: keep this in sync with the copy in "make_database.py"
+
     # - the "general," "update_frequency," and "drupal_urls" sections are all defined
     if 'general' not in config or 'update_frequency' not in config or 'drupal_urls' not in config:
         raise KeyError('Missing section: general, update_frequency, or drupal_urls.')
