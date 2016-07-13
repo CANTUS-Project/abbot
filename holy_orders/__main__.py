@@ -75,7 +75,7 @@ def main(config_path):
         try:
             if current.should_update(rtype, config, updates_db):
                 update_time = _now_wrapper()
-                list_of_updates = download_update(rtype, config)
+                list_of_updates = download_update(rtype, config, updates_db)
 
                 if list_of_updates:
                     update_worked = process_and_submit_updates(list_of_updates, config)
@@ -208,12 +208,14 @@ def _collect_chant_ids(daily_updates):
     return list(post.keys())
 
 
-def download_chant_updates(config):
+def download_chant_updates(config, updates_db):
     '''
     Download required data for updating chant resources.
 
     :param config: The configuration file that has our data.
     :type config: :class:`configparser.ConfigParser`
+    :param updates_db: An open connection to the updates database.
+    :type updates_db: :class:`sqlite3.Connection`
     :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
     :rtype: list of str
 
@@ -235,7 +237,7 @@ def download_chant_updates(config):
         # this turns out to be a serious problem, when the URLs are improperly formatted
         _log.error('Cannot download chants: improper "chants_updated" URL')
         return []
-    update_urls = [base_url.format(date=x) for x in current.calculate_chant_updates(config)]
+    update_urls = [base_url.format(date=x) for x in current.calculate_chant_updates(updates_db)]
     ids_lists = download_from_urls(update_urls)
 
     # pull out the IDs of all the chants we need to download
@@ -251,13 +253,15 @@ def download_chant_updates(config):
     return download_from_urls(update_urls)
 
 
-def download_update(resource_type, config):
+def download_update(resource_type, config, updates_db):
     '''
     Download the data for the indicated resource type, according to the URL stored in "config."
 
     :param str resource_type: The resource type for which to fetch updates.
     :param config: The configuration file that has our data.
     :type config: :class:`configparser.ConfigParser`
+    :param updates_db: An open connection to the updates database.
+    :type updates_db: :class:`sqlite3.Connection`
     :returns: The data returned by the Cantus Drupal server---a list of strings with XML documents.
     :rtype: list of str
 
@@ -266,7 +270,7 @@ def download_update(resource_type, config):
     '''
 
     if 'chant' == resource_type:
-        return download_chant_updates(config)
+        return download_chant_updates(config, updates_db)
 
     _log.info('Starting download_update() for {}'.format(resource_type))
 

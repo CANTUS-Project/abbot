@@ -291,8 +291,9 @@ class TestMain(object):
         holy_orders.main(path_to_ini)
 
         # check the mocks were called correctly
-        mock_download.assert_called_once_with('source', mock.ANY)
+        mock_download.assert_called_once_with('source', mock.ANY, mock.ANY)
         assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        assert isinstance(mock_download.call_args_list[0][0][2], sqlite3.Connection)
         assert mock_process.call_count == 0
         mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
         # check the updates database is correct
@@ -321,8 +322,9 @@ class TestMain(object):
         holy_orders.main(path_to_ini)
 
         # check the mocks were called correctly
-        mock_download.assert_called_once_with('source', mock.ANY)
+        mock_download.assert_called_once_with('source', mock.ANY, mock.ANY)
         assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        assert isinstance(mock_download.call_args_list[0][0][2], sqlite3.Connection)
         mock_process.assert_called_once_with(mock_download.return_value, mock.ANY)
         assert isinstance(mock_process.call_args_list[0][0][1], configparser.ConfigParser)
         mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
@@ -352,8 +354,9 @@ class TestMain(object):
         holy_orders.main(path_to_ini)
 
         # check the mocks were called correctly
-        mock_download.assert_called_once_with('source', mock.ANY)
+        mock_download.assert_called_once_with('source', mock.ANY, mock.ANY)
         assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        assert isinstance(mock_download.call_args_list[0][0][2], sqlite3.Connection)
         assert mock_process.call_count == 0
         mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
         # check the updates database is correct
@@ -383,8 +386,9 @@ class TestMain(object):
         holy_orders.main(path_to_ini)
 
         # check the mocks were called correctly
-        mock_download.assert_called_once_with('source', mock.ANY)
+        mock_download.assert_called_once_with('source', mock.ANY, mock.ANY)
         assert isinstance(mock_download.call_args_list[0][0][1], configparser.ConfigParser)
+        assert isinstance(mock_download.call_args_list[0][0][2], sqlite3.Connection)
         mock_process.assert_called_once_with(mock_download.return_value, mock.ANY)
         assert isinstance(mock_process.call_args_list[0][0][1], configparser.ConfigParser)
         mock_commit.assert_called_once_with('http://solr.example.com:8983/solr/collection1')
@@ -539,6 +543,7 @@ class TestUpdateDownloading(unittest.TestCase):
         config = configparser.ConfigParser()
         config['drupal_urls'] = {'chants_updated': 'a/b/{date}', 'chant_id': 'a/c/{id}'}
         mock_download.return_value = 'check it out'  # just needs to be identifiable
+        updates_db = mock.Mock()  # just needs to be identifiable
         # first call to download_from_urls(): date-specific URLs
         mock_calcup.return_value = ['2012', '2013', '2014']
         exp_download_first_call = ['a/b/2012', 'a/b/2013', 'a/b/2014']
@@ -546,10 +551,10 @@ class TestUpdateDownloading(unittest.TestCase):
         mock_colids.return_value = ['1', '2', '3']
         exp_download_second_call = ['a/c/1', 'a/c/2', 'a/c/3']
 
-        actual = holy_orders.download_chant_updates(config)
+        actual = holy_orders.download_chant_updates(config, updates_db)
 
         self.assertEqual(mock_download.return_value, actual)
-        mock_calcup.assert_called_once_with(config)
+        mock_calcup.assert_called_once_with(updates_db)
         mock_colids.assert_called_once_with(mock_download.return_value)
         self.assertEqual(2, mock_download.call_count)
         mock_download.assert_any_call(exp_download_first_call)
@@ -565,7 +570,7 @@ class TestUpdateDownloading(unittest.TestCase):
         config['drupal_urls'] = {'chants_updated': 'a/b/{}', 'chant_id': 'a/c/{id}'}
         expected = []
 
-        actual = holy_orders.download_chant_updates(config)
+        actual = holy_orders.download_chant_updates(config, 'updates_db')
 
         self.assertEqual(expected, actual)
         self.assertEqual(0, mock_download.call_count)
@@ -581,15 +586,16 @@ class TestUpdateDownloading(unittest.TestCase):
         config = configparser.ConfigParser()
         config['drupal_urls'] = {'chants_updated': 'a/b/{date}', 'chant_id': 'a/c/{}'}
         mock_download.return_value = 'check it out'  # just needs to be identifiable
+        updates_db = mock.Mock()  # just needs to be identifiable
         # only one call to download_from_urls(): date-specific URLs
         mock_calcup.return_value = ['2012', '2013', '2014']
         exp_download_first_call = ['a/b/2012', 'a/b/2013', 'a/b/2014']
         expected = []
 
-        actual = holy_orders.download_chant_updates(config)
+        actual = holy_orders.download_chant_updates(config, updates_db)
 
         self.assertEqual(expected, actual)
-        mock_calcup.assert_called_once_with(config)
+        mock_calcup.assert_called_once_with(updates_db)
         mock_colids.assert_called_once_with(mock_download.return_value)
         mock_download.assert_called_once_with(exp_download_first_call)
 
@@ -602,11 +608,12 @@ class TestUpdateDownloading(unittest.TestCase):
         resource_type = 'chant'
         config = 'lolz'
         mock_chants.return_value = 42
+        updates_db = mock.Mock()  # just needs to be identifiable
 
-        actual = holy_orders.download_update(resource_type, config)
+        actual = holy_orders.download_update(resource_type, config, updates_db)
 
         self.assertEqual(mock_chants.return_value, actual)
-        mock_chants.assert_called_once_with(config)
+        mock_chants.assert_called_once_with(config, updates_db)
         self.assertEqual(0, mock_urls.call_count)
 
     @mock.patch('holy_orders.__main__.download_chant_updates')
@@ -620,7 +627,7 @@ class TestUpdateDownloading(unittest.TestCase):
         config['drupal_urls'] = {'drupal_url': 'a', 'feast': 'a/b'}
         mock_urls.return_value = 42
 
-        actual = holy_orders.download_update(resource_type, config)
+        actual = holy_orders.download_update(resource_type, config, 'updates_db')
 
         self.assertEqual(mock_urls.return_value, actual)
         mock_urls.assert_called_once_with(['a/b'])
