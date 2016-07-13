@@ -115,7 +115,8 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         '''
         everything works
         '''
-        config = {'solr_url': 'http://solr.com'}
+        config = configparser.ConfigParser()
+        config['general'] = {'solr_url': 'http://solr.com'}
         updates = ['update one', 'update two', 'update three']
         converted = ['converted one', 'converted two', 'converted three']
         mock_convert_returns = ['converted one', 'converted two', 'converted three']
@@ -130,7 +131,7 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
             mock_convert.assert_any_call(updates[i])
         assert len(converted) == mock_submit.call_count
         for i, _ in enumerate(converted):
-            mock_submit.assert_any_call(converted[i], config['solr_url'])
+            mock_submit.assert_any_call(converted[i], config['general']['solr_url'])
 
     @mock.patch('holy_orders.drupal_to_solr.convert')
     @mock.patch('holy_orders.__main__.submit_update')
@@ -138,7 +139,8 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         '''
         everything else works when convert_update() fails with one
         '''
-        config = {'solr_url': 'http://solr.com'}
+        config = configparser.ConfigParser()
+        config['general'] = {'solr_url': 'http://solr.com'}
         updates = ['update one', 'update two', 'update three']
         converted = ['converted one', 'converted three']
         mock_convert_returns = ['converted one', RuntimeError('yuck'), 'converted three']
@@ -160,7 +162,7 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
             mock_convert.assert_any_call(updates[i])
         assert len(converted) == mock_submit.call_count
         for i, _ in enumerate(converted):
-            mock_submit.assert_any_call(converted[i], config['solr_url'])
+            mock_submit.assert_any_call(converted[i], config['general']['solr_url'])
 
     @mock.patch('holy_orders.drupal_to_solr.convert')
     @mock.patch('holy_orders.__main__.submit_update')
@@ -168,7 +170,8 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
         '''
         submit_update() fails with one
         '''
-        config = {'solr_url': 'http://solr.com'}
+        config = configparser.ConfigParser()
+        config['general'] = {'solr_url': 'http://solr.com'}
         updates = ['update one', 'update two', 'update three']
         converted = ['converted one', 'converted two', 'converted three']
         mock_convert_returns = ['converted one', 'converted two', 'converted three']
@@ -190,7 +193,7 @@ class TestProcessAndSubmitUpdates(unittest.TestCase):
             mock_convert.assert_any_call(updates[i])
         assert len(converted) == mock_submit.call_count
         for i, _ in enumerate(converted):
-            mock_submit.assert_any_call(converted[i], config['solr_url'])
+            mock_submit.assert_any_call(converted[i], config['general']['solr_url'])
 
 
 @pytest.fixture()

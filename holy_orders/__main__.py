@@ -116,7 +116,7 @@ def process_and_submit_updates(updates, config):
         if i != 0 and i % 100 == 0:
             time_module.sleep(5)
         try:
-            submit_update(update, config['solr_url'])
+            submit_update(update, config['general']['solr_url'])
         except RuntimeError:
             updates_have_failed = True
 
