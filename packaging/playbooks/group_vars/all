@@ -32,8 +32,11 @@ abbot_py_exec: "{{ abbot_venv_dir }}/bin/python"
 abbot_user: abbot
 abbot_group: "{{ abbot_user }}"
 abbot_conf_file: /etc/abbot.conf
-holy_orders_conf_file: /var/local/holyorders.json
+holyorders_conf_file: /etc/holyorders.ini
+holyorders_updates_db_dir: /var/local/holyorders
+holyorders_updates_db: "{{ holyorders_updates_db_dir }}/updates.db"
 holyorders_frequency: 1h
+holyorders_make_db: "{{ abbot_repo_local }}/holy_orders/make_database.py"
 
 abbot_port: 8888
 # NB: scheme isn't used in Abbot config file any more, but is used for Vitrail

@@ -1,0 +1,36 @@
+[general]
+resource_types = siglum,office,indexer,century,source_status,source,portfolio,segment,feast,notation,genre,provenance,chant
+solr_url = http://localhost:{{ solr_port }}/solr/collection1
+updates_db = {{ holyorders_updates_db }}
+
+[update_frequency]
+chant = 3h
+source = 1d
+indexer = 3d
+siglum = 14d
+genre = 15d
+feast = 13d
+office = 28d
+century = 29d
+source_status = 30d
+portfolio = 31d
+segment = 32d
+notation = 33d
+provenance = 34d
+
+[drupal_urls]
+drupal_url = http://cantus.uwaterloo.ca
+chants_updated = %(drupal_url)s/export-chant-ids/{date}
+chant_id = %(drupal_url)s/export-chant/{id}
+siglum = %(drupal_url)s/export-sigla
+office = %(drupal_url)s/export-offices
+indexer = %(drupal_url)s/export-indexers
+century = %(drupal_url)s/export-centuries
+source_status = %(drupal_url)s/export-source-statii
+source = %(drupal_url)s/export-sources
+portfolio = %(drupal_url)s/export-portfolia
+segment = %(drupal_url)s/export-segments
+feast = %(drupal_url)s/export-feasts
+notation = %(drupal_url)s/export-notations
+genre = %(drupal_url)s/export-genres
+provenance = %(drupal_url)s/export-provenances

@@ -9,5 +9,5 @@ Also=abbot.service
 WantedBy=multi-user.target
 
 [Service]
-ExecStart={{ abbot_py_exec }} -m holy_orders {{ holy_orders_conf_file }}
+ExecStart={{ abbot_py_exec }} -m holy_orders {{ holyorders_conf_file }}
 User={{ abbot_user }}

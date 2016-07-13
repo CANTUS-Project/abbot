@@ -1,14 +1,40 @@
 ---
 - name: generate the Abbot configuration file
-  copy:
-    src: holyorders.json
-    dest: "{{ holy_orders_conf_file }}"
-    owner: abbot
+  template:
+    src: config.ini.j2
+    dest: "{{ holyorders_conf_file }}"
+    owner: root
     group: root
     mode: "u=rw,g=r,o=r"
     seuser: system_u
+    setype: etc_t
+  notify:
+    - restart holyorders
+
+# NB: the configuration file MUST be written before the database is created
+- name: create the directory for the updates database
+  file:
+    path: "{{ holyorders_updates_db_dir }}"
+    owner: "{{ abbot_user }}"
+    group: "{{ abbot_group }}"
+    mode: "u=rwX,g=rX,o=rX"
+    seuser: system_u
     setype: var_t
-    force: no
+    state: directory
+- name: create the updates database (if required)
+  command: "python3 {{ holyorders_make_db }} {{ holyorders_conf_file }}"
+  args:
+    creates: "{{ holyorders_updates_db }}"
+- name: check permissions on the updates database
+  file:
+    path: "{{ holyorders_updates_db }}"
+    owner: "{{ abbot_user }}"
+    group: "{{ abbot_group }}"
+    mode: "u=rw,g=r,o=r"
+    seuser: system_u
+    setype: var_t
+    state: file
+
 - name: install systemd unit file for HolyOrders
   template:
     src: holyorders.service.j2
