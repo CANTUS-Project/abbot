@@ -62,7 +62,7 @@ def test_get_last_updated_1(updates_db):
     updates_db.cursor().execute(
         'INSERT INTO rtypes (id, name, updated) VALUES (0, "feast", "never");')
     actual = current.get_last_updated(updates_db, 'feast')
-    assert actual.year == 1969
+    assert actual.year < 1971  # whether Unix time 0 is in 1969 or 1970 seems system-dependent...
 
 
 def test_get_last_updated_2(updates_db):

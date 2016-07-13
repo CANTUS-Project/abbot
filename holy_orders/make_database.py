@@ -111,9 +111,16 @@ def check_path(db_path):
     :raises: :exc:`RuntimeError` if the file is not in a directory that already exists.
     '''
     db_path_parent = db_path.parent
-    if db_path.exists():
-        raise RuntimeError('Updates database already exists; cannot make a new one.')
-    elif not (db_path_parent.exists() and db_path_parent.is_dir()):
+    try:
+        if db_path.exists():
+            raise RuntimeError('Updates database already exists; cannot make a new one.')
+        elif not (db_path_parent.exists() and db_path_parent.is_dir()):
+            raise RuntimeError('Path to updates database must be in a directory that already exists.')
+
+    except NotADirectoryError:
+        # This may happen in CPython 3.4 before 3.4.3 during the call to db_path.exists(). It's
+        # when the parent of db_path isn't a directory. In CPython 3.4.3 and later, exists() simply
+        # returns False. Refer to https://bugs.python.org/issue22759
         raise RuntimeError('Path to updates database must be in a directory that already exists.')
 
 
