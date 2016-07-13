@@ -33,8 +33,16 @@ import pathlib
 import sqlite3
 
 # set up logging
-import tornado.log
-_log = tornado.log.app_log
+try:
+    import tornado.log
+    _log = tornado.log.app_log
+except ImportError:
+    # this happens when this module is imported by the "make_database.py" script
+    class FakeLog(object):
+        def error(msg):
+            print(msg)
+
+    _log = FakeLog()
 
 
 # translatable strings
