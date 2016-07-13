@@ -114,3 +114,6 @@ schema for this database follows:
 
 I admit it's very simple---so far. It simply stores the name of a resource type, the time it was
 most recently updated (as an ISO 8601 string), and an arbitrary integer for the primary key.
+
+When you're deploying HolyOrders, the updates database is not created automatically, and must be
+created before running HolyOrders. You can use the "make_database.py" script to do this.
