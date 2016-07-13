@@ -127,7 +127,7 @@ class TestVerify(object):
         with pytest.raises(KeyError):
             configuration.verify(config)
 
-    def test_3(self):
+    def test_3a(self):
         '''
         Fail with this check:
         - "resource_types" is defined in "general" as a comma-separated set of lowercase ASCII names
@@ -141,6 +141,19 @@ class TestVerify(object):
 
         with pytest.raises(ValueError):
             configuration.verify(config)
+
+    def test_3b(self):
+        '''
+        DOES NOT fail with this check:
+        - "resource_types" can have a type with an underscore in the name
+        '''
+        config = configparser.ConfigParser()
+        config['general'] = {'resource_types': 'source_status', 'solr_url': 'http://solr',
+            'updates_db': 'something.db'}
+        config['update_frequency'] = {'source_status': '4h'}
+        config['drupal_urls'] = {'drupal_url': '444', 'source_status': '444/source_status'}
+
+        configuration.verify(config)
 
     def test_4(self):
         '''

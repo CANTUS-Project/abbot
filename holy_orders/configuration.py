@@ -104,7 +104,7 @@ def verify(config):
 
     # - "resource_types" is defined in "general" as a comma-separated set of lowercase ASCII names
     #   separated by commas
-    allowed_chars = 'abcdefghijklmnopqrstuvwxyz,'
+    allowed_chars = 'abcdefghijklmnopqrstuvwxyz,_'
     for each_char in config['general']['resource_types']:
         if each_char not in allowed_chars:
             raise ValueError('Invalid "resource_types" value.')
