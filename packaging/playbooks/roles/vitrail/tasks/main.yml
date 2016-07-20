@@ -22,35 +22,35 @@
   become: false
   lineinfile:
     state: present
-    dest: "{{ vitrail_repo_local }}/js/nuclear/signals.js"
+    dest: "{{ item }}"
     regexp: '<< SERVER URL HERE >>'
     line: "{{ abbot_url_for_vitrail }}"
+  with_items:
+    - "{{ vitrail_repo_local }}/js/nuclear/signals.js"
+    - "{{ vitrail_repo_local }}/serviceworker.js"
 
-# the "npm" module doesn't seem to update things
+# the Ansible "npm" module doesn't seem to update dependencies
 - name: (local) install NPM depenencies
   connection: local
   become: false
   command: "npm install chdir={{ vitrail_repo_local }}"
-
-- name: (local) do an NPM deduplication
-  connection: local
-  become: false
-  command: "npm dedupe chdir={{ vitrail_repo_local }}"
 
 - name: (local) build a Vitrail deployment bundle
   connection: local
   become: false
   command: "python3 build_deploy_bundle.py chdir={{ vitrail_repo_local }}"
 
+- name: delete remote {{ vitrail_document_root }}
+  file: dest={{ vitrail_document_root }} state=absent
 - name: create remote {{ vitrail_document_root }}
   file:
     dest: "{{ vitrail_document_root }}"
     state: directory
 
-- name: copy and unarchive the deployment bundle
+- name: copy and unarchive the deployment bundle "{{ vitrail_repo_local }}/deploy.xz"
   unarchive:
     copy: yes
-    src: vitrail/deploy.xz
+    src: "{{ vitrail_repo_local }}/deploy.xz"
     dest: "{{ vitrail_document_root }}"
     owner: root
     group: root
