@@ -24,6 +24,7 @@
 - name: create the updates database (if required)
   command: "python3 {{ holyorders_make_db }} {{ holyorders_conf_file }}"
   args:
+    chdir: "{{ abbot_repo_local }}/holy_orders"
     creates: "{{ holyorders_updates_db }}"
 - name: check permissions on the updates database
   file:
