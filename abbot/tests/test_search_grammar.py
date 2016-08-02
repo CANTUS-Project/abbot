@@ -40,6 +40,7 @@ class TestWhetherItParses(object):
         assert it_parses('asdf')
         assert it_parses('"asdf"')
         assert it_parses('"as df"')
+        assert it_parses('as.df')
 
     def test_characters_with_accents(self):
         lowercase_vowels = [

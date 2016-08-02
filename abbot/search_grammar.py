@@ -35,7 +35,7 @@ GRAMMAR_STRING = '''
 
     empty = ''
     accented_letter = ~"[áàäâéèëêíìïîóòöôúùüûÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛßÇç]"
-    letter = ~"[A-Za-z_]"
+    letter = ~"[A-Za-z_.]"
     number = ~"[0-9]"
     character = letter / number / accented_letter
     characters = character+
