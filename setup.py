@@ -40,7 +40,7 @@ setup(
         'parsimonious>=0.6,<0.7',
         'pysolr-tornado>=4,<5',
         'systemdream==0.0.2',
-        'tornado>=4,<5',
+        'tornado>=4.3,<4.4',
         'tornado_systemd>=1,<2',
     ],
     tests_require = ['pytest'],
