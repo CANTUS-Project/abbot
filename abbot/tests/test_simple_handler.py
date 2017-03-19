@@ -1161,3 +1161,19 @@ class TestCorsMethods(shared.TestHandler):
         self.handler._cors_preflight()
 
         assert self.handler._headers['Access-Control-Allow-Headers'] == expected
+
+    def test_preflight_9(self):
+        '''
+        test_preflight_7() with Access-Control-Request-Headers that includes some of what CORS calls
+        "simple headers."
+        '''
+        request_headers = 'origin, x-requested-with'
+        expected = b'origin,x-requested-with'
+        origin = self._simple_options.cors_allow_origin
+        self.handler.request.headers['Origin'] = origin
+        self.handler.request.headers['Access-Control-Request-Method'] = 'GET'
+        self.handler.request.headers['Access-Control-Request-Headers'] = request_headers
+
+        self.handler._cors_preflight()
+
+        assert self.handler._headers['Access-Control-Allow-Headers'] == expected

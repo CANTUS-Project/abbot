@@ -1,5 +1,5 @@
 __all__ = ['complex_handler', 'handlers', 'simple_handler', 'util']
-__version__ = '0.7.10'
+__version__ = '0.7.11'
 __cantus_version__ = '0.3.0'
 
 
@@ -26,8 +26,16 @@ if IMPORT_TORNADO:
     # we must retain this import statement to ensure that all modules will be imported with
     # "import abbot" so that all the Tornado options will be definitely registered before use
 
-CANTUS_REQUEST_HEADERS = ('X-Cantus-Per-Page', 'X-Cantus-Page', 'X-Cantus-Include-Resources',
-                          'X-Cantus-Sort', 'X-Cantus-Fields')
+CANTUS_REQUEST_HEADERS = (
+    'X-Cantus-Per-Page',
+    'X-Cantus-Page',
+    'X-Cantus-Include-Resources',
+    'X-Cantus-Sort',
+    'X-Cantus-Fields',
+    # these are for Safari
+    'Origin',
+    'X-Requested-With',
+    )
 '''
 Iterable of the headers that Abbot is interested in reading. Needless to say, Abbot will follow
 other headers as applicable---this list determines the value of the
