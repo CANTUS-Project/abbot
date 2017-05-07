@@ -1,4 +1,4 @@
 ---
 hostname: abbot.uwaterloo.ca
-abbot_version: tags/v0.7.9
-vitrail_version: tags/v0.3.4
+abbot_version: tags/v0.7.11
+vitrail_version: tags/v0.4.5

@@ -14,8 +14,8 @@ ius_repo_path: /etc/yum.repos.d/ius.repo
 
 unit_files_dir: /usr/lib/systemd/system
 
-solr_version: 5.3.0
-solr_download_url: http://mirror.its.dal.ca/apache/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
+solr_version: 5.3.2
+solr_download_url: https://archive.apache.org/dist/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
 solr_local_path: /home/compadmin/solr-{{ solr_version }}.tgz
 solr_bin_dir: /usr/local/solr-{{ solr_version }}
 solr_var_dir: /var/db/solr

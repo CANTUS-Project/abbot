@@ -27,7 +27,6 @@
     line: "{{ abbot_url_for_vitrail }}"
   with_items:
     - "{{ vitrail_repo_local }}/js/nuclear/signals.js"
-    - "{{ vitrail_repo_local }}/serviceworker.js"
 
 # the Ansible "npm" module doesn't seem to update dependencies
 - name: (local) install NPM depenencies

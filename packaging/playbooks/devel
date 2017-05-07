@@ -1,2 +1,9 @@
 [abbot]
-abbot.adjectivenoun.ca ansible_user=compadmin ansible_host=10.0.1.132
+# abbot.adjectivenoun.ca ansible_user=compadmin ansible_host=10.0.1.132
+abbot.adjectivenoun.ca ansible_user=compadmin ansible_host=192.168.122.44
+
+
+
+# needed to install:
+# - libselinux-python
+# - firewalld (and start "firewalld" service)
