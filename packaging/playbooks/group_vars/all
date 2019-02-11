@@ -45,7 +45,7 @@ abbot_cors_origin: '{{ abbot_scheme }}://{{ hostname }}'
 abbot_drupal_url: http://cantus.uwaterloo.ca/
 abbot_solr_url: http://localhost:8983/solr/collection1/
 
-rsa_key_size: 2048
+rsa_key_size: 4096
 abbot_certfile: "/etc/letsencrypt/live/{{ hostname }}/fullchain.pem"
 abbot_keyfile: "/etc/letsencrypt/live/{{ hostname }}/privkey.pem"
 # cipherlist from Mozilla, "intermediate" settings in April 2016:

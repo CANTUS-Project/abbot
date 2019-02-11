@@ -1,12 +1,12 @@
 ---
-- name: install letsencrypt
-  package: name=letsencrypt state=present
+- name: install certbot
+  package: name=certbot state=present
 
 - name: shut down httpd
   service: name=httpd state=stopped
 
 - name: renew the certificate if relevant
-  command: "letsencrypt certonly --quiet --agree-tos --no-self-upgrade --standalone --standalone-supported-challenges tls-sni-01 --rsa-key-size {{ rsa_key_size }} --keep-until-expiring -d {{ hostname }}"
+  command: "certbot certonly --quiet --agree-tos --standalone --rsa-key-size {{ rsa_key_size }} --keep-until-expiring -d {{ hostname }}"
 
 - name: check permissions on letsencrypt directory
   file:
