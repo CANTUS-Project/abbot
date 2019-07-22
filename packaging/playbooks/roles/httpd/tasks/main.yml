@@ -1,10 +1,6 @@
 - name: install packages
   yum: name={{ item }} state=present
-  with_items:
-    - httpd
-    - mod_ssl
-    - git
-    - letsencrypt
+  with_items: [ 'httpd', 'mod_ssl', 'git', 'letsencrypt' ]
 
 - name: remove default VirtualHost configuration files
   file: path={{ item }} state=absent
