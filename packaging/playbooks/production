@@ -1,2 +1,2 @@
 [abbot]
-abbot.uwaterloo.ca ansible_user=compadmin ansible_host=129.97.86.28
+abbot.uwaterloo.ca ansible_user=compadmin ansible_host=129.97.222.18
